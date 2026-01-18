@@ -292,12 +292,23 @@ namespace LoveAlways.Qualcomm.Database
         }
 
         /// <summary>
-        /// 判断是否需要 VIP 认证
+        /// 判断是否需要 VIP 认证 (OPPO/Realme 伪装模式)
+        /// 注意：OnePlus 使用 Demacia 认证，不需要 VIP 伪装
         /// </summary>
         public static bool RequiresVipAuth(string pkHash)
         {
             string vendor = GetVendorByPkHash(pkHash);
-            return vendor == "OPPO" || vendor == "OnePlus" || vendor == "Realme";
+            // OnePlus 使用 Demacia 认证，认证成功后可直接写入，不需要 VIP 伪装
+            return vendor == "OPPO" || vendor == "Realme";
+        }
+
+        /// <summary>
+        /// 判断是否为 OnePlus 设备 (使用 Demacia 认证)
+        /// </summary>
+        public static bool IsOnePlusDevice(string pkHash)
+        {
+            string vendor = GetVendorByPkHash(pkHash);
+            return vendor == "OnePlus" || vendor.Contains("OnePlus");
         }
 
         /// <summary>

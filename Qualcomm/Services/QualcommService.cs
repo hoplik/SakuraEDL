@@ -131,13 +131,26 @@ namespace LoveAlways.Qualcomm.Services
                     return false;
                 }
 
-                // 检查是否为 VIP 设备
+                // 检查是否为 VIP 设备 (OPPO/Realme) 或 OnePlus 设备
                 if (ChipInfo != null && !string.IsNullOrEmpty(ChipInfo.PkHash))
                 {
-                    IsVipDevice = QualcommDatabase.RequiresVipAuth(ChipInfo.PkHash);
-                    if (IsVipDevice)
+                    // OnePlus 使用 Demacia 认证，不需要 VIP 伪装模式
+                    bool isOnePlus = QualcommDatabase.IsOnePlusDevice(ChipInfo.PkHash) ||
+                                    (ChipInfo.Vendor != null && ChipInfo.Vendor.Contains("OnePlus")) ||
+                                    ChipInfo.OemId == 0x50E1;
+                    
+                    if (isOnePlus)
                     {
-                        _log("[高通] 检测到 VIP 设备 (OPPO/OnePlus/Realme)");
+                        _log("[高通] 检测到 OnePlus 设备 (Demacia 认证)");
+                        IsVipDevice = false; // OnePlus 不使用 VIP 伪装
+                    }
+                    else
+                    {
+                        IsVipDevice = QualcommDatabase.RequiresVipAuth(ChipInfo.PkHash);
+                        if (IsVipDevice)
+                        {
+                            _log("[高通] 检测到 VIP 设备 (OPPO/Realme)");
+                        }
                     }
                 }
 
