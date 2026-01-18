@@ -162,6 +162,12 @@ namespace LoveAlways.Qualcomm.Protocol
         public string ChipHwId { get; set; }
         public string ChipPkHash { get; set; }
 
+        // OnePlus 认证参数 (认证成功后保存，写入时附带)
+        public string OnePlusProgramToken { get; set; }
+        public string OnePlusProgramPk { get; set; }
+        public string OnePlusProjId { get; set; }
+        public bool IsOnePlusAuthenticated { get { return !string.IsNullOrEmpty(OnePlusProgramToken); } }
+
         // 分区缓存
         private List<PartitionInfo> _cachedPartitions = null;
 
@@ -843,12 +849,29 @@ namespace LoveAlways.Qualcomm.Protocol
                     return await FlashPartitionVipModeAsync(partitionName, sourceStream, lun, startSector, numSectors, fileSize, progress, ct);
                 }
 
-                // 标准模式
-                string xml = string.Format(
-                    "<?xml version=\"1.0\"?><data><program SECTOR_SIZE_IN_BYTES=\"{0}\" " +
-                    "num_partition_sectors=\"{1}\" physical_partition_number=\"{2}\" " +
-                    "start_sector=\"{3}\" filename=\"{4}\"/></data>",
-                    _sectorSize, numSectors, lun, startSector, partitionName);
+                // 标准模式 (支持 OnePlus Token 认证)
+                string xml;
+                if (IsOnePlusAuthenticated)
+                {
+                    // OnePlus 设备需要附带认证 Token
+                    xml = string.Format(
+                        "<?xml version=\"1.0\"?><data><program SECTOR_SIZE_IN_BYTES=\"{0}\" " +
+                        "num_partition_sectors=\"{1}\" physical_partition_number=\"{2}\" " +
+                        "start_sector=\"{3}\" filename=\"{4}\" " +
+                        "token=\"{5}\" pk=\"{6}\"/></data>",
+                        _sectorSize, numSectors, lun, startSector, partitionName,
+                        OnePlusProgramToken, OnePlusProgramPk);
+                    _log("[OnePlus] 使用认证令牌写入");
+                }
+                else
+                {
+                    // 标准模式
+                    xml = string.Format(
+                        "<?xml version=\"1.0\"?><data><program SECTOR_SIZE_IN_BYTES=\"{0}\" " +
+                        "num_partition_sectors=\"{1}\" physical_partition_number=\"{2}\" " +
+                        "start_sector=\"{3}\" filename=\"{4}\"/></data>",
+                        _sectorSize, numSectors, lun, startSector, partitionName);
+                }
 
                 _port.Write(Encoding.UTF8.GetBytes(xml));
 

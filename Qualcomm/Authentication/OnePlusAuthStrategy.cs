@@ -229,7 +229,16 @@ namespace LoveAlways.Qualcomm.Authentication
             string resp = await client.SendRawXmlAsync(projCmd, ct);
 
             bool ok = !string.IsNullOrEmpty(resp) && (resp.Contains("model_check=\"0\"") || resp.Contains("ACK"));
-            if (ok) _log("[OnePlus]  认证成功！设备已解锁。");
+            if (ok) 
+            {
+                _log("[OnePlus] ✓ 认证成功！设备已解锁。");
+                
+                // 保存 token 和 pk 到 FirehoseClient，后续写入时使用
+                client.OnePlusProgramToken = proj.Item2;  // token
+                client.OnePlusProgramPk = proj.Item1;     // pk
+                client.OnePlusProjId = _projId;
+                _log("[OnePlus] 已保存认证令牌用于后续写入操作");
+            }
             return ok;
         }
 
@@ -249,7 +258,16 @@ namespace LoveAlways.Qualcomm.Authentication
             string resp = await client.SendRawXmlAsync(swCmd, ct);
 
             bool ok = !string.IsNullOrEmpty(resp) && (resp.Contains("model_check=\"0\"") || resp.Contains("ACK"));
-            if (ok) _log("[OnePlus]  认证成功！设备已解锁。");
+            if (ok) 
+            {
+                _log("[OnePlus] ✓ 认证成功！设备已解锁。");
+                
+                // 保存 token 和 pk 到 FirehoseClient，后续写入时使用
+                client.OnePlusProgramToken = sw.Item2;  // token
+                client.OnePlusProgramPk = sw.Item1;     // pk
+                client.OnePlusProjId = _projId;
+                _log("[OnePlus] 已保存认证令牌用于后续写入操作");
+            }
             return ok;
         }
 
