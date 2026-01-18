@@ -531,6 +531,19 @@ namespace LoveAlways.Qualcomm.Services
                         info.OplusNvId = value;
                         break;
                     
+                    // OPLUS 项目号 (多个来源，按优先级)
+                    case "ro.oplus.image.my_product.type":
+                        // 最准确的项目号来源 (如 22825)
+                        info.OplusProject = value;
+                        break;
+                    
+                    case "ro.separate.soft":
+                    case "ro.product.supported_versions":
+                        // 备选项目号来源
+                        if (string.IsNullOrEmpty(info.OplusProject))
+                            info.OplusProject = value;
+                        break;
+                    
                     case "ro.lenovo.cpuinfo":
                         info.OplusCpuInfo = value; // 借用 OplusCpuInfo 存储 CPU 信息
                         break;
