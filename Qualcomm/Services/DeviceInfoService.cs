@@ -437,6 +437,7 @@ namespace LoveAlways.Qualcomm.Services
                     case "ro.build.version.ota":
                     case "ro.build.display.id":
                     case "ro.system_ext.build.version.incremental":
+                    case "ro.vendor.build.display.id":
                         // 联想 ZUXOS 处理: TB321FU_CN_OPEN_USER_Q00011.0_V_ZUI_17.0.10.308_ST_251030
                         if (value.Contains("ZUI") || value.Contains("ZUXOS"))
                         {
@@ -450,9 +451,31 @@ namespace LoveAlways.Qualcomm.Services
                         {
                             info.OtaVersion = value;
                         }
+                        // OPLUS 设备：完整 OTA 版本通常格式为 PKG110_xx.x.xxxx (CN01)
+                        else if (value.Contains("(") && value.Contains(")") && (value.Contains("CN") || value.Contains("GL") || value.Contains("EU") || value.Contains("IN")))
+                        {
+                            info.OtaVersionFull = value;
+                            // 提取简化版本号
+                            var m = Regex.Match(value, @"(\d+\.\d+\.\d+)");
+                            if (m.Success && string.IsNullOrEmpty(info.OtaVersion))
+                                info.OtaVersion = m.Groups[1].Value;
+                        }
                         else
                         {
                             if (string.IsNullOrEmpty(info.OtaVersion))
+                                info.OtaVersion = value;
+                        }
+                        break;
+                    
+                    // OPLUS 设备特有属性
+                    case "ro.vendor.oplus.ota.version":
+                    case "ro.oem.version":
+                        // OPLUS 完整 OTA 版本
+                        if (!string.IsNullOrEmpty(value))
+                        {
+                            info.OtaVersionFull = value;
+                            // 如果当前 OtaVersion 只是简单数字，用这个更完整的版本
+                            if (string.IsNullOrEmpty(info.OtaVersion) || !info.OtaVersion.Contains("."))
                                 info.OtaVersion = value;
                         }
                         break;
