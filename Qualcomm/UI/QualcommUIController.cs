@@ -213,26 +213,43 @@ namespace LoveAlways.Qualcomm.UI
             {
                 IsBusy = true;
                 _cts = new CancellationTokenSource();
+                
+                // 启动进度条 - 连接过程分4个阶段: Sahara(40%) -> Firehose配置(20%) -> 认证(20%) -> 完成(20%)
+                StartOperationTimer("连接设备", 100, 0);
+                UpdateProgressBarDirect(_progressBar, 0);
+                UpdateProgressBarDirect(_subProgressBar, 0);
 
                 _service = new QualcommService(
                     msg => Log(msg, null),
-                    (current, total) => UpdateProgress(current, total)
+                    (current, total) => {
+                        // Sahara 阶段进度映射到 0-40%
+                        if (total > 0)
+                        {
+                            double percent = 40.0 * current / total;
+                            UpdateProgressBarDirect(_progressBar, percent);
+                            UpdateProgressBarDirect(_subProgressBar, 100.0 * current / total);
+                        }
+                    }
                 );
 
                 bool success;
                 if (skipSahara)
                 {
+                    UpdateProgressBarDirect(_progressBar, 40); // 跳过 Sahara
                     success = await _service.ConnectFirehoseDirectAsync(portName, storageType, _cts.Token);
+                    UpdateProgressBarDirect(_progressBar, 60);
                 }
                 else
                 {
                     Log(string.Format("连接设备 (存储: {0}, 认证: {1})...", storageType, authMode), Color.Blue);
                     success = await _service.ConnectAsync(portName, programmerPath, storageType, _cts.Token);
+                    UpdateProgressBarDirect(_progressBar, 60); // Sahara + Firehose 配置完成
                     
                     // 执行认证
                     if (success && authMode != "none")
                     {
                         Log(string.Format("执行 {0} 认证...", authMode), Color.Blue);
+                        UpdateProgressBarDirect(_subProgressBar, 0);
                         
                         bool authOk = false;
                         if ((authMode.ToLower() == "vip" || authMode.ToLower() == "oplus") && !string.IsNullOrEmpty(digestPath) && !string.IsNullOrEmpty(signaturePath))
@@ -245,11 +262,18 @@ namespace LoveAlways.Qualcomm.UI
                             // 使用策略模式认证
                             authOk = await _service.AuthenticateAsync(authMode, _cts.Token);
                         }
+                        
+                        UpdateProgressBarDirect(_progressBar, 80); // 认证完成
+                        UpdateProgressBarDirect(_subProgressBar, 100);
 
                         if (!authOk)
                         {
                             Log("认证未完全通过，但连接仍可用", Color.Orange);
                         }
+                    }
+                    else
+                    {
+                        UpdateProgressBarDirect(_progressBar, 80);
                     }
                     
                     if (success)
@@ -259,12 +283,16 @@ namespace LoveAlways.Qualcomm.UI
                 if (success)
                 {
                     Log("连接成功！", Color.Green);
+                    UpdateProgressBarDirect(_progressBar, 100);
+                    UpdateProgressBarDirect(_subProgressBar, 100);
                     UpdateDeviceInfoLabels();
                     ConnectionStateChanged?.Invoke(this, true);
                 }
                 else
                 {
                     Log("连接失败", Color.Red);
+                    UpdateProgressBarDirect(_progressBar, 0);
+                    UpdateProgressBarDirect(_subProgressBar, 0);
                 }
 
                 return success;
@@ -1149,20 +1177,25 @@ namespace LoveAlways.Qualcomm.UI
                 IsBusy = true;
                 _cts = new CancellationTokenSource();
                 
-                // 读取分区表：6个LUN
-                int maxLuns = 6;
-                StartOperationTimer("读取分区表", maxLuns, 0);
+                // 读取分区表：分两阶段 - GPT读取(80%) + 设备信息解析(20%)
+                StartOperationTimer("读取分区表", 100, 0);
+                UpdateProgressBarDirect(_progressBar, 0);
+                UpdateProgressBarDirect(_subProgressBar, 0);
                 Log("正在读取分区表 (GPT)...", Color.Blue);
 
-                // 进度回调
-                var totalProgress = new Progress<Tuple<int, int>>(t => UpdateTotalProgress(t.Item1, t.Item2));
-                var subProgress = new Progress<double>(p => UpdateSubProgressFromPercent(p));
+                // 进度回调 - GPT 读取映射到 0-80%
+                int maxLuns = 6;
+                var totalProgress = new Progress<Tuple<int, int>>(t => {
+                    double percent = 80.0 * t.Item1 / t.Item2;
+                    UpdateProgressBarDirect(_progressBar, percent);
+                });
+                var subProgress = new Progress<double>(p => UpdateProgressBarDirect(_subProgressBar, p));
 
                 // 使用带进度的 ReadAllGptAsync
                 var partitions = await _service.ReadAllGptAsync(maxLuns, totalProgress, subProgress, _cts.Token);
                 
-                // 更新总进度到100%
-                UpdateTotalProgress(maxLuns, maxLuns);
+                UpdateProgressBarDirect(_progressBar, 80);
+                UpdateProgressBarDirect(_subProgressBar, 100);
 
                 if (partitions != null && partitions.Count > 0)
                 {
@@ -1172,13 +1205,17 @@ namespace LoveAlways.Qualcomm.UI
                     PartitionsLoaded?.Invoke(this, partitions);
                     Log(string.Format("成功读取 {0} 个分区", partitions.Count), Color.Green);
                     
-                    // 读取分区表后，尝试读取设备信息（build.prop）
+                    // 读取分区表后，尝试读取设备信息（build.prop）- 占 80-100%
                     bool hasSuper = partitions.Exists(p => p.Name == "super");
                     if (hasSuper)
                     {
                         Log("检测到 super 分区，尝试读取设备信息...", Color.Blue);
+                        UpdateProgressBarDirect(_subProgressBar, 0);
                         await TryReadBuildPropInternalAsync();
                     }
+                    
+                    UpdateProgressBarDirect(_progressBar, 100);
+                    UpdateProgressBarDirect(_subProgressBar, 100);
                     
                     return true;
                 }
