@@ -1277,10 +1277,16 @@ namespace LoveAlways.Qualcomm.UI
                     Log(string.Format("成功读取 {0} 个分区", partitions.Count), Color.Green);
                     
                     // 读取分区表后，尝试读取设备信息（build.prop）- 占 80-100%
-                    bool hasSuper = partitions.Exists(p => p.Name == "super");
-                    if (hasSuper)
+                    bool hasSuper = partitions.Exists(p => p.Name.Equals("super", StringComparison.OrdinalIgnoreCase));
+                    bool hasSystem = partitions.Exists(p => p.Name.Equals("system", StringComparison.OrdinalIgnoreCase) ||
+                                                            p.Name.Equals("system_a", StringComparison.OrdinalIgnoreCase));
+                    bool hasVendor = partitions.Exists(p => p.Name.Equals("vendor", StringComparison.OrdinalIgnoreCase) ||
+                                                            p.Name.Equals("vendor_a", StringComparison.OrdinalIgnoreCase));
+                    
+                    if (hasSuper || hasSystem || hasVendor)
                     {
-                        Log("检测到 super 分区，尝试读取设备信息...", Color.Blue);
+                        string partType = hasSuper ? "super" : (hasSystem ? "system" : "vendor");
+                        Log(string.Format("检测到 {0} 分区，尝试读取设备信息...", partType), Color.Blue);
                         UpdateProgressBarDirect(_subProgressBar, 0);
                         await TryReadBuildPropInternalAsync();
                     }
