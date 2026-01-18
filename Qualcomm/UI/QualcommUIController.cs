@@ -1277,18 +1277,22 @@ namespace LoveAlways.Qualcomm.UI
                     Log(string.Format("成功读取 {0} 个分区", partitions.Count), Color.Green);
                     
                     // 读取分区表后，尝试读取设备信息（build.prop）- 占 80-100%
-                    bool hasSuper = partitions.Exists(p => p.Name.Equals("super", StringComparison.OrdinalIgnoreCase));
-                    bool hasSystem = partitions.Exists(p => p.Name.Equals("system", StringComparison.OrdinalIgnoreCase) ||
-                                                            p.Name.Equals("system_a", StringComparison.OrdinalIgnoreCase));
-                    bool hasVendor = partitions.Exists(p => p.Name.Equals("vendor", StringComparison.OrdinalIgnoreCase) ||
-                                                            p.Name.Equals("vendor_a", StringComparison.OrdinalIgnoreCase));
+                    var superPart = partitions.Find(p => p.Name.Equals("super", StringComparison.OrdinalIgnoreCase));
+                    var systemPart = partitions.Find(p => p.Name.Equals("system", StringComparison.OrdinalIgnoreCase) ||
+                                                          p.Name.Equals("system_a", StringComparison.OrdinalIgnoreCase));
+                    var vendorPart = partitions.Find(p => p.Name.Equals("vendor", StringComparison.OrdinalIgnoreCase) ||
+                                                          p.Name.Equals("vendor_a", StringComparison.OrdinalIgnoreCase));
                     
-                    if (hasSuper || hasSystem || hasVendor)
+                    if (superPart != null || systemPart != null || vendorPart != null)
                     {
-                        string partType = hasSuper ? "super" : (hasSystem ? "system" : "vendor");
-                        Log(string.Format("检测到 {0} 分区，尝试读取设备信息...", partType), Color.Blue);
+                        string partType = superPart != null ? "super" : (systemPart != null ? "system" : "vendor");
+                        Log(string.Format("检测到 {0} 分区，开始读取设备信息...", partType), Color.Blue);
                         UpdateProgressBarDirect(_subProgressBar, 0);
                         await TryReadBuildPropInternalAsync();
+                    }
+                    else
+                    {
+                        Log("未检测到 super/system/vendor 分区，跳过设备信息读取", Color.Orange);
                     }
                     
                     UpdateProgressBarDirect(_progressBar, 100);
@@ -2105,6 +2109,49 @@ namespace LoveAlways.Qualcomm.UI
         {
             percent = Math.Max(0, Math.Min(100, percent));
             UpdateProgressBarDirect(_subProgressBar, percent);
+            
+            // 更新时间显示
+            if (_operationStopwatch != null)
+            {
+                var elapsed = _operationStopwatch.Elapsed;
+                string timeText = string.Format("时间：{0:00}:{1:00}", (int)elapsed.TotalMinutes, elapsed.Seconds);
+                UpdateLabelSafe(_timeLabel, timeText);
+            }
+            
+            // 更新操作标签（显示百分比）
+            if (_totalOperationBytes > 0)
+            {
+                // 基于字节计算总进度
+                long estimatedCurrent = (long)(_totalOperationBytes * percent / 100.0);
+                long totalProcessed = _completedStepBytes + estimatedCurrent;
+                double totalPercent = Math.Min(100, 100.0 * totalProcessed / _totalOperationBytes);
+                UpdateProgressBarDirect(_progressBar, totalPercent);
+                UpdateLabelSafe(_operationLabel, string.Format("{0} [{1:F2}%]", _currentOperationName, totalPercent));
+                
+                // 估算速度 (基于时间和总进度)
+                if (_operationStopwatch != null && _operationStopwatch.Elapsed.TotalSeconds > 0.5)
+                {
+                    double speed = totalProcessed / _operationStopwatch.Elapsed.TotalSeconds;
+                    if (speed > 0)
+                    {
+                        string speedText;
+                        if (speed >= 1024 * 1024)
+                            speedText = string.Format("速度：{0:F2} MB/s", speed / 1024 / 1024);
+                        else if (speed >= 1024)
+                            speedText = string.Format("速度：{0:F2} KB/s", speed / 1024);
+                        else
+                            speedText = string.Format("速度：{0:F0} B/s", speed);
+                        UpdateLabelSafe(_speedLabel, speedText);
+                    }
+                }
+            }
+            else if (_totalSteps > 0)
+            {
+                // 基于步骤计算总进度
+                double totalProgress = (_currentStep + percent / 100.0) / _totalSteps * 100.0;
+                UpdateProgressBarDirect(_progressBar, totalProgress);
+                UpdateLabelSafe(_operationLabel, string.Format("{0} [{1:F2}%]", _currentOperationName, totalProgress));
+            }
         }
         
         /// <summary>
