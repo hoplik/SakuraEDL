@@ -3,7 +3,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Platform-Windows-blue?style=flat-square" alt="Platform">
   <img src="https://img.shields.io/badge/.NET-Framework%204.8-purple?style=flat-square" alt=".NET">
-  <img src="https://img.shields.io/badge/License-Non--Commercial-red?style=flat-square" alt="License">
+  <img src="https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey?style=flat-square" alt="License">
 </p>
 
 ## 📖 项目简介
@@ -123,35 +123,24 @@ LoveAlways/
 
 ## 📄 许可协议
 
-### 非商业使用许可证 (Non-Commercial License)
+本项目采用 **CC BY-NC-SA 4.0** 许可协议（知识共享 署名-非商业性使用-相同方式共享 4.0 国际）
 
-**版权所有 © 2026 LoveAlways 项目组**
+[![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 
-本软件及其相关文档（以下简称"软件"）在以下条件下提供：
+### ✅ 您可以
+- **共享** — 在任何媒介以任何形式复制、发行本作品
+- **演绎** — 修改、转换或以本作品为基础进行创作
 
-#### ✅ 允许
-- 个人学习和研究使用
-- 非商业性质的技术交流和分享
-- 在注明出处的情况下引用代码片段
+### 📋 惟须遵守
+- **署名** — 您必须给出适当的署名，提供指向本许可协议的链接
+- **非商业性使用** — 您不得将本作品用于商业目的
+- **相同方式共享** — 如果您基于本作品进行创作，必须使用相同的许可协议分发
 
-#### ❌ 禁止
-- **商业使用**: 禁止将本软件用于任何商业目的，包括但不限于：
-  - 出售本软件或其衍生作品
-  - 将本软件集成到商业产品中
-  - 使用本软件提供付费服务
-  - 以任何形式从本软件中获取商业利益
-- **恶意使用**: 禁止将本软件用于任何非法或恶意目的
-- **去除版权**: 禁止移除或修改软件中的版权声明
+### ⚠️ 免责声明
+本软件按"原样"提供，不提供任何保证。刷机操作有风险，用户自行承担所有风险。作者不对设备损坏或数据丢失负责。
 
-#### ⚖️ 免责声明
-本软件按"原样"提供，不提供任何明示或暗示的保证。在任何情况下，作者或版权持有人均不对因使用本软件而产生的任何直接、间接、偶然、特殊或后果性损害承担责任。
-
-使用本软件进行刷机操作的风险由用户自行承担。作者不对因刷机导致的设备损坏、数据丢失或其他任何损失负责。
-
-#### 📬 联系方式
-如需商业授权或有其他问题，请联系项目维护者：
-
-- **QQ**: 1708298587
+### 📬 联系方式
+如需商业授权或有其他问题，请联系：**QQ 1708298587**
 
 ---
 
