@@ -55,6 +55,16 @@ namespace LoveAlways.Qualcomm.Services
             if (string.IsNullOrEmpty(superMetaPath))
             {
                 superMetaPath = Directory.GetFiles(imagesDir, "super_meta*.raw").FirstOrDefault();
+                
+                // [关键] 如果设备无法读取 NV_ID，则从固件包文件名自动提取
+                if (!string.IsNullOrEmpty(superMetaPath) && string.IsNullOrEmpty(nvId))
+                {
+                    nvId = ExtractNvIdFromFilename(superMetaPath);
+                    if (!string.IsNullOrEmpty(nvId))
+                    {
+                        _log(string.Format("[OPLUS] 从固件包自动提取 NV_ID: {0}", nvId));
+                    }
+                }
             }
 
             // 优先查找带 NV_ID 的映射表: super_def.{nvId}.json
@@ -254,6 +264,41 @@ namespace LoveAlways.Qualcomm.Services
                 }
             }
             return new FileInfo(path).Length;
+        }
+
+        /// <summary>
+        /// 从文件名中提取 NV_ID
+        /// 例如: super_meta.10010111.raw -> 10010111
+        /// </summary>
+        private string ExtractNvIdFromFilename(string filePath)
+        {
+            try
+            {
+                string fileName = Path.GetFileNameWithoutExtension(filePath); // super_meta.10010111
+                
+                // 匹配格式: super_meta.{nvId} 或 super_def.{nvId}
+                var match = Regex.Match(fileName, @"^super_(?:meta|def)\.(\d+)$");
+                if (match.Success)
+                {
+                    return match.Groups[1].Value;
+                }
+                
+                // 备用匹配: 任意文件名中间的数字部分
+                // 例如: system.10010111 -> 10010111
+                var parts = fileName.Split('.');
+                if (parts.Length >= 2)
+                {
+                    string potentialNvId = parts[parts.Length - 1];
+                    // NV_ID 通常是 8 位或更长的数字
+                    if (Regex.IsMatch(potentialNvId, @"^\d{6,}$"))
+                    {
+                        return potentialNvId;
+                    }
+                }
+            }
+            catch { }
+            
+            return null;
         }
     }
 }
