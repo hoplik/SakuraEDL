@@ -566,6 +566,37 @@ namespace LoveAlways.Qualcomm.UI
         /// </summary>
         private async Task TryReadBuildPropInternalAsync()
         {
+            // 创建总超时保护 (60 秒)
+            using (var totalTimeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(60)))
+            using (var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token, totalTimeoutCts.Token))
+            {
+                try
+                {
+                    await TryReadBuildPropCoreAsync(linkedCts.Token);
+                }
+                catch (OperationCanceledException)
+                {
+                    if (totalTimeoutCts.IsCancellationRequested)
+                    {
+                        Log("设备信息解析超时 (60秒)，已跳过", Color.Orange);
+                    }
+                    else
+                    {
+                        Log("设备信息解析已取消", Color.Orange);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log(string.Format("设备信息解析失败: {0}", ex.Message), Color.Orange);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 设备信息解析核心逻辑 (带取消令牌支持)
+        /// </summary>
+        private async Task TryReadBuildPropCoreAsync(CancellationToken ct)
+        {
             try
             {
                 // 检查是否有可用于读取设备信息的分区
@@ -589,9 +620,12 @@ namespace LoveAlways.Qualcomm.UI
                     );
                 }
 
-                // 创建带超时的分区读取委托
+                // 创建带超时的分区读取委托 (使用传入的取消令牌)
                 Func<string, long, int, Task<byte[]>> readPartition = async (partName, offset, size) =>
                 {
+                    // 检查取消
+                    ct.ThrowIfCancellationRequested();
+                    
                     // 检查分区是否存在
                     if (Partitions == null || !Partitions.Exists(p => p.Name == partName || p.Name.StartsWith(partName + "_")))
                     {
@@ -600,15 +634,18 @@ namespace LoveAlways.Qualcomm.UI
                     
                     try
                     {
-                        // 添加 10 秒超时保护
+                        // 添加 10 秒超时保护 (与外部取消令牌联动)
                         using (var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(10)))
-                        using (var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token, timeoutCts.Token))
+                        using (var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token))
                         {
                             return await _service.ReadPartitionDataAsync(partName, offset, size, linkedCts.Token);
                         }
                     }
                     catch (OperationCanceledException)
                     {
+                        // 如果是外部取消，重新抛出
+                        ct.ThrowIfCancellationRequested();
+                        // 否则是超时
                         Log(string.Format("读取 {0} 超时", partName), Color.Orange);
                         return null;
                     }
@@ -698,7 +735,8 @@ namespace LoveAlways.Qualcomm.UI
             }
             catch (OperationCanceledException)
             {
-                Log("设备信息读取已取消", Color.Orange);
+                // 重新抛出，由外层处理
+                throw;
             }
             catch (Exception ex)
             {
