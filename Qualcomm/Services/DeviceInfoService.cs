@@ -431,12 +431,34 @@ namespace LoveAlways.Qualcomm.Services
                         break;
 
                     case "ro.miui.ui.version.name":
-                    case "ro.miui.ui.version.code":
-                        // 优先捕捉 MIUI/HyperOS 展示名: V14.0.x.x 或 OS3.0.x.x
-                        if (string.IsNullOrEmpty(info.OtaVersion) || value.StartsWith("V") || value.StartsWith("OS"))
+                        // MIUI/HyperOS 版本名：V14.0.x.x 或 OS1.0.x.x
+                        // 注意：这个属性可能只有 "V125" 这样的短版本，需要和 ro.build.display.id 配合
+                        if (string.IsNullOrEmpty(info.OtaVersion))
                             info.OtaVersion = value;
-                        
+                        // 检测 HyperOS 版本
                         if (value.Contains("OS3.")) info.AndroidVersion = "16.0";
+                        else if (value.Contains("OS2.")) info.AndroidVersion = "15.0";
+                        else if (value.Contains("OS1.")) info.AndroidVersion = "14.0";
+                        break;
+
+                    case "ro.miui.ui.version.code":
+                        // 版本代码，优先级较低
+                        if (string.IsNullOrEmpty(info.OtaVersion))
+                            info.OtaVersion = value;
+                        break;
+                    
+                    // 小米完整版本 (优先级高于 ro.miui.ui.version.name)
+                    case "ro.build.version.incremental":
+                        // 小米设备的完整版本号，如 "V14.0.8.0.TNJCNXM"
+                        if (!string.IsNullOrEmpty(value) && (value.Contains(".") && value.Length > 8))
+                        {
+                            // 如果当前版本只是简短的 Vxxx，用这个更完整的版本替换
+                            if (string.IsNullOrEmpty(info.OtaVersion) || 
+                                (info.OtaVersion.StartsWith("V") && info.OtaVersion.Length < 10 && !info.OtaVersion.Contains(".")))
+                            {
+                                info.OtaVersion = value;
+                            }
+                        }
                         break;
 
                     case "ro.build.MiFavor_version":
@@ -510,17 +532,16 @@ namespace LoveAlways.Qualcomm.Services
                                 info.OtaVersion = value;
                         }
                         break;
-                    case "ro.build.version.incremental":
                     case "display.id.show":
                     case "region": // 将 region 映射到 OtaVersion，方便界面展示
-                        if (key == "display.id.show" || key == "region" || key.Contains("ota") || string.IsNullOrEmpty(info.OtaVersion))
+                        if (key == "display.id.show" || key == "region" || string.IsNullOrEmpty(info.OtaVersion))
                         {
                             // 如果是 display.id.show 且包含 (CNxx)，这就是最准确的展示版本
                             if (key == "display.id.show" && value.Contains("(") && value.Contains(")"))
                             {
                                 info.OtaVersion = value;
                             }
-                            else if (string.IsNullOrEmpty(info.OtaVersion) || key.Contains("ota"))
+                            else if (string.IsNullOrEmpty(info.OtaVersion))
                             {
                                 info.OtaVersion = value;
                             }
