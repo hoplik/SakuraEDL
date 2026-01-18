@@ -2071,46 +2071,52 @@ namespace LoveAlways.Qualcomm.UI
         
         /// <summary>
         /// 更新子进度条 (短) - 从百分比
+        /// 改进：使用实时速度计算而非平均速度
         /// </summary>
         private void UpdateSubProgressFromPercent(double percent)
         {
             percent = Math.Max(0, Math.Min(100, percent));
             UpdateProgressBarDirect(_subProgressBar, percent);
             
-            // 更新时间显示
+            // 基于百分比估算当前字节数
+            long estimatedCurrent = 0;
+            if (_totalOperationBytes > 0)
+            {
+                estimatedCurrent = (long)(_totalOperationBytes * percent / 100.0);
+            }
+            
+            // 计算实时速度 (基于增量，而非平均)
             if (_operationStopwatch != null)
             {
+                // 更新时间显示
                 var elapsed = _operationStopwatch.Elapsed;
                 string timeText = string.Format("时间：{0:00}:{1:00}", (int)elapsed.TotalMinutes, elapsed.Seconds);
                 UpdateLabelSafe(_timeLabel, timeText);
+                
+                // 实时速度计算
+                long bytesDelta = estimatedCurrent - _lastBytes;
+                double timeDelta = (DateTime.Now - _lastSpeedUpdate).TotalSeconds;
+                
+                if (timeDelta >= 0.2 && bytesDelta > 0) // 每200ms更新一次
+                {
+                    double instantSpeed = bytesDelta / timeDelta;
+                    // 指数移动平均平滑速度 (权重调整为更响应实时变化)
+                    _currentSpeed = (_currentSpeed > 0) ? (_currentSpeed * 0.5 + instantSpeed * 0.5) : instantSpeed;
+                    _lastBytes = estimatedCurrent;
+                    _lastSpeedUpdate = DateTime.Now;
+                    
+                    // 更新速度显示
+                    UpdateSpeedDisplayInternal();
+                }
             }
             
             // 更新操作标签（显示百分比）
             if (_totalOperationBytes > 0)
             {
-                // 基于字节计算总进度
-                long estimatedCurrent = (long)(_totalOperationBytes * percent / 100.0);
                 long totalProcessed = _completedStepBytes + estimatedCurrent;
                 double totalPercent = Math.Min(100, 100.0 * totalProcessed / _totalOperationBytes);
                 UpdateProgressBarDirect(_progressBar, totalPercent);
                 UpdateLabelSafe(_operationLabel, string.Format("{0} [{1:F2}%]", _currentOperationName, totalPercent));
-                
-                // 估算速度 (基于时间和总进度)
-                if (_operationStopwatch != null && _operationStopwatch.Elapsed.TotalSeconds > 0.5)
-                {
-                    double speed = totalProcessed / _operationStopwatch.Elapsed.TotalSeconds;
-                    if (speed > 0)
-                    {
-                        string speedText;
-                        if (speed >= 1024 * 1024)
-                            speedText = string.Format("速度：{0:F2} MB/s", speed / 1024 / 1024);
-                        else if (speed >= 1024)
-                            speedText = string.Format("速度：{0:F2} KB/s", speed / 1024);
-                        else
-                            speedText = string.Format("速度：{0:F0} B/s", speed);
-                        UpdateLabelSafe(_speedLabel, speedText);
-                    }
-                }
             }
             else if (_totalSteps > 0)
             {
@@ -2131,8 +2137,10 @@ namespace LoveAlways.Qualcomm.UI
             _completedStepBytes = completedBytes;
             
             // 重置速度计算变量（新步骤开始）
+            // 注意：_lastBytes 设置为 0 是因为每个子任务的进度是从 0 开始的
             _lastBytes = 0;
-            _currentSpeed = 0;
+            // 保持当前速度用于平滑过渡，不完全清零
+            // _currentSpeed = 0;
             _lastSpeedUpdate = DateTime.Now;
             UpdateProgressBarDirect(_subProgressBar, 0);
         }
