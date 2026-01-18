@@ -411,38 +411,20 @@ namespace LoveAlways.Qualcomm.Services
         #region 自动认证逻辑
 
         /// <summary>
-        /// 自动认证 - 仅对小米和一加设备自动执行
-        /// VIP 认证 (OPPO/Realme) 由用户手动选择
+        /// 自动认证 - 仅对小米设备自动执行
+        /// 其他设备 (OnePlus/OPPO/Realme 等) 由用户手动选择认证方式
         /// </summary>
         private async Task<bool> AutoAuthenticateAsync(string programmerPath, CancellationToken ct)
         {
             if (_firehose == null) return true;
 
-            // 综合判断厂商：优先 OEM ID，然后 PK Hash
-            string vendor = "";
-            
-            // 1. 从 OEM ID 获取 (更准确)
-            if (ChipInfo != null && !string.IsNullOrEmpty(ChipInfo.Vendor) && 
-                !ChipInfo.Vendor.Contains("Unknown"))
-            {
-                vendor = ChipInfo.Vendor;
-            }
-            
-            // 2. 如果 OEM ID 无法识别，从 PK Hash 获取
-            if (string.IsNullOrEmpty(vendor) && ChipInfo != null && !string.IsNullOrEmpty(ChipInfo.PkHash))
-            {
-                vendor = QualcommDatabase.GetVendorByPkHash(ChipInfo.PkHash);
-            }
-            
-            _log(string.Format("[高通] 设备厂商识别: {0}", vendor));
-            
-            // 1. 小米设备 - 自动执行 MiAuth 认证
-            if (vendor == "Xiaomi" || IsXiaomiDevice())
+            // 只有小米设备自动认证
+            if (IsXiaomiDevice())
             {
                 _log("[高通] 检测到小米设备，自动执行 MiAuth 认证...");
                 try
-            {
-                var xiaomi = new XiaomiAuthStrategy(_log);
+                {
+                    var xiaomi = new XiaomiAuthStrategy(_log);
                     bool result = await xiaomi.AuthenticateAsync(_firehose, programmerPath, ct);
                     if (result)
                     {
@@ -461,58 +443,7 @@ namespace LoveAlways.Qualcomm.Services
                 }
             }
 
-            // 2. 一加设备 - 自动执行 Demacia 认证
-            // 注意：OEM ID 0x50E1 = "OnePlus" (纯一加)
-            // OEM ID 0x0051 = "Oppo/OnePlus" (混合设备，不自动认证，由用户选择)
-            bool isOnePlus = vendor == "OnePlus" || (ChipInfo != null && ChipInfo.OemId == 0x50E1);
-            // 排除 "Oppo/OnePlus" 混合设备，这类设备应由用户手动选择 VIP 或 OnePlus 认证
-            if (vendor == "Oppo/OnePlus" || vendor.StartsWith("Oppo"))
-            {
-                _log("[高通] 检测到 OPPO 系设备，请手动选择认证方式 (VIP 或 OnePlus)");
-                return true; // 跳过自动认证
-            }
-            if (isOnePlus)
-            {
-                _log("[高通] 检测到纯一加设备，自动执行 Demacia 认证...");
-                try
-                {
-                    var oneplus = new OnePlusAuthStrategy(_log);
-                    bool result = await oneplus.AuthenticateAsync(_firehose, programmerPath, ct);
-                    if (result)
-                    {
-                        _log("[高通] 一加认证成功");
-                    }
-                    else
-                    {
-                        _log("[高通] 一加认证失败");
-                    }
-                    // OnePlus 已处理，直接返回，不再显示 VIP 提示
-                    return result;
-                }
-                catch (Exception ex)
-                {
-                    _log(string.Format("[高通] 一加认证异常: {0}", ex.Message));
-                    return false;
-                }
-            }
-
-            // 3. OPPO/Realme (VIP) - 仅提示，由用户手动选择
-            // 注意：OnePlus 已在上面处理并返回，不会进入这里
-            bool isOppoRealme = vendor == "OPPO" || vendor == "Realme" || 
-                                vendor.Contains("Oppo") || vendor.Contains("Realme");
-            if (isOppoRealme)
-            {
-                _log("[高通] 检测到 VIP 设备 (OPPO/Realme)");
-                _log("[高通] 💡 如需刷写敏感分区，请手动选择 VIP 认证");
-                // 不自动执行，返回 true 让用户继续操作
-            }
-            else if (IsVipDevice && vendor != "OnePlus")
-            {
-                // 其他 VIP 设备
-                _log("[高通] 检测到 VIP 设备");
-                _log("[高通] 💡 如需刷写敏感分区，请手动选择认证方式");
-            }
-
+            // 其他设备不自动认证，由用户手动选择
             return true;
         }
 
