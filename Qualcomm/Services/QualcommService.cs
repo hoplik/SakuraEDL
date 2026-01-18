@@ -746,11 +746,23 @@ namespace LoveAlways.Qualcomm.Services
             if (_firehose == null)
                 return false;
 
-            _log(string.Format("[高通] 直接写入: {0} -> LUN{1} @ sector {2}", label, lun, startSector));
+            // 处理负扇区 (NUM_DISK_SECTORS-N 会解析为 -N)
+            long resolvedSector = startSector;
+            if (startSector < 0)
+            {
+                resolvedSector = _firehose.ResolveNegativeSector(lun, startSector);
+                if (resolvedSector < 0)
+                {
+                    _log(string.Format("[高通] 无法写入: {0} (负扇区 {1} 无法解析)", label, startSector));
+                    return false;
+                }
+            }
+
+            _log(string.Format("[高通] 直接写入: {0} -> LUN{1} @ sector {2}", label, lun, resolvedSector));
 
             // 直接使用指定的 LUN 和 StartSector 写入
             return await _firehose.FlashPartitionFromFileAsync(
-                label, filePath, lun, startSector, progress, ct, IsVipDevice);
+                label, filePath, lun, resolvedSector, progress, ct, IsVipDevice);
         }
 
         /// <summary>

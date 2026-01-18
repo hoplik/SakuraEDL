@@ -162,6 +162,46 @@ namespace LoveAlways.Qualcomm.Protocol
         public string ChipHwId { get; set; }
         public string ChipPkHash { get; set; }
 
+        // 每个 LUN 的 GPT Header 信息 (用于负扇区转换)
+        private Dictionary<int, GptHeaderInfo> _lunHeaders = new Dictionary<int, GptHeaderInfo>();
+
+        /// <summary>
+        /// 获取 LUN 的总扇区数 (用于负扇区转换)
+        /// </summary>
+        public long GetLunTotalSectors(int lun)
+        {
+            GptHeaderInfo header;
+            if (_lunHeaders.TryGetValue(lun, out header))
+            {
+                // AlternateLba 是备份 GPT Header 的位置 (通常是磁盘最后一个扇区)
+                // 总扇区数 = AlternateLba + 1
+                return (long)(header.AlternateLba + 1);
+            }
+            return -1; // 未知
+        }
+
+        /// <summary>
+        /// 将负扇区转换为绝对扇区 (负数表示从磁盘末尾倒数)
+        /// </summary>
+        public long ResolveNegativeSector(int lun, long sector)
+        {
+            if (sector >= 0) return sector;
+            
+            long totalSectors = GetLunTotalSectors(lun);
+            if (totalSectors <= 0)
+            {
+                _log(string.Format("[GPT] 无法解析负扇区: LUN{0} 总扇区数未知", lun));
+                return -1;
+            }
+            
+            // 负数扇区表示从末尾倒数
+            // 例如: -5 表示 totalSectors - 5
+            long absoluteSector = totalSectors + sector;
+            _log(string.Format("[GPT] 负扇区转换: LUN{0} sector {1} -> {2} (总扇区: {3})", 
+                lun, sector, absoluteSector, totalSectors));
+            return absoluteSector;
+        }
+
         // OnePlus 认证参数 (认证成功后保存，写入时附带)
         public string OnePlusProgramToken { get; set; }
         public string OnePlusProgramPk { get; set; }
@@ -535,6 +575,9 @@ namespace LoveAlways.Qualcomm.Protocol
 
             if (result.Success && result.Header != null)
             {
+                // 存储 LUN 的 Header 信息 (用于负扇区转换)
+                _lunHeaders[lun] = result.Header;
+
                 // 自动更新扇区大小
                 if (result.Header.SectorSize > 0 && result.Header.SectorSize != _sectorSize)
                 {
@@ -815,8 +858,15 @@ namespace LoveAlways.Qualcomm.Protocol
                 
                 if (dataRanges.Count == 0)
                 {
-                    _log("[Sparse] 镜像无实际数据，跳过写入");
-                    return true;
+                    // 空 Sparse 镜像: 使用 erase 命令清空分区
+                    _log(string.Format("[Sparse] 镜像无实际数据，擦除分区 {0}...", label));
+                    long numSectors = totalExpandedSize / sectorSize;
+                    bool eraseOk = await EraseSectorsAsync(lun, startSector, numSectors, ct);
+                    if (eraseOk)
+                        _log(string.Format("[Sparse] 分区 {0} 擦除完成 ({1:F2} MB)", label, totalExpandedSize / 1024.0 / 1024.0));
+                    else
+                        _log(string.Format("[Sparse] 分区 {0} 擦除失败", label));
+                    return eraseOk;
                 }
                 
                 var sectorsPerChunk = _maxPayloadSize / sectorSize;
@@ -998,9 +1048,16 @@ namespace LoveAlways.Qualcomm.Protocol
                 
                 if (dataRanges.Count == 0)
                 {
-                    _log("[Sparse] 镜像无实际数据，跳过写入");
+                    // 空 Sparse 镜像 (如 userdata): 使用 erase 命令清空分区
+                    _log(string.Format("[Sparse] 镜像无实际数据，擦除分区 {0}...", partitionName));
+                    long numSectors = totalExpandedSize / _sectorSize;
+                    bool eraseOk = await EraseSectorsAsync(lun, startSector, numSectors, ct);
                     if (progress != null) progress.Report(100.0);
-                    return true;
+                    if (eraseOk)
+                        _log(string.Format("[Sparse] 分区 {0} 擦除完成 ({1:F2} MB)", partitionName, totalExpandedSize / 1024.0 / 1024.0));
+                    else
+                        _log(string.Format("[Sparse] 分区 {0} 擦除失败", partitionName));
+                    return eraseOk;
                 }
                 
                 var totalWritten = 0L;
@@ -1310,6 +1367,22 @@ namespace LoveAlways.Qualcomm.Protocol
             return success;
         }
 
+        /// <summary>
+        /// 擦除指定扇区范围 (简化版)
+        /// </summary>
+        public async Task<bool> EraseSectorsAsync(int lun, long startSector, long numSectors, CancellationToken ct)
+        {
+            string xml = string.Format(
+                "<?xml version=\"1.0\"?><data><erase SECTOR_SIZE_IN_BYTES=\"{0}\" " +
+                "num_partition_sectors=\"{1}\" physical_partition_number=\"{2}\" " +
+                "start_sector=\"{3}\"/></data>",
+                _sectorSize, numSectors, lun, startSector);
+
+            PurgeBuffer();
+            _port.Write(Encoding.UTF8.GetBytes(xml));
+            return await WaitForAckAsync(ct, 120);
+        }
+
         #endregion
 
         #region 设备控制
@@ -1455,10 +1528,44 @@ namespace LoveAlways.Qualcomm.Protocol
                     
                     long startSector = 0;
                     var startSectorAttr = elem.Attribute("start_sector")?.Value ?? "0";
-                    if (startSectorAttr.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+                    
+                    // 处理 NUM_DISK_SECTORS-N 形式的负扇区
+                    if (startSectorAttr.Contains("NUM_DISK_SECTORS"))
+                    {
+                        if (startSectorAttr.Contains("-"))
+                        {
+                            string offsetStr = startSectorAttr.Split('-')[1].TrimEnd('.');
+                            long offset;
+                            if (long.TryParse(offsetStr, out offset))
+                                startSector = -offset; // 用负数表示从末尾倒数
+                        }
+                        else
+                        {
+                            startSector = -1;
+                        }
+                    }
+                    else if (startSectorAttr.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+                    {
                         long.TryParse(startSectorAttr.Substring(2), System.Globalization.NumberStyles.HexNumber, null, out startSector);
+                    }
                     else
+                    {
+                        // 移除可能的尾随点号 (如 "5.")
+                        if (startSectorAttr.EndsWith("."))
+                            startSectorAttr = startSectorAttr.Substring(0, startSectorAttr.Length - 1);
                         long.TryParse(startSectorAttr, out startSector);
+                    }
+
+                    // 处理负扇区转换
+                    if (startSector < 0)
+                    {
+                        startSector = ResolveNegativeSector(lun, startSector);
+                        if (startSector < 0)
+                        {
+                            _log(string.Format("[Firehose] Patch 跳过: 负扇区无法解析 (LUN{0})", lun));
+                            continue;
+                        }
+                    }
 
                     int byteOffset = 0;
                     int.TryParse(elem.Attribute("byte_offset")?.Value ?? "0", out byteOffset);
