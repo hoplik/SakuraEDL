@@ -428,12 +428,18 @@ namespace LoveAlways.Qualcomm.Services
             }
 
             // 2. 一加设备 - 自动执行 Demacia 认证
-            // 注意：OEM ID 0x50E1 = "OnePlus"，0x0051 = "Oppo/OnePlus"
-            bool isOnePlus = vendor == "OnePlus" || vendor.Contains("OnePlus") || 
-                             (ChipInfo != null && ChipInfo.OemId == 0x50E1);
+            // 注意：OEM ID 0x50E1 = "OnePlus" (纯一加)
+            // OEM ID 0x0051 = "Oppo/OnePlus" (混合设备，不自动认证，由用户选择)
+            bool isOnePlus = vendor == "OnePlus" || (ChipInfo != null && ChipInfo.OemId == 0x50E1);
+            // 排除 "Oppo/OnePlus" 混合设备，这类设备应由用户手动选择 VIP 或 OnePlus 认证
+            if (vendor == "Oppo/OnePlus" || vendor.StartsWith("Oppo"))
+            {
+                _log("[高通] 检测到 OPPO 系设备，请手动选择认证方式 (VIP 或 OnePlus)");
+                return true; // 跳过自动认证
+            }
             if (isOnePlus)
             {
-                _log("[高通] 检测到一加设备，自动执行认证...");
+                _log("[高通] 检测到纯一加设备，自动执行 Demacia 认证...");
                 try
                 {
                     var oneplus = new OnePlusAuthStrategy(_log);
