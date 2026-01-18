@@ -61,6 +61,7 @@ namespace LoveAlways.Qualcomm.UI
         private int _currentStep;
         private long _totalOperationBytes;    // 当前总任务的总字节数
         private long _completedStepBytes;     // 已完成步骤的总字节数
+        private long _currentStepBytes;       // 当前步骤的字节数 (用于准确速度计算)
         private string _currentOperationName; // 当前操作名称保存
 
         public bool IsConnected { get { return _service != null && _service.IsConnected; } }
@@ -1417,10 +1418,11 @@ namespace LoveAlways.Qualcomm.UI
                     var p = _service.FindPartition(partitionName);
                     long pSize = p?.Size ?? 0;
 
-                    UpdateTotalProgress(i, total, currentCompletedBytes);
+                    // 传入当前分区大小用于准确速度计算
+                    UpdateTotalProgress(i, total, currentCompletedBytes, pSize);
                     UpdateLabelSafe(_operationLabel, string.Format("读取 {0} ({1}/{2})", partitionName, i + 1, total));
 
-                    var progress = new Progress<double>(p => UpdateSubProgressFromPercent(p));
+                    var progress = new Progress<double>(percent => UpdateSubProgressFromPercent(percent));
                     bool ok = await _service.ReadPartitionAsync(partitionName, outputPath, progress, _cts.Token);
 
                     if (ok)
@@ -1435,7 +1437,7 @@ namespace LoveAlways.Qualcomm.UI
                     }
                 }
 
-                UpdateTotalProgress(total, total, totalBytes);
+                UpdateTotalProgress(total, total, totalBytes, 0);
                 Log(string.Format("批量读取完成: {0}/{1} 成功", success, total), success == total ? Color.Green : Color.Orange);
                 return success;
             }
@@ -1538,10 +1540,11 @@ namespace LoveAlways.Qualcomm.UI
                         continue;
                     }
 
-                    UpdateTotalProgress(i, totalSteps, currentCompletedBytes);
+                    // 传入当前文件大小用于准确速度计算
+                    UpdateTotalProgress(i, totalSteps, currentCompletedBytes, fSize);
                     UpdateLabelSafe(_operationLabel, string.Format("写入 {0} ({1}/{2})", partitionName, i + 1, total));
 
-                    var progress = new Progress<double>(p => UpdateSubProgressFromPercent(p));
+                    var progress = new Progress<double>(percent => UpdateSubProgressFromPercent(percent));
                     bool ok;
 
                     // PrimaryGPT/BackupGPT 等特殊分区使用直接写入
@@ -1575,7 +1578,7 @@ namespace LoveAlways.Qualcomm.UI
                     
                 if (hasPatch && !_cts.Token.IsCancellationRequested)
                 {
-                    UpdateTotalProgress(total, totalSteps, currentCompletedBytes);
+                    UpdateTotalProgress(total, totalSteps, currentCompletedBytes, 0);
                     UpdateLabelSafe(_operationLabel, "应用补丁...");
                     Log(string.Format("开始应用 {0} 个 Patch 文件...", patchFiles.Count), Color.Blue);
 
@@ -2040,21 +2043,22 @@ namespace LoveAlways.Qualcomm.UI
         
         /// <summary>
         /// 更新子进度条 (短) - 从百分比
-        /// 改进：使用实时速度计算而非平均速度
+        /// 改进：使用当前步骤的字节数计算真实速度
         /// </summary>
         private void UpdateSubProgressFromPercent(double percent)
         {
             percent = Math.Max(0, Math.Min(100, percent));
             UpdateProgressBarDirect(_subProgressBar, percent);
             
-            // 基于百分比估算当前字节数
-            long estimatedCurrent = 0;
-            if (_totalOperationBytes > 0)
+            // 基于当前步骤的字节数估算已传输字节（不是总操作字节数！）
+            long currentStepTransferred = 0;
+            if (_currentStepBytes > 0)
             {
-                estimatedCurrent = (long)(_totalOperationBytes * percent / 100.0);
+                // 使用当前步骤的字节数，而不是整个操作的总字节数
+                currentStepTransferred = (long)(_currentStepBytes * percent / 100.0);
             }
             
-            // 计算实时速度 (基于增量，而非平均)
+            // 计算实时速度 (基于增量)
             if (_operationStopwatch != null)
             {
                 // 更新时间显示
@@ -2062,16 +2066,16 @@ namespace LoveAlways.Qualcomm.UI
                 string timeText = string.Format("时间：{0:00}:{1:00}", (int)elapsed.TotalMinutes, elapsed.Seconds);
                 UpdateLabelSafe(_timeLabel, timeText);
                 
-                // 实时速度计算
-                long bytesDelta = estimatedCurrent - _lastBytes;
+                // 实时速度计算 - 基于当前步骤的实际传输字节
+                long bytesDelta = currentStepTransferred - _lastBytes;
                 double timeDelta = (DateTime.Now - _lastSpeedUpdate).TotalSeconds;
                 
-                if (timeDelta >= 0.2 && bytesDelta > 0) // 每200ms更新一次
+                if (timeDelta >= 0.3 && bytesDelta > 0) // 每300ms更新一次，更稳定
                 {
                     double instantSpeed = bytesDelta / timeDelta;
-                    // 指数移动平均平滑速度 (权重调整为更响应实时变化)
-                    _currentSpeed = (_currentSpeed > 0) ? (_currentSpeed * 0.5 + instantSpeed * 0.5) : instantSpeed;
-                    _lastBytes = estimatedCurrent;
+                    // 指数移动平均平滑速度 (更重的历史权重以避免跳动)
+                    _currentSpeed = (_currentSpeed > 0) ? (_currentSpeed * 0.7 + instantSpeed * 0.3) : instantSpeed;
+                    _lastBytes = currentStepTransferred;
                     _lastSpeedUpdate = DateTime.Now;
                     
                     // 更新速度显示
@@ -2079,10 +2083,10 @@ namespace LoveAlways.Qualcomm.UI
                 }
             }
             
-            // 更新操作标签（显示百分比）
+            // 更新操作标签（显示百分比）- 使用总操作字节数计算总进度
             if (_totalOperationBytes > 0)
             {
-                long totalProcessed = _completedStepBytes + estimatedCurrent;
+                long totalProcessed = _completedStepBytes + currentStepTransferred;
                 double totalPercent = Math.Min(100, 100.0 * totalProcessed / _totalOperationBytes);
                 UpdateProgressBarDirect(_progressBar, totalPercent);
                 UpdateLabelSafe(_operationLabel, string.Format("{0} [{1:F2}%]", _currentOperationName, totalPercent));
@@ -2099,17 +2103,19 @@ namespace LoveAlways.Qualcomm.UI
         /// <summary>
         /// 更新总进度条 (长) - 多步骤操作的总进度
         /// </summary>
-        public void UpdateTotalProgress(int currentStep, int totalSteps, long completedBytes = 0)
+        /// <param name="currentStep">当前步骤索引</param>
+        /// <param name="totalSteps">总步骤数</param>
+        /// <param name="completedBytes">已完成步骤的总字节数</param>
+        /// <param name="currentStepBytes">当前步骤的字节数 (用于准确速度计算)</param>
+        public void UpdateTotalProgress(int currentStep, int totalSteps, long completedBytes = 0, long currentStepBytes = 0)
         {
             _currentStep = currentStep;
             _totalSteps = totalSteps;
             _completedStepBytes = completedBytes;
+            _currentStepBytes = currentStepBytes;
             
             // 重置速度计算变量（新步骤开始）
-            // 注意：_lastBytes 设置为 0 是因为每个子任务的进度是从 0 开始的
             _lastBytes = 0;
-            // 保持当前速度用于平滑过渡，不完全清零
-            // _currentSpeed = 0;
             _lastSpeedUpdate = DateTime.Now;
             UpdateProgressBarDirect(_subProgressBar, 0);
         }
@@ -2148,6 +2154,7 @@ namespace LoveAlways.Qualcomm.UI
             _currentStep = currentStep;
             _totalOperationBytes = totalBytes;
             _completedStepBytes = 0;
+            _currentStepBytes = totalBytes; // 单文件操作时，当前步骤字节数 = 总字节数
             _currentOperationName = operationName;
             
             UpdateLabelSafe(_operationLabel, "当前操作：" + operationName);
