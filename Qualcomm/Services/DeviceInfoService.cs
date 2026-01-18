@@ -1130,19 +1130,24 @@ namespace LoveAlways.Qualcomm.Services
                     }
                 }
 
-                // 在 etc 目录查找 (vendor 分区常见位置)
-                foreach (var entry in entries)
+                // 在子目录查找 build.prop (优先级: /system > /etc)
+                // 对于 system 分区，build.prop 可能在 /system/ 子目录
+                string[] searchDirs = { "system", "etc" };
+                foreach (var dirName in searchDirs)
                 {
-                    if (entry.Item2 == "etc" && entry.Item3 == 2)
+                    foreach (var entry in entries)
                     {
-                        _logDetail("进入 /etc 目录...");
-                        var etcEntries = ReadErofsDirectory(readFromPartition, metaBlkAddr, blockSize, entry.Item1);
-                        foreach (var subEntry in etcEntries)
+                        if (entry.Item2 == dirName && entry.Item3 == 2)
                         {
-                            if (subEntry.Item2 == "build.prop" && subEntry.Item3 == 1)
+                            _logDetail(string.Format("进入 /{0} 目录...", dirName));
+                            var subEntries = ReadErofsDirectory(readFromPartition, metaBlkAddr, blockSize, entry.Item1);
+                            foreach (var subEntry in subEntries)
                             {
-                                _log("找到 /etc/build.prop");
-                                return ReadErofsFile(readFromPartition, metaBlkAddr, blockSize, subEntry.Item1);
+                                if (subEntry.Item2 == "build.prop" && subEntry.Item3 == 1)
+                                {
+                                    _log(string.Format("找到 /{0}/build.prop", dirName));
+                                    return ReadErofsFile(readFromPartition, metaBlkAddr, blockSize, subEntry.Item1);
+                                }
                             }
                         }
                     }
@@ -1432,22 +1437,26 @@ namespace LoveAlways.Qualcomm.Services
                     }
                 }
 
-                // 在 etc 目录查找
-                foreach (var entry in entries)
+                // 在子目录查找 build.prop (优先级: /system > /etc)
+                string[] searchDirs = { "system", "etc" };
+                foreach (var dirName in searchDirs)
                 {
-                    if (entry.Item2 == "etc" && entry.Item3 == 2) // 目录
+                    foreach (var entry in entries)
                     {
-                        _logDetail("进入 /etc 目录...");
-                        var etcDirData = ReadExt4DirectoryByInode(readFromPartition, entry.Item1, inodeTableBlock, blockSize, inodeSize, inodesPerGroup, blocksPerGroup, is64Bit, bgdtOffset, bgdSize);
-                        if (etcDirData != null)
+                        if (entry.Item2 == dirName && entry.Item3 == 2) // 目录
                         {
-                            var etcEntries = ParseExt4DirectoryEntries(etcDirData);
-                            foreach (var subEntry in etcEntries)
+                            _logDetail(string.Format("进入 /{0} 目录...", dirName));
+                            var subDirData = ReadExt4DirectoryByInode(readFromPartition, entry.Item1, inodeTableBlock, blockSize, inodeSize, inodesPerGroup, blocksPerGroup, is64Bit, bgdtOffset, bgdSize);
+                            if (subDirData != null)
                             {
-                                if (subEntry.Item2 == "build.prop" && subEntry.Item3 == 1)
+                                var subEntries = ParseExt4DirectoryEntries(subDirData);
+                                foreach (var subEntry in subEntries)
                                 {
-                                    _log("找到 /etc/build.prop");
-                                    return ReadExt4FileByInode(readFromPartition, subEntry.Item1, inodeTableBlock, blockSize, inodeSize, inodesPerGroup);
+                                    if (subEntry.Item2 == "build.prop" && subEntry.Item3 == 1)
+                                    {
+                                        _log(string.Format("找到 /{0}/build.prop", dirName));
+                                        return ReadExt4FileByInode(readFromPartition, subEntry.Item1, inodeTableBlock, blockSize, inodeSize, inodesPerGroup);
+                                    }
                                 }
                             }
                         }
