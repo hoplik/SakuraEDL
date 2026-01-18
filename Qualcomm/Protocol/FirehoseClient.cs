@@ -748,9 +748,9 @@ namespace LoveAlways.Qualcomm.Protocol
                 var totalBytes = sourceStream.Length;
                 var sectorsPerChunk = _maxPayloadSize / sectorSize;
                 var bytesPerChunk = sectorsPerChunk * sectorSize;
-                var totalWritten = 0L;
+            var totalWritten = 0L;
 
-                StartTransferTimer(totalBytes);
+            StartTransferTimer(totalBytes);
 
                 var buffer = new byte[bytesPerChunk];
                 var currentSector = startSector;
@@ -781,11 +781,11 @@ namespace LoveAlways.Qualcomm.Protocol
 
                     if (_progress != null)
                         _progress(totalWritten, totalBytes);
-                }
+            }
 
-                StopTransferTimer("写入", totalWritten);
+            StopTransferTimer("写入", totalWritten);
                 _log(string.Format("[Firehose] 分区 {0} 写入完成: {1:N0} 字节", label, totalWritten));
-                return true;
+            return true;
             }
         }
 
@@ -836,7 +836,7 @@ namespace LoveAlways.Qualcomm.Protocol
             using (Stream sourceStream = isSparse ? (Stream)SparseStream.Open(filePath, _log) : File.OpenRead(filePath))
             {
                 long fileSize = sourceStream.Length; // SparseStream 会返回展开后的大小
-                int numSectors = (int)Math.Ceiling((double)fileSize / _sectorSize);
+            int numSectors = (int)Math.Ceiling((double)fileSize / _sectorSize);
 
                 _log(string.Format("Firehose: 刷写 {0} -> {1} ({2:F2} MB){3}{4}", 
                     Path.GetFileName(filePath), partitionName, fileSize / 1024.0 / 1024.0,
@@ -867,19 +867,19 @@ namespace LoveAlways.Qualcomm.Protocol
                 {
                     // 标准模式
                     xml = string.Format(
-                        "<?xml version=\"1.0\"?><data><program SECTOR_SIZE_IN_BYTES=\"{0}\" " +
-                        "num_partition_sectors=\"{1}\" physical_partition_number=\"{2}\" " +
-                        "start_sector=\"{3}\" filename=\"{4}\"/></data>",
-                        _sectorSize, numSectors, lun, startSector, partitionName);
+                "<?xml version=\"1.0\"?><data><program SECTOR_SIZE_IN_BYTES=\"{0}\" " +
+                "num_partition_sectors=\"{1}\" physical_partition_number=\"{2}\" " +
+                "start_sector=\"{3}\" filename=\"{4}\"/></data>",
+                _sectorSize, numSectors, lun, startSector, partitionName);
                 }
 
-                _port.Write(Encoding.UTF8.GetBytes(xml));
+            _port.Write(Encoding.UTF8.GetBytes(xml));
 
-                if (!await WaitForRawDataModeAsync(ct))
-                {
-                    _log("Firehose: Program 命令被拒绝");
-                    return false;
-                }
+            if (!await WaitForRawDataModeAsync(ct))
+            {
+                _log("Firehose: Program 命令被拒绝");
+                return false;
+            }
 
                 return await SendStreamDataAsync(sourceStream, fileSize, progress, ct);
             }
@@ -966,7 +966,7 @@ namespace LoveAlways.Qualcomm.Protocol
                     return false;
                 }
 
-                sent += read;
+                    sent += read;
 
                 // 节流进度报告：每 100ms 或每 0.1% 更新一次
                 var now = DateTime.Now;
@@ -1411,38 +1411,38 @@ namespace LoveAlways.Qualcomm.Protocol
         /// 接收数据响应 (极速流水线版)
         /// </summary>
         private async Task<bool> ReceiveDataAfterAckAsync(byte[] buffer, CancellationToken ct)
-        {
-            try
             {
-                int totalBytes = buffer.Length;
-                int received = 0;
-                bool headerFound = false;
-                
+                try
+                {
+                    int totalBytes = buffer.Length;
+                    int received = 0;
+                    bool headerFound = false;
+
                 // 探测缓冲区
                 byte[] probeBuf = new byte[16384];
                 int probeIdx = 0;
 
-                while (received < totalBytes)
-                {
-                    if (ct.IsCancellationRequested) return false;
-
-                    if (!headerFound)
+                    while (received < totalBytes)
                     {
+                        if (ct.IsCancellationRequested) return false;
+
+                        if (!headerFound)
+                        {
                         // 1. 寻找 XML 头部
                         int read = await _port.ReadAsync(probeBuf, probeIdx, probeBuf.Length - probeIdx, ct);
                         if (read <= 0) return false;
                         probeIdx += read;
 
                         string content = Encoding.UTF8.GetString(probeBuf, 0, probeIdx);
-                        int ackIndex = content.IndexOf("rawmode=\"true\"", StringComparison.OrdinalIgnoreCase);
+                            int ackIndex = content.IndexOf("rawmode=\"true\"", StringComparison.OrdinalIgnoreCase);
                         if (ackIndex == -1) ackIndex = content.IndexOf("rawmode='true'", StringComparison.OrdinalIgnoreCase);
 
-                        if (ackIndex >= 0)
-                        {
-                            int xmlEndIndex = content.IndexOf("</data>", ackIndex);
-                            if (xmlEndIndex >= 0)
+                            if (ackIndex >= 0)
                             {
-                                headerFound = true;
+                                int xmlEndIndex = content.IndexOf("</data>", ackIndex);
+                                if (xmlEndIndex >= 0)
+                                {
+                                    headerFound = true;
                                 int dataStart = xmlEndIndex + 7;
                                 // 跳过空白符
                                 while (dataStart < probeIdx && (probeBuf[dataStart] == '\n' || probeBuf[dataStart] == '\r'))
@@ -1455,17 +1455,17 @@ namespace LoveAlways.Qualcomm.Protocol
                                     Array.Copy(probeBuf, dataStart, buffer, 0, Math.Min(leftover, totalBytes));
                                     received = leftover;
                                 }
+                                }
                             }
-                        }
-                        else if (content.Contains("NAK"))
-                        {
-                            return false;
+                            else if (content.Contains("NAK"))
+                            {
+                                return false;
                         }
                         
                         if (probeIdx >= probeBuf.Length && !headerFound) probeIdx = 0; // 防止溢出
-                    }
-                    else
-                    {
+                            }
+                            else
+                            {
                         // 2. 极速读取原始数据块
                         int toRead = Math.Min(totalBytes - received, 1024 * 1024); // 每次最多读 1MB
                         int read = await _port.ReadAsync(buffer, received, toRead, ct);
@@ -1474,12 +1474,12 @@ namespace LoveAlways.Qualcomm.Protocol
                     }
                 }
                 return received >= totalBytes;
-            }
-            catch (Exception ex)
-            {
+                }
+                catch (Exception ex)
+                {
                 _log("[Read] 极速解析异常: " + ex.Message);
-                return false;
-            }
+                    return false;
+                }
         }
 
         /// <summary>

@@ -925,10 +925,24 @@ namespace LoveAlways
                     if (!string.IsNullOrEmpty(filePath) && !File.Exists(filePath))
                     {
                         // 尝试从 input6 (XML路径) 的目录查找
-                        string xmlDir = Path.GetDirectoryName(input6.Text) ?? "";
-                        string altPath = Path.Combine(xmlDir, Path.GetFileName(filePath));
-                        if (File.Exists(altPath))
-                            filePath = altPath;
+                        try
+                        {
+                            string xmlPath = input6.Text?.Trim() ?? "";
+                            if (!string.IsNullOrEmpty(xmlPath))
+                            {
+                                string xmlDir = Path.GetDirectoryName(xmlPath) ?? "";
+                                if (!string.IsNullOrEmpty(xmlDir))
+                                {
+                                    string altPath = Path.Combine(xmlDir, Path.GetFileName(filePath));
+                                    if (File.Exists(altPath))
+                                        filePath = altPath;
+                                }
+                            }
+                        }
+                        catch (ArgumentException)
+                        {
+                            // 路径包含无效字符，忽略
+                        }
                     }
 
                     if (!string.IsNullOrEmpty(filePath) && File.Exists(filePath))
@@ -951,7 +965,21 @@ namespace LoveAlways
                 {
                     // 收集 Patch 文件
                     List<string> patchFiles = new List<string>();
-                    string xmlDir = Path.GetDirectoryName(input6.Text) ?? "";
+                    string xmlDir = "";
+                    try
+                    {
+                        // 安全获取目录路径，处理空字符串或无效路径
+                        string xmlPath = input6.Text?.Trim() ?? "";
+                        if (!string.IsNullOrEmpty(xmlPath) && (File.Exists(xmlPath) || Directory.Exists(Path.GetDirectoryName(xmlPath))))
+                        {
+                            xmlDir = Path.GetDirectoryName(xmlPath) ?? "";
+                        }
+                    }
+                    catch (ArgumentException)
+                    {
+                        // 路径包含无效字符，忽略
+                        xmlDir = "";
+                    }
                     if (!string.IsNullOrEmpty(xmlDir) && Directory.Exists(xmlDir))
                     {
                         // 搜索所有 patch XML 文件

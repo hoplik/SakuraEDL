@@ -534,6 +534,8 @@ namespace LoveAlways.Qualcomm.Protocol
         /// </summary>
         private async Task ReadChipInfoCommandsAsync(CancellationToken ct)
         {
+            _log(string.Format("[Sahara] 协议版本: {0}", ProtocolVersion));
+            
             // 1. 读取序列号
             var serialData = await ExecuteCommandSafeAsync(SaharaExecCommand.SerialNumRead, ct);
             if (serialData != null && serialData.Length >= 4)
@@ -544,7 +546,7 @@ namespace LoveAlways.Qualcomm.Protocol
                 ChipInfo.SerialDec = serial;
             }
 
-            // 2. 读取 HWID
+            // 2. 读取 HWID - V1/V2 使用 MsmHwIdRead
             if (ProtocolVersion < 3)
             {
                 var hwidData = await ExecuteCommandSafeAsync(SaharaExecCommand.MsmHwIdRead, ct);
@@ -562,16 +564,43 @@ namespace LoveAlways.Qualcomm.Protocol
                 ChipInfo.PkHashInfo = QualcommDatabase.GetPkHashInfo(ChipPkHash);
             }
 
-            // 4. V3 专用: 读取扩展信息
-            if (string.IsNullOrEmpty(ChipHwId) || ProtocolVersion >= 3)
+            // 4. V3 专用: 读取扩展信息 (ChipIdV3Read 包含 HWID 等完整信息)
+            // V3 设备必须使用这个命令来获取 HWID, V1/V2 可选
+            if (ProtocolVersion >= 3 || string.IsNullOrEmpty(ChipHwId))
             {
                 var extInfo = await ExecuteCommandSafeAsync(SaharaExecCommand.ChipIdV3Read, ct);
-                if (extInfo != null && extInfo.Length >= 44)
+                if (extInfo != null && extInfo.Length >= 8)
+                {
+                    // V3 数据结构更复杂，尝试多种偏移量解析
                     ProcessV3ExtendedInfo(extInfo);
+                }
+                
+                // V3 回退: 如果 ChipIdV3Read 失败或数据不完整，尝试 SblInfoRead
+                if (ProtocolVersion >= 3 && ChipInfo.MsmId == 0)
+                {
+                    var sblInfo = await ExecuteCommandSafeAsync(SaharaExecCommand.SblInfoRead, ct);
+                    if (sblInfo != null && sblInfo.Length >= 4)
+                    {
+                        ProcessSblInfo(sblInfo);
+                    }
+                }
             }
             
             // 5. 显示芯片信息（在上传引导前）
             LogChipInfoBeforeUpload();
+        }
+        
+        /// <summary>
+        /// 处理 SBL 信息 (V3 回退)
+        /// </summary>
+        private void ProcessSblInfo(byte[] sblInfo)
+        {
+            // SBL Info 可能包含版本信息和一些基本芯片标识
+            if (sblInfo.Length >= 8)
+            {
+                uint version = BitConverter.ToUInt32(sblInfo, 0);
+                _log(string.Format("- SBL Version: 0x{0:X8}", version));
+            }
         }
         
         /// <summary>
@@ -580,6 +609,10 @@ namespace LoveAlways.Qualcomm.Protocol
         private void LogChipInfoBeforeUpload()
         {
             _log("芯片信息读取成功");
+            
+            // Sahara 协议版本 (关键信息)
+            string protocolDesc = ProtocolVersion >= 3 ? "V3 (扩展模式)" : string.Format("V{0} (标准模式)", ProtocolVersion);
+            _log(string.Format("- Sahara 协议: {0}", protocolDesc));
             
             // 芯片型号
             if (!string.IsNullOrEmpty(ChipInfo.ChipName) && ChipInfo.ChipName != "Unknown")
@@ -641,46 +674,97 @@ namespace LoveAlways.Qualcomm.Protocol
         }
 
         /// <summary>
-        /// 处理 V3 扩展信息
+        /// 处理 V3 扩展信息 - 支持多种数据格式
         /// </summary>
         private void ProcessV3ExtendedInfo(byte[] extInfo)
         {
+            // V3 协议的数据格式可能因设备而异，尝试多种解析方式
             uint chipIdV3 = BitConverter.ToUInt32(extInfo, 0);
-            if (chipIdV3 != 0)
-                _log(string.Format("- Chip Identifier V3 : {0:x8}", chipIdV3));
+            
+            uint msmId = 0;
+            ushort oemId = 0;
+            ushort modelId = 0;
+            bool parsed = false;
 
+            // 策略1: 标准 V3 格式 (偏移 36-44)
             if (extInfo.Length >= 44)
             {
                 uint rawMsm = BitConverter.ToUInt32(extInfo, 36);
                 ushort rawOem = BitConverter.ToUInt16(extInfo, 40);
                 ushort rawModel = BitConverter.ToUInt16(extInfo, 42);
 
-                uint msmId = rawMsm & 0x00FFFFFF;
+                msmId = rawMsm & 0x00FFFFFF;
+                oemId = rawOem;
+                modelId = rawModel;
 
-                if (rawOem == 0 && extInfo.Length >= 46)
+                // 尝试备用 OEM ID 位置
+                if (oemId == 0 && extInfo.Length >= 46)
                 {
                     ushort altOemId = BitConverter.ToUInt16(extInfo, 44);
-                    if (altOemId > 0 && altOemId < 0x1000)
-                        rawOem = altOemId;
+                    if (altOemId > 0 && altOemId < 0xFFFF)
+                        oemId = altOemId;
                 }
 
-                if (msmId != 0 || rawOem != 0)
+                if (msmId != 0 || oemId != 0)
+                    parsed = true;
+            }
+
+            // 策略2: 部分 V3 设备使用偏移 8-16 (较短格式)
+            if (!parsed && extInfo.Length >= 16)
+            {
+                uint rawMsm = BitConverter.ToUInt32(extInfo, 8);
+                ushort rawOem = BitConverter.ToUInt16(extInfo, 12);
+                ushort rawModel = BitConverter.ToUInt16(extInfo, 14);
+
+                uint testMsm = rawMsm & 0x00FFFFFF;
+                if (testMsm != 0 && testMsm != 0xFFFFFF)
                 {
-                    ChipInfo.MsmId = msmId;
-                    ChipInfo.OemId = rawOem;
-                    ChipInfo.ChipName = QualcommDatabase.GetChipName(msmId);
-                    ChipInfo.Vendor = QualcommDatabase.GetVendorName(rawOem);
+                    msmId = testMsm;
+                    oemId = rawOem;
+                    modelId = rawModel;
+                    parsed = true;
+                }
+            }
 
-                    ChipHwId = string.Format("00{0:x6}{1:x4}{2:x4}", msmId, rawOem, rawModel).ToLower();
-                    ChipInfo.HwIdHex = "0x" + ChipHwId.ToUpperInvariant();
+            // 策略3: 某些设备使用偏移 4-12
+            if (!parsed && extInfo.Length >= 12)
+            {
+                uint rawMsm = BitConverter.ToUInt32(extInfo, 4);
+                ushort rawOem = BitConverter.ToUInt16(extInfo, 8);
+                ushort rawModel = BitConverter.ToUInt16(extInfo, 10);
 
-                    _log(string.Format("- MSM HWID : 0x{0:x} | model_id:0x{1:x4} | oem_id:{2:X4} {3}",
-                        msmId, rawModel, rawOem, ChipInfo.Vendor));
+                uint testMsm = rawMsm & 0x00FFFFFF;
+                if (testMsm != 0 && testMsm != 0xFFFFFF)
+                {
+                    msmId = testMsm;
+                    oemId = rawOem;
+                    modelId = rawModel;
+                    parsed = true;
+                }
+            }
 
-                    if (ChipInfo.ChipName != "Unknown")
-                        _log(string.Format("- CHIP : {0}", ChipInfo.ChipName));
+            // 应用解析结果
+            if (parsed && (msmId != 0 || oemId != 0))
+            {
+                ChipInfo.MsmId = msmId;
+                ChipInfo.OemId = oemId;
+                ChipInfo.ModelId = modelId;
+                ChipInfo.ChipName = QualcommDatabase.GetChipName(msmId);
+                ChipInfo.Vendor = QualcommDatabase.GetVendorName(oemId);
 
-                    _log(string.Format("- HW_ID : {0}", ChipHwId));
+                ChipHwId = string.Format("00{0:x6}{1:x4}{2:x4}", msmId, oemId, modelId).ToLower();
+                ChipInfo.HwIdHex = "0x" + ChipHwId.ToUpperInvariant();
+            }
+            else if (chipIdV3 != 0)
+            {
+                // 仅有 Chip Identifier，记录原始数据用于调试
+                _log(string.Format("[Sahara V3] Chip ID: 0x{0:X8}, 数据长度: {1} 字节", chipIdV3, extInfo.Length));
+                
+                // 尝试从 Chip ID 提取基本信息
+                if (ChipInfo.MsmId == 0)
+                {
+                    ChipInfo.MsmId = chipIdV3 & 0x00FFFFFF;
+                    ChipInfo.ChipName = QualcommDatabase.GetChipName(ChipInfo.MsmId);
                 }
             }
         }

@@ -758,14 +758,25 @@ namespace LoveAlways.Qualcomm.UI
                 return NormalizeVendorName(_currentDeviceInfo.Vendor);
             }
 
-            // 2. 从芯片 OEM ID 识别 (Sahara 阶段获取)
+            // 2. 从芯片 OEM ID 识别 (Sahara 阶段获取) - 最可靠的来源
+            if (chipInfo != null && chipInfo.OemId > 0)
+            {
+                // 直接查询 OEM ID 数据库
+                string vendorFromOem = QualcommDatabase.GetVendorName(chipInfo.OemId);
+                if (!string.IsNullOrEmpty(vendorFromOem) && !vendorFromOem.Contains("Unknown"))
+                {
+                    return NormalizeVendorName(vendorFromOem);
+                }
+            }
+
+            // 3. 从芯片 Vendor 字段
             if (chipInfo != null && !string.IsNullOrEmpty(chipInfo.Vendor) && 
                 chipInfo.Vendor != "Unknown" && !chipInfo.Vendor.Contains("Unknown"))
             {
                 return NormalizeVendorName(chipInfo.Vendor);
             }
 
-            // 3. 从 PK Hash 识别
+            // 4. 从 PK Hash 识别
             if (chipInfo != null && !string.IsNullOrEmpty(chipInfo.PkHash))
             {
                 string vendor = QualcommDatabase.GetVendorByPkHash(chipInfo.PkHash);
@@ -773,24 +784,33 @@ namespace LoveAlways.Qualcomm.UI
                     return NormalizeVendorName(vendor);
             }
 
-            // 4. 从分区特征识别
+            // 5. 从分区特征识别 (按优先级排序，避免误判)
             if (Partitions != null && Partitions.Count > 0)
             {
-                // OPLUS 系 (OPPO/Realme/OnePlus)
+                // 联想系特有分区 (优先检测，因为联想也有 cust/persist 分区)
+                // 联想特征: proinfo, lenovocust, 或明确包含 lenovo 的分区
+                bool hasLenovoMarker = Partitions.Exists(p => 
+                    p.Name == "proinfo" || 
+                    p.Name == "lenovocust" || 
+                    p.Name.Contains("lenovo"));
+                if (hasLenovoMarker)
+                    return "Lenovo";
+
+                // OPLUS 系 (OPPO/Realme/OnePlus) - my_ 前缀是 OPLUS 特有
                 if (Partitions.Exists(p => p.Name.StartsWith("my_") || p.Name.Contains("oplus") || p.Name.Contains("oppo")))
                     return "OPLUS";
-
-                // 小米系 (Xiaomi/Redmi/POCO)
-                if (Partitions.Exists(p => p.Name == "cust" || p.Name == "persist" || p.Name.Contains("xiaomi")))
-                    return "Xiaomi";
-
-                // 联想系 (Lenovo/Motorola)
-                if (Partitions.Exists(p => p.Name.Contains("lenovo") || p.Name == "proinfo" || p.Name == "lenovocust"))
-                    return "Lenovo";
 
                 // 中兴系 (ZTE/nubia/红魔)
                 if (Partitions.Exists(p => p.Name.Contains("zte") || p.Name.Contains("nubia")))
                     return "ZTE";
+
+                // 小米系 (Xiaomi/Redmi/POCO) - 需要额外条件避免误判
+                // xiaomi 明确标识，或者同时有 cust 和 persist 但没有 proinfo
+                bool hasXiaomiMarker = Partitions.Exists(p => p.Name.Contains("xiaomi"));
+                bool hasCustPersist = Partitions.Exists(p => p.Name == "cust") && 
+                                      Partitions.Exists(p => p.Name == "persist");
+                if (hasXiaomiMarker || (hasCustPersist && !hasLenovoMarker))
+                    return "Xiaomi";
             }
 
             return "Unknown";
