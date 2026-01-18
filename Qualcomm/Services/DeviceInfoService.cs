@@ -787,7 +787,19 @@ namespace LoveAlways.Qualcomm.Services
                 var searchPartitions = new List<string>();
                 string slotSuffix = string.IsNullOrEmpty(activeSlot) ? "" : "_" + activeSlot.ToLower().TrimStart('_');
 
-                // 只扫描可能存在的独立物理分区 (不扫描 super 中的逻辑分区)
+                // 传统分区结构：优先扫描 system/vendor 分区
+                if (!hasSuper)
+                {
+                    if (!string.IsNullOrEmpty(slotSuffix))
+                    {
+                        searchPartitions.Add("system" + slotSuffix);
+                        searchPartitions.Add("vendor" + slotSuffix);
+                    }
+                    searchPartitions.Add("system");
+                    searchPartitions.Add("vendor");
+                }
+                
+                // 其他独立物理分区
                 if (!string.IsNullOrEmpty(slotSuffix))
                 {
                     searchPartitions.Add("my_manifest" + slotSuffix);

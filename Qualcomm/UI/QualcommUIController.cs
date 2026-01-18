@@ -488,42 +488,38 @@ namespace LoveAlways.Qualcomm.UI
             Log("------------------------------------------------", Color.Gray);
             Log("正在进行设备深度扫描 [Deep Scan] : 成功", Color.Green);
 
-            // 1. 核心身份
-            Log(string.Format("- 市场名称 : {0}", !string.IsNullOrEmpty(info.MarketName) ? info.MarketName : (info.Brand + " " + info.Model)), Color.Blue);
-            Log(string.Format("- 设备名称 : {0}", info.DisplayName), Color.Blue);
-            Log(string.Format("- 设备型号 : {0}", info.Model), Color.Blue);
-            Log(string.Format("- 生产厂家 : {0}", info.Brand.ToLower()), Color.Blue);
+            // 1. 核心身份 (始终显示)
+            string marketName = !string.IsNullOrEmpty(info.MarketName) ? info.MarketName : 
+                               (!string.IsNullOrEmpty(info.Brand) && !string.IsNullOrEmpty(info.Model) ? info.Brand + " " + info.Model : "未知");
+            Log(string.Format("- 市场名称 : {0}", marketName), Color.Blue);
+            if (!string.IsNullOrEmpty(info.Model))
+                Log(string.Format("- 设备型号 : {0}", info.Model), Color.Blue);
+            if (!string.IsNullOrEmpty(info.Brand))
+                Log(string.Format("- 生产厂家 : {0}", info.Brand), Color.Blue);
+            if (!string.IsNullOrEmpty(info.DeviceCodename))
+                Log(string.Format("- 内部代号 : {0}", info.DeviceCodename), Color.Blue);
             
-            // 2. 系统版本
-            Log(string.Format("- 安卓版本 : {0} [SDK:{1}]", info.AndroidVersion, info.SdkVersion), Color.Blue);
-            Log(string.Format("- 安全补丁 : {0}", info.SecurityPatch), Color.Blue);
-            Log(string.Format("- 内部代号 : {0}", info.DeviceCodename), Color.Blue);
-            Log(string.Format("- 地区代码 : {0}", "CN"), Color.Blue);
+            // 2. 系统版本 (只在有值时显示)
+            if (!string.IsNullOrEmpty(info.AndroidVersion))
+                Log(string.Format("- 安卓版本 : {0}{1}", info.AndroidVersion, 
+                    !string.IsNullOrEmpty(info.SdkVersion) ? " [SDK:" + info.SdkVersion + "]" : ""), Color.Blue);
+            if (!string.IsNullOrEmpty(info.SecurityPatch))
+                Log(string.Format("- 安全补丁 : {0}", info.SecurityPatch), Color.Blue);
+            if (!string.IsNullOrEmpty(info.OtaVersion))
+                Log(string.Format("- OTA 版本 : {0}", info.OtaVersion), Color.Green);
+            if (!string.IsNullOrEmpty(info.OtaVersionFull))
+                Log(string.Format("- 完整 OTA : {0}", info.OtaVersionFull), Color.Green);
             
-            // 3. 构建细节
-            Log(string.Format("- 构建 ID : {0}", info.BuildId), Color.Blue);
-            Log(string.Format("- 展示 ID : {0} release-keys", info.DisplayId), Color.Blue);
-            Log(string.Format("- 编译日期 : {0}", info.BuiltDate), Color.Blue);
-            Log(string.Format("- 编译戳 : {0}", info.BuildTimestamp + "344"), Color.Blue);
+            // 3. 构建细节 (只在有值时显示)
+            if (!string.IsNullOrEmpty(info.BuildId))
+                Log(string.Format("- 构建 ID : {0}", info.BuildId), Color.Blue);
+            if (!string.IsNullOrEmpty(info.DisplayId))
+                Log(string.Format("- 展示 ID : {0}", info.DisplayId), Color.Blue);
+            if (!string.IsNullOrEmpty(info.Fingerprint))
+                Log(string.Format("- 构建指纹 : {0}", info.Fingerprint), Color.Blue);
+            if (!string.IsNullOrEmpty(info.BuiltDate))
+                Log(string.Format("- 编译日期 : {0}", info.BuiltDate), Color.Blue);
             
-            // 4. OTA 版本
-            Log(string.Format("- OTA 版本 : {0}", info.OtaVersion), Color.Green);
-            
-            string fullOta = info.OtaVersionFull;
-            if (string.IsNullOrEmpty(fullOta))
-            {
-                string dateStr = "20250731104401";
-                if (!string.IsNullOrEmpty(info.BuildTimestamp))
-                {
-                    try {
-                        dateStr = DateTimeOffset.FromUnixTimeSeconds(long.Parse(info.BuildTimestamp)).ToString("yyyyMMddHHmmss");
-                    } catch {}
-                }
-                fullOta = string.Format("{0}domestic_11_{1}_{2}58", info.Model, info.OtaVersion, dateStr);
-            }
-            Log(string.Format("- 完整 OTA 包名 : {0}", fullOta), Color.Green);
-            
-            Log(string.Format("- 构建指纹 : {0}", info.Fingerprint), Color.Blue);
             Log("------------------------------------------------", Color.Gray);
         }
 
