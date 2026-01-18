@@ -795,15 +795,14 @@ namespace LoveAlways.Qualcomm.Protocol
         private async Task<bool> WriteSectorsAsync(int lun, long startSector, byte[] data, int length, string label, bool useOppoMode, CancellationToken ct)
         {
             int numSectors = length / _sectorSize;
-            string fileName = string.Format("gpt_backup{0}.bin", lun);
-            string labelName = "BackupGPT";
-
+            
+            // 使用实际的分区名称，而不是硬编码的 GPT 值
             string xml = string.Format(
                 "<?xml version=\"1.0\" ?><data>" +
-                "<program SECTOR_SIZE_IN_BYTES=\"{0}\" filename=\"{1}\" label=\"{2}\" " +
-                "num_partition_sectors=\"{3}\" physical_partition_number=\"{4}\" start_sector=\"{5}\" />" +
+                "<program SECTOR_SIZE_IN_BYTES=\"{0}\" num_partition_sectors=\"{1}\" " +
+                "physical_partition_number=\"{2}\" start_sector=\"{3}\" label=\"{4}\" />" +
                 "</data>",
-                _sectorSize, fileName, labelName, numSectors, lun, startSector);
+                _sectorSize, numSectors, lun, startSector, label);
 
             PurgeBuffer();
             _port.Write(Encoding.UTF8.GetBytes(xml));
