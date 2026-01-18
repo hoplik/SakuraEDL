@@ -407,8 +407,8 @@ namespace LoveAlways.Qualcomm.Services
             {
                 _log("[高通] 检测到一加设备，自动执行认证...");
                 try
-            {
-                var oneplus = new OnePlusAuthStrategy(_log);
+                {
+                    var oneplus = new OnePlusAuthStrategy(_log);
                     bool result = await oneplus.AuthenticateAsync(_firehose, programmerPath, ct);
                     if (result)
                     {
@@ -418,6 +418,7 @@ namespace LoveAlways.Qualcomm.Services
                     {
                         _log("[高通] 一加认证失败");
                     }
+                    // OnePlus 已处理，直接返回，不再显示 VIP 提示
                     return result;
                 }
                 catch (Exception ex)
@@ -428,11 +429,18 @@ namespace LoveAlways.Qualcomm.Services
             }
 
             // 3. OPPO/Realme (VIP) - 仅提示，由用户手动选择
-            if (vendor == "OPPO" || vendor == "Realme" || IsVipDevice)
+            // 注意：OnePlus 已在上面处理并返回，不会进入这里
+            if (vendor == "OPPO" || vendor == "Realme")
             {
                 _log("[高通] 检测到 VIP 设备 (OPPO/Realme)");
                 _log("[高通] 💡 如需刷写敏感分区，请手动选择 VIP 认证");
                 // 不自动执行，返回 true 让用户继续操作
+            }
+            else if (IsVipDevice && vendor != "OnePlus")
+            {
+                // 其他 VIP 设备
+                _log("[高通] 检测到 VIP 设备");
+                _log("[高通] 💡 如需刷写敏感分区，请手动选择认证方式");
             }
 
             return true;
