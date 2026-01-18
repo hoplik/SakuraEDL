@@ -514,16 +514,27 @@ namespace LoveAlways.Qualcomm.Services
 
                     case "ro.build.version.release":
                     case "ro.build.version.release_or_codename":
+                    case "ro.vendor.build.version.release":
+                    case "ro.vendor.build.version.release_or_codename":
+                    case "ro.odm.build.version.release":
+                    case "ro.product.build.version.release":
+                    case "ro.system.build.version.release":
                         if (string.IsNullOrEmpty(info.AndroidVersion))
                             info.AndroidVersion = value;
                         break;
                     
                     case "ro.build.version.sdk":
-                        info.SdkVersion = value;
+                    case "ro.vendor.build.version.sdk":
+                    case "ro.system.build.version.sdk":
+                        if (string.IsNullOrEmpty(info.SdkVersion))
+                            info.SdkVersion = value;
                         break;
                     
                     case "ro.build.version.security_patch":
-                        info.SecurityPatch = value;
+                    case "ro.vendor.build.version.security_patch":
+                    case "ro.system.build.version.security_patch":
+                        if (string.IsNullOrEmpty(info.SecurityPatch))
+                            info.SecurityPatch = value;
                         break;
                     
                     case "ro.product.device":
