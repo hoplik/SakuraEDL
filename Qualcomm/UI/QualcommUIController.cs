@@ -1352,6 +1352,7 @@ namespace LoveAlways.Qualcomm.UI
                 _cts = new CancellationTokenSource();
                 StartOperationTimer("擦除 " + partitionName, 1, 0);
                 Log(string.Format("正在擦除分区 {0}...", partitionName), Color.Blue);
+                UpdateLabelSafe(_speedLabel, "速度：擦除中...");
 
                 // 擦除没有细粒度进度，模拟进度
                 UpdateProgressBarDirect(_subProgressBar, 50);
@@ -1756,6 +1757,7 @@ namespace LoveAlways.Qualcomm.UI
                 _cts = new CancellationTokenSource();
                 StartOperationTimer("批量擦除", total, 0);
                 Log(string.Format("开始批量擦除 {0} 个分区...", total), Color.Blue);
+                UpdateLabelSafe(_speedLabel, "速度：擦除中...");
 
                 for (int i = 0; i < total; i++)
                 {
@@ -1954,7 +1956,7 @@ namespace LoveAlways.Qualcomm.UI
                 long bytesDelta = current - _lastBytes;
                 double timeDelta = (DateTime.Now - _lastSpeedUpdate).TotalSeconds;
                 
-                if (timeDelta >= 0.15 && bytesDelta > 0) // 每150ms更新一次
+                if (timeDelta >= 0.2 && bytesDelta > 0) // 每200ms更新一次
                 {
                     double instantSpeed = bytesDelta / timeDelta;
                     // 指数移动平均平滑速度
@@ -2072,7 +2074,7 @@ namespace LoveAlways.Qualcomm.UI
                 long bytesDelta = currentStepTransferred - _lastBytes;
                 double timeDelta = (DateTime.Now - _lastSpeedUpdate).TotalSeconds;
                 
-                if (timeDelta >= 0.3 && bytesDelta > 0) // 每300ms更新一次，更稳定
+                if (timeDelta >= 0.2 && bytesDelta > 0) // 每200ms更新一次
                 {
                     double instantSpeed = bytesDelta / timeDelta;
                     // 指数移动平均平滑速度 (更重的历史权重以避免跳动)
