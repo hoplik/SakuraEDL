@@ -861,6 +861,7 @@ namespace LoveAlways.Qualcomm.Common
             int inodeSize = isExtended ? 64 : 32;
             ushort xattrCount = BitConverter.ToUInt16(inode, 0x02);
             int xattrSize = xattrCount > 0 ? 12 + (xattrCount - 1) * 4 : 0;
+            xattrSize = (xattrSize + 3) & ~3; // 4字节对齐
             int inlineDataOffset = inodeSize + xattrSize;
 
             if (dataLayout == 2) // FLAT_INLINE
@@ -880,6 +881,85 @@ namespace LoveAlways.Qualcomm.Common
             {
                 long dataOffset = (long)rawBlkAddr * _erofsBlockSize;
                 return _read(_baseOffset + dataOffset, maxSize);
+            }
+            else if (dataLayout == 1 || dataLayout == 3) // FLAT_COMPR / FLAT_COMPR_FULL (LZ4压缩)
+            {
+                return ReadErofsCompressedData(nid, inode, maxSize, isExtended, inlineDataOffset, rawBlkAddr);
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// 读取 EROFS 压缩数据 (LZ4)
+        /// </summary>
+        private byte[] ReadErofsCompressedData(ulong nid, byte[] inode, int maxSize, bool isExtended, int inlineDataOffset, uint rawBlkAddr)
+        {
+            try
+            {
+                // 获取文件原始大小
+                long fileSize = isExtended ? BitConverter.ToInt64(inode, 0x08) : BitConverter.ToUInt32(inode, 0x08);
+                if (fileSize <= 0 || fileSize > maxSize)
+                    fileSize = maxSize;
+
+                // EROFS 压缩使用 cluster 概念
+                // 简化实现: 直接读取压缩数据块并尝试解压
+                
+                // 方法1: 如果 rawBlkAddr 有效，从该位置读取压缩数据
+                if (rawBlkAddr > 0 && rawBlkAddr != 0xFFFFFFFF)
+                {
+                    long dataOffset = (long)rawBlkAddr * _erofsBlockSize;
+                    
+                    // 读取足够的压缩数据 (通常压缩率约 30-50%)
+                    int compressedReadSize = (int)Math.Min(fileSize, _erofsBlockSize * 4);
+                    byte[] compressedData = _read(_baseOffset + dataOffset, compressedReadSize);
+                    
+                    if (compressedData != null && compressedData.Length > 0)
+                    {
+                        // 尝试 LZ4 解压
+                        byte[] decompressed = Lz4Decoder.DecompressErofsBlock(compressedData, (int)fileSize);
+                        if (decompressed != null && decompressed.Length > 0)
+                        {
+                            _log(string.Format("[EROFS] LZ4 解压成功: {0} -> {1} bytes", 
+                                compressedData.Length, decompressed.Length));
+                            return decompressed;
+                        }
+                        
+                        // 如果 LZ4 解压失败，尝试直接返回数据 (可能是未压缩的)
+                        if (compressedData.Length >= fileSize)
+                        {
+                            byte[] result = new byte[fileSize];
+                            Array.Copy(compressedData, 0, result, 0, (int)fileSize);
+                            return result;
+                        }
+                    }
+                }
+
+                // 方法2: 读取压缩索引 (z_erofs_map_blocks 简化版)
+                long inodeOffset = (long)_erofsMetaBlkAddr * _erofsBlockSize + (long)nid * 32;
+                byte[] fullInode = _read(_baseOffset + inodeOffset, inlineDataOffset + 256);
+                
+                if (fullInode != null && fullInode.Length > inlineDataOffset)
+                {
+                    // 检查内联压缩数据
+                    int availableData = fullInode.Length - inlineDataOffset;
+                    if (availableData > 0)
+                    {
+                        byte[] inlineData = new byte[availableData];
+                        Array.Copy(fullInode, inlineDataOffset, inlineData, 0, availableData);
+                        
+                        // 尝试解压内联数据
+                        byte[] decompressed = Lz4Decoder.DecompressErofsBlock(inlineData, (int)fileSize);
+                        if (decompressed != null && decompressed.Length > 0)
+                            return decompressed;
+                    }
+                }
+
+                _log(string.Format("[EROFS] 压缩数据读取失败 (NID: {0})", nid));
+            }
+            catch (Exception ex)
+            {
+                _log(string.Format("[EROFS] 解压异常: {0}", ex.Message));
             }
 
             return null;

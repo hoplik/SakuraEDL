@@ -586,6 +586,41 @@ namespace LoveAlways.Qualcomm.Common
                 "ro.build.fingerprint",
                 "ro.vendor.build.fingerprint");
 
+            // 编译日期
+            info.BuildDate = GetFirstValue(props,
+                "ro.build.date",
+                "ro.vendor.build.date",
+                "ro.system.build.date");
+
+            // 编译描述
+            info.BuildDescription = GetFirstValue(props,
+                "ro.build.description",
+                "ro.vendor.build.description");
+
+            // SDK 版本
+            info.SdkVersion = GetFirstValue(props,
+                "ro.build.version.sdk",
+                "ro.system.build.version.sdk");
+
+            // 基带版本
+            info.BasebandVersion = GetFirstValue(props,
+                "gsm.version.baseband",
+                "ro.build.expect.baseband");
+
+            // MIUI/HyperOS 版本
+            info.MiuiVersion = GetFirstValue(props,
+                "ro.miui.ui.version.name",
+                "ro.mi.os.version.name");
+
+            info.MiuiOtaVersion = GetFirstValue(props,
+                "ro.build.version.incremental",
+                "ro.system.build.version.incremental");
+
+            // ColorOS/realmeUI 版本
+            info.ColorOsVersion = GetFirstValue(props,
+                "ro.build.display.id",
+                "ro.oplus.version");
+
             return info;
         }
 
@@ -612,16 +647,30 @@ namespace LoveAlways.Qualcomm.Common
     /// </summary>
     public class DeviceBasicInfo
     {
+        // 基本信息
         public string Brand { get; set; } = "";
         public string Model { get; set; } = "";
         public string MarketName { get; set; } = "";
         public string Device { get; set; } = "";
+        
+        // 版本信息
         public string AndroidVersion { get; set; } = "";
         public string SecurityPatch { get; set; } = "";
         public string OtaVersion { get; set; } = "";
         public string Fingerprint { get; set; } = "";
+        public string BuildDate { get; set; } = "";
+        public string BuildDescription { get; set; } = "";
+        public string SdkVersion { get; set; } = "";
+        public string BasebandVersion { get; set; } = "";
+        
+        // OPLUS 特有
         public string OplusProject { get; set; } = "";
         public string OplusNvId { get; set; } = "";
+        public string ColorOsVersion { get; set; } = "";
+        
+        // 小米特有
+        public string MiuiVersion { get; set; } = "";
+        public string MiuiOtaVersion { get; set; } = "";
 
         /// <summary>
         /// 显示名称
@@ -641,19 +690,73 @@ namespace LoveAlways.Qualcomm.Common
         /// </summary>
         public bool HasValidInfo => !string.IsNullOrEmpty(Model) || !string.IsNullOrEmpty(MarketName);
 
+        /// <summary>
+        /// 获取完整 OTA 版本 (智能选择)
+        /// </summary>
+        public string FullOtaVersion
+        {
+            get
+            {
+                // MIUI/HyperOS 优先
+                if (!string.IsNullOrEmpty(MiuiOtaVersion) && MiuiOtaVersion.Length > 10)
+                    return MiuiOtaVersion;
+                // ColorOS
+                if (!string.IsNullOrEmpty(ColorOsVersion) && ColorOsVersion.Length > 5)
+                    return ColorOsVersion;
+                // 通用 OTA
+                return OtaVersion;
+            }
+        }
+
         public override string ToString()
         {
             var sb = new StringBuilder();
-            if (!string.IsNullOrEmpty(MarketName)) sb.AppendLine("市场名称: " + MarketName);
-            if (!string.IsNullOrEmpty(Brand)) sb.AppendLine("品牌: " + Brand);
-            if (!string.IsNullOrEmpty(Model)) sb.AppendLine("型号: " + Model);
-            if (!string.IsNullOrEmpty(Device)) sb.AppendLine("代号: " + Device);
-            if (!string.IsNullOrEmpty(AndroidVersion)) sb.AppendLine("Android: " + AndroidVersion);
-            if (!string.IsNullOrEmpty(OtaVersion)) sb.AppendLine("OTA: " + OtaVersion);
-            if (!string.IsNullOrEmpty(SecurityPatch)) sb.AppendLine("安全补丁: " + SecurityPatch);
-            if (!string.IsNullOrEmpty(OplusProject)) sb.AppendLine("项目号: " + OplusProject);
-            if (!string.IsNullOrEmpty(OplusNvId)) sb.AppendLine("NV ID: " + OplusNvId);
-            return sb.ToString().TrimEnd();
+            sb.AppendLine("═══════════════════════════════════════");
+            sb.AppendLine("           设 备 详 细 信 息            ");
+            sb.AppendLine("═══════════════════════════════════════");
+            
+            // 基本信息
+            if (!string.IsNullOrEmpty(MarketName)) sb.AppendLine("  市场名称 : " + MarketName);
+            if (!string.IsNullOrEmpty(Brand)) sb.AppendLine("  品    牌 : " + Brand);
+            if (!string.IsNullOrEmpty(Model)) sb.AppendLine("  型    号 : " + Model);
+            if (!string.IsNullOrEmpty(Device)) sb.AppendLine("  代    号 : " + Device);
+            
+            sb.AppendLine("───────────────────────────────────────");
+            
+            // 系统版本
+            if (!string.IsNullOrEmpty(AndroidVersion)) sb.AppendLine("  Android  : " + AndroidVersion);
+            if (!string.IsNullOrEmpty(SdkVersion)) sb.AppendLine("  SDK 版本 : " + SdkVersion);
+            
+            // OTA 版本 (智能显示)
+            string otaDisplay = FullOtaVersion;
+            if (!string.IsNullOrEmpty(otaDisplay)) sb.AppendLine("  OTA 版本 : " + otaDisplay);
+            
+            // MIUI/HyperOS
+            if (!string.IsNullOrEmpty(MiuiVersion)) sb.AppendLine("  MIUI/HyOS: " + MiuiVersion);
+            
+            // ColorOS
+            if (!string.IsNullOrEmpty(ColorOsVersion) && ColorOsVersion != otaDisplay) 
+                sb.AppendLine("  ColorOS  : " + ColorOsVersion);
+            
+            if (!string.IsNullOrEmpty(SecurityPatch)) sb.AppendLine("  安全补丁 : " + SecurityPatch);
+            if (!string.IsNullOrEmpty(BuildDate)) sb.AppendLine("  编译日期 : " + BuildDate);
+            
+            sb.AppendLine("───────────────────────────────────────");
+            
+            // 项目信息
+            if (!string.IsNullOrEmpty(OplusProject)) sb.AppendLine("  项 目 号 : " + OplusProject);
+            if (!string.IsNullOrEmpty(OplusNvId)) sb.AppendLine("  NV ID    : " + OplusNvId);
+            if (!string.IsNullOrEmpty(BasebandVersion)) sb.AppendLine("  基带版本 : " + BasebandVersion);
+            
+            // Fingerprint (截断显示)
+            if (!string.IsNullOrEmpty(Fingerprint))
+            {
+                string fp = Fingerprint.Length > 60 ? Fingerprint.Substring(0, 57) + "..." : Fingerprint;
+                sb.AppendLine("  Fingerprint: " + fp);
+            }
+            
+            sb.AppendLine("═══════════════════════════════════════");
+            return sb.ToString();
         }
     }
 }
