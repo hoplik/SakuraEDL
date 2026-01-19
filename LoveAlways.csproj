@@ -127,6 +127,13 @@
     <Compile Include="Fastboot\Models\FastbootDeviceInfo.cs" />
     <Compile Include="Fastboot\Services\FastbootService.cs" />
     <Compile Include="Fastboot\UI\FastbootUIController.cs" />
+    <!-- Fastboot 原生协议实现 -->
+    <Compile Include="Fastboot\Protocol\FastbootProtocol.cs" />
+    <Compile Include="Fastboot\Protocol\FastbootClient.cs" />
+    <Compile Include="Fastboot\Transport\IFastbootTransport.cs" />
+    <Compile Include="Fastboot\Transport\UsbTransport.cs" />
+    <Compile Include="Fastboot\Image\SparseImage.cs" />
+    <Compile Include="Fastboot\Services\FastbootNativeService.cs" />
     <EmbeddedResource Include="Form1.resx">
       <DependentUpon>Form1.cs</DependentUpon>
     </EmbeddedResource>
