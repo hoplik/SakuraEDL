@@ -542,9 +542,8 @@ namespace LoveAlways.Qualcomm.Common
                 "ro.product.model_for_attestation",
                 "ro.product.odm.cert");
 
-            // 市场名称 (按优先级: 中兴 -> 小米 -> OPLUS -> 通用 -> 联想)
+            // 市场名称 (小米优先使用 odm.marketname)
             info.MarketName = GetFirstValue(props,
-                "ro.vendor.product.ztename",      // 中兴/努比亚: "红魔10 Pro/Pro+"
                 "ro.product.odm.marketname",      // 小米: "Xiaomi 17"
                 "ro.vendor.oplus.market.name",    // OPLUS
                 "ro.vendor.oplus.market.enname",
@@ -598,14 +597,35 @@ namespace LoveAlways.Qualcomm.Common
                 "ro.system_ext.build.version.incremental",
                 "ro.build.version.incremental");
 
-            // OPLUS 特有
+            // ========== OPLUS/OnePlus 特有 ==========
             info.OplusProject = GetFirstValue(props,
-                "ro.oplus.image.my_product.type",
-                "ro.separate.soft",
+                "ro.oplus.image.my_product.type",   // 22825
+                "ro.separate.soft",                  // 22825
                 "ro.product.supported_versions");
 
             info.OplusNvId = GetFirstValue(props,
-                "ro.build.oplus_nv_id");
+                "ro.build.oplus_nv_id");              // 10010111
+
+            // OPLUS 完整 OTA 版本
+            info.OplusFullOtaVersion = GetFirstValue(props,
+                "ro.build.display.full_id",          // PJD110domestic_11_14.0.0.801(CN01)_2024051322460079
+                "ro.build.version.ota",              // PJD110_11.A.70_0700_202405132246
+                "ro.build.display.ota");             // PJD110_11_A.70
+
+            // OPLUS ROM 版本
+            info.OplusRomVersion = GetFirstValue(props,
+                "ro.build.version.oplusrom",         // V14.0.1
+                "ro.build.version.oplusrom.display", // 14.0
+                "ro.build.version.oplusrom.confidential"); // V14.0.1
+
+            // OPLUS 区域类型
+            info.OplusRegion = GetFirstValue(props,
+                "ro.oplus.image.my_region.type",     // CN_all
+                "ro.oplus.pipeline_key");            // ALLNET
+
+            // OPLUS Manifest UUID
+            info.OplusManifestUuid = GetFirstValue(props,
+                "ro.oplus.my_manifest.uuid");        // 9c83dec6-7281-4124-914a-d1e57372c235
 
             // 编译日期
             info.BuildDate = GetFirstValue(props,
@@ -647,26 +667,6 @@ namespace LoveAlways.Qualcomm.Common
             info.ColorOsVersion = GetFirstValue(props,
                 "ro.build.display.id",
                 "ro.oplus.version");
-
-            // ========== 中兴/努比亚 (ZTE/Nubia) 特有 ==========
-            info.ZteInternalBrand = GetFirstValue(props,
-                "ro.vendor.feature.brand.internal");  // RedMagic
-
-            info.ZteBaselineVersion = GetFirstValue(props,
-                "ro.build.MiFavor_version",          // NebulaOS1.0 (中兴系统基线)
-                "ro.vendor.feature.baseline_name");
-
-            info.ZteInternalVersion = GetFirstValue(props,
-                "ro.build.sw_internal_version");      // GEN_CN_NX789JV1.0.0B12MR1
-
-            info.ZteRegion = GetFirstValue(props,
-                "ro.vendor.feature.zte_region_name",  // China
-                "ro.vendor.feature.transform_default_variant_id");  // GEN_CN
-
-            // ========== 联想 (Lenovo) 特有 ==========
-            info.LenovoSeries = GetFirstValue(props,
-                "ro.lenovo.series",
-                "ro.config.versatility");
 
             return info;
         }
@@ -767,24 +767,19 @@ namespace LoveAlways.Qualcomm.Common
         public string SdkVersion { get; set; } = "";
         public string BasebandVersion { get; set; } = "";
         
-        // OPLUS 特有
-        public string OplusProject { get; set; } = "";
-        public string OplusNvId { get; set; } = "";
+        // OPLUS/OnePlus 特有
+        public string OplusProject { get; set; } = "";           // 22825 (项目号)
+        public string OplusNvId { get; set; } = "";              // 10010111 (NV_ID)
+        public string OplusFullOtaVersion { get; set; } = "";    // PJD110domestic_11_14.0.0.801(CN01)_2024051322460079
+        public string OplusRomVersion { get; set; } = "";        // V14.0.1
+        public string OplusRegion { get; set; } = "";            // CN_all / ALLNET
+        public string OplusManifestUuid { get; set; } = "";      // UUID
         public string ColorOsVersion { get; set; } = "";
         
         // 小米/HyperOS 特有
         public string MiuiVersion { get; set; } = "";
         public string MiuiOtaVersion { get; set; } = "";
         public string MiuiRegion { get; set; } = "";
-
-        // 中兴/努比亚 (ZTE/Nubia) 特有
-        public string ZteInternalBrand { get; set; } = "";    // RedMagic
-        public string ZteBaselineVersion { get; set; } = "";  // NebulaOS1.0
-        public string ZteInternalVersion { get; set; } = "";  // GEN_CN_NX789JV1.0.0B12MR1
-        public string ZteRegion { get; set; } = "";           // China / GEN_CN
-
-        // 联想 (Lenovo) 特有
-        public string LenovoSeries { get; set; } = "";
 
         /// <summary>
         /// 显示名称
@@ -831,7 +826,6 @@ namespace LoveAlways.Qualcomm.Common
             get
             {
                 string brandLower = (Brand ?? "").ToLowerInvariant();
-                string internalBrand = (ZteInternalBrand ?? "").ToLowerInvariant();
                 
                 // 小米系
                 if (brandLower.Contains("xiaomi") || brandLower.Contains("redmi") || brandLower.Contains("poco"))
@@ -847,20 +841,6 @@ namespace LoveAlways.Qualcomm.Common
                 // OPLUS 系
                 if (brandLower.Contains("oppo") || brandLower.Contains("oneplus") || brandLower.Contains("realme"))
                     return "ColorOS";
-                
-                // 中兴/努比亚 (使用 RedMagicOS 或 NebulaOS)
-                if (brandLower.Contains("nubia") || brandLower.Contains("zte") || 
-                    internalBrand.Contains("redmagic"))
-                {
-                    // RedMagic 设备
-                    if (internalBrand.Contains("redmagic") || 
-                        (!string.IsNullOrEmpty(ColorOsVersion) && ColorOsVersion.Contains("RedMagicOS")))
-                        return "RedMagicOS";
-                    // 普通 ZTE/Nubia
-                    if (!string.IsNullOrEmpty(ZteBaselineVersion))
-                        return ZteBaselineVersion;  // NebulaOS1.0
-                    return "MiFavor";
-                }
                 
                 // 联想
                 if (brandLower.Contains("lenovo") || brandLower.Contains("motorola"))
@@ -901,32 +881,27 @@ namespace LoveAlways.Qualcomm.Common
             if (!string.IsNullOrEmpty(MiuiVersion) && MiuiVersion != otaDisplay) 
                 sb.AppendLine("  版 本 名 : " + MiuiVersion);
             
-            // 区域 (小米/中兴)
-            string regionDisplay = !string.IsNullOrEmpty(MiuiRegion) ? MiuiRegion : ZteRegion;
-            if (!string.IsNullOrEmpty(regionDisplay))
-                sb.AppendLine("  区    域 : " + regionDisplay);
+            // 区域
+            if (!string.IsNullOrEmpty(MiuiRegion))
+                sb.AppendLine("  区    域 : " + MiuiRegion);
             
             // ColorOS (如果不同于 OTA)
             if (!string.IsNullOrEmpty(ColorOsVersion) && ColorOsVersion != otaDisplay) 
                 sb.AppendLine("  ColorOS  : " + ColorOsVersion);
-            
-            // 中兴/努比亚 内部品牌
-            if (!string.IsNullOrEmpty(ZteInternalBrand))
-                sb.AppendLine("  内部品牌 : " + ZteInternalBrand);
-            
-            // 中兴/努比亚 内部版本
-            if (!string.IsNullOrEmpty(ZteInternalVersion))
-                sb.AppendLine("  内部版本 : " + ZteInternalVersion);
             
             if (!string.IsNullOrEmpty(SecurityPatch)) sb.AppendLine("  安全补丁 : " + SecurityPatch);
             if (!string.IsNullOrEmpty(BuildDate)) sb.AppendLine("  编译日期 : " + BuildDate);
             
             sb.AppendLine("───────────────────────────────────────");
             
-            // 项目信息
+            // 项目信息 (OPLUS/OnePlus)
             if (!string.IsNullOrEmpty(OplusProject)) sb.AppendLine("  项 目 号 : " + OplusProject);
             if (!string.IsNullOrEmpty(OplusNvId)) sb.AppendLine("  NV ID    : " + OplusNvId);
-            if (!string.IsNullOrEmpty(LenovoSeries)) sb.AppendLine("  联想系列 : " + LenovoSeries);
+            if (!string.IsNullOrEmpty(OplusRomVersion)) sb.AppendLine("  ROM 版本 : " + OplusRomVersion);
+            if (!string.IsNullOrEmpty(OplusRegion)) sb.AppendLine("  区域类型 : " + OplusRegion);
+            if (!string.IsNullOrEmpty(OplusFullOtaVersion) && OplusFullOtaVersion != OtaVersion)
+                sb.AppendLine("  完整 OTA : " + OplusFullOtaVersion);
+            
             if (!string.IsNullOrEmpty(BasebandVersion)) sb.AppendLine("  基带版本 : " + BasebandVersion);
             
             // Fingerprint (截断显示)

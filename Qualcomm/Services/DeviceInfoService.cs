@@ -565,6 +565,29 @@ namespace LoveAlways.Qualcomm.Services
                             info.OplusProject = value;
                         break;
                     
+                    // OPLUS 完整 OTA 版本
+                    case "ro.build.display.full_id":
+                    case "ro.build.version.ota":
+                    case "ro.build.display.ota":
+                        if (!info.AllProperties.ContainsKey("oplus_full_ota"))
+                            info.AllProperties["oplus_full_ota"] = value;
+                        break;
+                    
+                    // OPLUS ROM 版本
+                    case "ro.build.version.oplusrom":
+                    case "ro.build.version.oplusrom.display":
+                    case "ro.build.version.oplusrom.confidential":
+                        if (!info.AllProperties.ContainsKey("oplus_rom_version"))
+                            info.AllProperties["oplus_rom_version"] = value;
+                        break;
+                    
+                    // OPLUS 区域
+                    case "ro.oplus.image.my_region.type":
+                    case "ro.oplus.pipeline_key":
+                        if (!info.AllProperties.ContainsKey("oplus_region"))
+                            info.AllProperties["oplus_region"] = value;
+                        break;
+                    
                     case "ro.lenovo.cpuinfo":
                         info.OplusCpuInfo = value; // 借用 OplusCpuInfo 存储 CPU 信息
                         break;
