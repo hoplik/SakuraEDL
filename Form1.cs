@@ -2660,23 +2660,9 @@ namespace LoveAlways
                 // button9 = 浏览 (选择 Payload/刷机脚本)
                 button9.Click += (s, e) => FastbootSelectPayload();
 
-                // checkbox22 = 解锁BL
-                checkbox22.CheckedChanged += async (s, e) =>
-                {
-                    if (checkbox22.Checked && _fastbootController.IsConnected)
-                    {
-                        await _fastbootController.UnlockBootloaderAsync();
-                    }
-                };
-
-                // checkbox21 = 锁定BL
-                checkbox21.CheckedChanged += async (s, e) =>
-                {
-                    if (checkbox21.Checked && _fastbootController.IsConnected)
-                    {
-                        await _fastbootController.LockBootloaderAsync();
-                    }
-                };
+                // checkbox22 = 解锁BL (手动操作时执行，脚本执行时作为标志)
+                // checkbox21 = 锁定BL (手动操作时执行，脚本执行时作为标志)
+                // 注意：不再自动执行，而是在刷机完成后根据选项执行
 
                 // checkbox41 = 切换A槽
                 checkbox41.CheckedChanged += async (s, e) =>
@@ -2789,7 +2775,11 @@ namespace LoveAlways
             // 如果有加载的刷机任务，执行刷机脚本
             if (_fastbootController.FlashTasks != null && _fastbootController.FlashTasks.Count > 0)
             {
-                await _fastbootController.ExecuteFlashScriptAsync();
+                // 读取用户选项
+                bool keepData = checkbox50.Checked;   // 保留数据
+                bool lockBl = checkbox21.Checked;     // 锁定BL
+
+                await _fastbootController.ExecuteFlashScriptAsync(keepData, lockBl);
             }
             else
             {
@@ -2888,6 +2878,42 @@ namespace LoveAlways
             {
                 // 更新输出路径为脚本所在目录
                 input1.Text = Path.GetDirectoryName(scriptPath);
+
+                // 根据脚本类型自动勾选对应选项
+                AutoSelectOptionsFromScript(scriptPath);
+            }
+        }
+
+        /// <summary>
+        /// 根据脚本类型自动勾选 UI 选项
+        /// </summary>
+        private void AutoSelectOptionsFromScript(string scriptPath)
+        {
+            string fileName = Path.GetFileName(scriptPath).ToLowerInvariant();
+
+            // 重置所有相关选项
+            checkbox50.Checked = false;  // 保留数据
+            checkbox21.Checked = false;  // 锁定BL
+
+            // 根据脚本名称判断类型
+            if (fileName.Contains("except_storage") || fileName.Contains("except-storage") || 
+                fileName.Contains("keep_data") || fileName.Contains("keepdata"))
+            {
+                // 保留数据刷机脚本
+                checkbox50.Checked = true;
+                AppendLog("检测到保留数据脚本，已勾选「保留数据」", Color.Blue);
+            }
+            else if (fileName.Contains("_lock") || fileName.Contains("-lock") || 
+                     fileName.EndsWith("lock.bat") || fileName.EndsWith("lock.sh"))
+            {
+                // 锁定BL刷机脚本
+                checkbox21.Checked = true;
+                AppendLog("检测到锁定BL脚本，已勾选「锁定BL」", Color.Blue);
+            }
+            else
+            {
+                // 普通刷机脚本 (flash_all.bat)
+                AppendLog("普通刷机脚本，将清除所有数据", Color.Orange);
             }
         }
 

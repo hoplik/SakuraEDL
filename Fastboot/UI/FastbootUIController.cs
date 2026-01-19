@@ -908,7 +908,9 @@ namespace LoveAlways.Fastboot.UI
         /// <summary>
         /// 执行加载的刷机脚本
         /// </summary>
-        public async Task<bool> ExecuteFlashScriptAsync()
+        /// <param name="keepData">是否保留数据（跳过 userdata 刷写）</param>
+        /// <param name="lockBl">是否在刷机后锁定BL</param>
+        public async Task<bool> ExecuteFlashScriptAsync(bool keepData = false, bool lockBl = false)
         {
             if (_flashTasks == null || _flashTasks.Count == 0)
             {
@@ -940,6 +942,23 @@ namespace LoveAlways.Fastboot.UI
                 return false;
             }
 
+            // 根据选项过滤任务
+            if (keepData)
+            {
+                // 保留数据：跳过 userdata 相关分区
+                int beforeCount = selectedTasks.Count;
+                selectedTasks = selectedTasks.Where(t => 
+                    !t.PartitionName.Equals("userdata", StringComparison.OrdinalIgnoreCase) &&
+                    !t.PartitionName.Equals("userdata_ab", StringComparison.OrdinalIgnoreCase) &&
+                    !t.PartitionName.Equals("metadata", StringComparison.OrdinalIgnoreCase)
+                ).ToList();
+                
+                if (selectedTasks.Count < beforeCount)
+                {
+                    Log("保留数据模式：跳过 userdata/metadata 分区", Color.Blue);
+                }
+            }
+
             try
             {
                 IsBusy = true;
@@ -950,6 +969,8 @@ namespace LoveAlways.Fastboot.UI
                 int failed = 0;
 
                 Log($"开始执行 {total} 个刷机任务...", Color.Blue);
+                if (keepData) Log("模式: 保留数据", Color.Blue);
+                if (lockBl) Log("模式: 刷机后锁定BL", Color.Blue);
 
                 for (int i = 0; i < total; i++)
                 {
@@ -975,7 +996,17 @@ namespace LoveAlways.Fastboot.UI
                             break;
 
                         case "erase":
-                            taskSuccess = await _service.ErasePartitionAsync(task.PartitionName, _cts.Token);
+                            // 保留数据模式下跳过 userdata 擦除
+                            if (keepData && (task.PartitionName.Equals("userdata", StringComparison.OrdinalIgnoreCase) ||
+                                             task.PartitionName.Equals("metadata", StringComparison.OrdinalIgnoreCase)))
+                            {
+                                Log($"跳过擦除 {task.PartitionName} (保留数据)", Color.Gray);
+                                taskSuccess = true;
+                            }
+                            else
+                            {
+                                taskSuccess = await _service.ErasePartitionAsync(task.PartitionName, _cts.Token);
+                            }
                             break;
 
                         case "set_active":
@@ -987,6 +1018,13 @@ namespace LoveAlways.Fastboot.UI
                             // 重启操作放在最后执行
                             if (i == total - 1)
                             {
+                                // 如果需要锁定BL，在重启前执行
+                                if (lockBl)
+                                {
+                                    Log("正在锁定 Bootloader...", Color.Blue);
+                                    await _service.LockBootloaderAsync("flashing lock", _cts.Token);
+                                }
+
                                 string target = task.PartitionName.Replace("reboot_", "");
                                 if (target == "system" || string.IsNullOrEmpty(target))
                                 {
@@ -1016,6 +1054,14 @@ namespace LoveAlways.Fastboot.UI
                 }
 
                 UpdateProgress(total, total);
+
+                // 如果没有重启命令但需要锁定BL，在这里执行
+                bool hasReboot = selectedTasks.Any(t => t.Operation == "reboot");
+                if (lockBl && !hasReboot)
+                {
+                    Log("正在锁定 Bootloader...", Color.Blue);
+                    await _service.LockBootloaderAsync("flashing lock", _cts.Token);
+                }
 
                 Log($"刷机完成: {success} 成功, {failed} 失败", 
                     failed == 0 ? Color.Green : Color.Orange);
