@@ -580,18 +580,46 @@ namespace LoveAlways.Qualcomm.UI
                 }
                 UpdateLabelSafe(_brandLabel, "品牌：" + (brand != "Unknown" ? brand : "正在识别..."));
                 
-                // 芯片型号
-                string chipName = chipInfo.ChipName;
-                if (chipName == "Unknown" && !string.IsNullOrEmpty(chipInfo.HwIdHex))
+                // 芯片型号 - 根据 Sahara 读取的 MSM ID 进行数据库映射
+                string chipDisplay = "识别中...";
+                
+                // 优先使用数据库映射的芯片代号
+                string chipCodename = QualcommDatabase.GetChipCodename(chipInfo.MsmId);
+                if (!string.IsNullOrEmpty(chipCodename))
                 {
-                    chipName = string.Format("未知芯片 ({0})", chipInfo.HwIdHex.Substring(0, Math.Min(8, chipInfo.HwIdHex.Length)));
+                    chipDisplay = chipCodename;
                 }
-                UpdateLabelSafe(_chipLabel, "芯片：" + (chipName != "Unknown" ? chipName : "识别中..."));
+                else if (!string.IsNullOrEmpty(chipInfo.ChipName) && chipInfo.ChipName != "Unknown")
+                {
+                    // 使用已解析的芯片名称
+                    int parenIndex = chipInfo.ChipName.IndexOf('(');
+                    chipDisplay = parenIndex > 0 ? chipInfo.ChipName.Substring(0, parenIndex).Trim() : chipInfo.ChipName;
+                }
+                else if (chipInfo.MsmId != 0)
+                {
+                    // 显示 MSM ID (方便添加到数据库)
+                    chipDisplay = string.Format("0x{0:X8}", chipInfo.MsmId);
+                }
+                else if (!string.IsNullOrEmpty(chipInfo.HwIdHex) && chipInfo.HwIdHex.Length >= 4)
+                {
+                    // 显示 HWID
+                    chipDisplay = chipInfo.HwIdHex.StartsWith("0x") ? chipInfo.HwIdHex : "0x" + chipInfo.HwIdHex;
+                }
+                
+                UpdateLabelSafe(_chipLabel, "芯片：" + chipDisplay);
                 
                 // 序列号 - 强制锁定为 Sahara 读取的芯片序列号
                 UpdateLabelSafe(_serialLabel, "芯片序列号：" + (!string.IsNullOrEmpty(chipInfo.SerialHex) ? chipInfo.SerialHex : "未获取"));
                 
                 // 设备型号 - 需要从 Firehose 读取分区信息后才能获取
+                UpdateLabelSafe(_modelLabel, "型号：待深度扫描");
+            }
+            else
+            {
+                // Sahara 未获取到芯片信息，显示默认值
+                UpdateLabelSafe(_brandLabel, "品牌：未识别");
+                UpdateLabelSafe(_chipLabel, "芯片：未识别");
+                UpdateLabelSafe(_serialLabel, "芯片序列号：未获取");
                 UpdateLabelSafe(_modelLabel, "型号：待深度扫描");
             }
             

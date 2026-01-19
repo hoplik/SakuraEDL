@@ -134,7 +134,7 @@ namespace LoveAlways.Qualcomm.Models
         }
 
         /// <summary>
-        /// 格式化的大小字符串
+        /// 格式化的大小字符串 (不足1MB按KB，满1GB按GB)
         /// </summary>
         public string FormattedSize
         {
@@ -146,7 +146,7 @@ namespace LoveAlways.Qualcomm.Models
                 if (size >= 1024 * 1024)
                     return string.Format("{0:F2} MB", size / (1024.0 * 1024));
                 if (size >= 1024)
-                    return string.Format("{0:F2} KB", size / 1024.0);
+                    return string.Format("{0:F0} KB", size / 1024.0);
                 return string.Format("{0} B", size);
             }
         }

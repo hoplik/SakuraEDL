@@ -618,13 +618,10 @@ namespace LoveAlways
                     checkedCount++;
                 }
 
-                // 敏感分区标记
+                // 敏感分区标记为灰色
                 if (Qualcomm.Common.RawprogramParser.IsSensitivePartition(task.Label))
                     item.ForeColor = Color.Gray;
-
-                // 文件不存在标记
-                if (!fileExists)
-                    item.ForeColor = Color.Red;
+                // 文件不存在的分区不标红，只是不自动勾选（已在上面处理）
 
                 listView2.Items.Add(item);
             }

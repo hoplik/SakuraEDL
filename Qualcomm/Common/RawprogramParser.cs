@@ -49,7 +49,7 @@ namespace LoveAlways.Qualcomm.Common
                 long size = ActualFileSize > 0 ? ActualFileSize : Size;
                 if (size >= 1024L * 1024 * 1024) return string.Format("{0:F2} GB", size / (1024.0 * 1024 * 1024));
                 if (size >= 1024 * 1024) return string.Format("{0:F2} MB", size / (1024.0 * 1024));
-                if (size >= 1024) return string.Format("{0:F2} KB", size / 1024.0);
+                if (size >= 1024) return string.Format("{0:F0} KB", size / 1024.0);
                 return string.Format("{0} B", size);
             }
         }

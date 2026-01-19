@@ -780,7 +780,7 @@ namespace LoveAlways.Qualcomm.Services
             if (_firehose == null)
                 return allPartitions;
 
-            _log("正在读取 GUID 分区表...");
+            _logDetail("正在读取 GUID 分区表...");
 
             // 报告开始
             if (totalProgress != null) totalProgress.Report(Tuple.Create(0, maxLuns));

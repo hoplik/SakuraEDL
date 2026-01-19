@@ -359,9 +359,7 @@ namespace LoveAlways.Qualcomm.Common
 
                     _expandedLength = (long)_totalBlocks * _blockSize;
 
-                    _log(string.Format("[Sparse] v{0}.{1}, BlockSize={2}, Blocks={3}, Chunks={4}",
-                        _majorVersion, _minorVersion, _blockSize, _totalBlocks, _totalChunks));
-                    _log(string.Format("[Sparse] 展开大小: {0:F1} MB", _expandedLength / (1024.0 * 1024.0)));
+                    // Sparse 详细信息已由调用者（FirehoseClient）处理，这里不重复输出
 
                     if (_fileHeaderSize > SPARSE_HEADER_SIZE)
                     {
@@ -429,8 +427,7 @@ namespace LoveAlways.Qualcomm.Common
                     }
                 }
             }
-
-            _log(string.Format("[Sparse] 索引完成: {0} 个有效 Chunk", _chunkIndex.Count));
+            // 索引完成，不输出日志
         }
 
         private ChunkInfo FindChunk(long position)

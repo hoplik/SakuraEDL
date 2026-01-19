@@ -566,7 +566,7 @@ namespace LoveAlways.Qualcomm.Protocol
         /// </summary>
         public List<PartitionInfo> ParseGptPartitions(byte[] gptData, int lun)
         {
-            var parser = new GptParser(_log);
+            var parser = new GptParser(_log, _logDetail);
             var result = parser.Parse(gptData, lun, _sectorSize);
             
             // 保存解析结果
@@ -614,7 +614,7 @@ namespace LoveAlways.Qualcomm.Protocol
             if (_cachedPartitions == null || _cachedPartitions.Count == 0)
                 return null;
 
-            var parser = new GptParser(_log);
+            var parser = new GptParser(_log, _logDetail);
             return parser.GenerateRawprogramXml(_cachedPartitions, _sectorSize);
         }
 
@@ -626,7 +626,7 @@ namespace LoveAlways.Qualcomm.Protocol
             if (_cachedPartitions == null || _cachedPartitions.Count == 0)
                 return null;
 
-            var parser = new GptParser(_log);
+            var parser = new GptParser(_log, _logDetail);
             return parser.GeneratePartitionXml(_cachedPartitions, _sectorSize);
         }
 
@@ -983,8 +983,8 @@ namespace LoveAlways.Qualcomm.Protocol
                 long fileSize = sourceStream.Length;
                 int numSectors = (int)Math.Ceiling((double)fileSize / _sectorSize);
 
-                _log(string.Format("Firehose: 刷写 {0} -> {1} ({2:F2} MB){3}", 
-                    Path.GetFileName(filePath), partitionName, fileSize / 1024.0 / 1024.0,
+                _log(string.Format("Firehose: 刷写 {0} -> {1} ({2}){3}", 
+                    Path.GetFileName(filePath), partitionName, FormatFileSize(fileSize),
                     useVipMode ? " [VIP模式]" : ""));
 
                 // VIP 模式使用伪装策略
@@ -1065,8 +1065,8 @@ namespace LoveAlways.Qualcomm.Protocol
                     startSectorStr = startSector.ToString();
                 }
 
-                _log(string.Format("Firehose: 刷写 {0} -> {1} ({2:F2} MB) @ {3}", 
-                    Path.GetFileName(filePath), partitionName, fileSize / 1024.0 / 1024.0, startSectorStr));
+                _log(string.Format("Firehose: 刷写 {0} -> {1} ({2}) @ {3}", 
+                    Path.GetFileName(filePath), partitionName, FormatFileSize(fileSize), startSectorStr));
 
                 // 构造 program XML，使用官方负扇区格式
                 string xml = string.Format(
@@ -2227,6 +2227,24 @@ namespace LoveAlways.Qualcomm.Protocol
             string xml = "<?xml version=\"1.0\" ?><data>\n<sha256final />\n</data>\n";
             _port.Write(Encoding.UTF8.GetBytes(xml));
             return await WaitForAckAsync(ct);
+        }
+
+        #endregion
+
+        #region 辅助方法
+
+        /// <summary>
+        /// 格式化文件大小 (不足1MB按KB，满1GB按GB)
+        /// </summary>
+        private string FormatFileSize(long bytes)
+        {
+            if (bytes >= 1024L * 1024 * 1024)
+                return string.Format("{0:F2} GB", bytes / (1024.0 * 1024 * 1024));
+            if (bytes >= 1024 * 1024)
+                return string.Format("{0:F2} MB", bytes / (1024.0 * 1024));
+            if (bytes >= 1024)
+                return string.Format("{0:F0} KB", bytes / 1024.0);
+            return string.Format("{0} B", bytes);
         }
 
         #endregion

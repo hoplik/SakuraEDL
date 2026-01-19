@@ -422,15 +422,50 @@ namespace LoveAlways.Qualcomm.Database
         public static string GetChipName(uint hwId)
         {
             string name;
+            
+            // 1. 直接查找完整 HWID
             if (MsmIds.TryGetValue(hwId, out name))
                 return name;
 
-            // 尝试简化的 HWID
-            uint simplifiedId = hwId & 0x00FFFFFF;
-            if (MsmIds.TryGetValue(simplifiedId, out name))
+            // 2. 尝试带 E1 后缀 (Qualcomm 标准格式)
+            if ((hwId & 0xFF) != 0xE1)
+            {
+                uint withE1 = (hwId & 0xFFFFFF00) | 0xE1;
+                if (MsmIds.TryGetValue(withE1, out name))
+                    return name;
+            }
+            
+            // 3. 尝试低 24 位 + E1
+            uint low24WithE1 = ((hwId & 0x00FFFF00) >> 8) | 0xE1;
+            if (low24WithE1 != hwId && MsmIds.TryGetValue(low24WithE1, out name))
                 return name;
+            
+            // 4. 遍历查找（用于处理非标准格式）
+            uint msmPart = hwId & 0x00FFFFF0;  // 提取核心标识部分
+            foreach (var kvp in MsmIds)
+            {
+                if ((kvp.Key & 0x00FFFFF0) == msmPart)
+                    return kvp.Value;
+            }
 
             return "Unknown";
+        }
+        
+        /// <summary>
+        /// 根据 HWID 获取芯片简称 (仅返回 SM/SDM/MSM 等代号)
+        /// </summary>
+        public static string GetChipCodename(uint hwId)
+        {
+            string fullName = GetChipName(hwId);
+            if (fullName == "Unknown")
+                return null;
+            
+            // 提取括号前的代号部分
+            int parenIndex = fullName.IndexOf('(');
+            if (parenIndex > 0)
+                return fullName.Substring(0, parenIndex).Trim();
+            
+            return fullName;
         }
 
         /// <summary>
