@@ -500,6 +500,12 @@ namespace LoveAlways.Qualcomm.Services
                         break;
 
                     case "ro.build.version.ota":
+                        // OPLUS 完整 OTA 版本: PJD110_11.A.70_0700_202405132246
+                        // 仅作为 OtaVersionFull 备用，不覆盖 OtaVersion
+                        if (string.IsNullOrEmpty(info.OtaVersionFull))
+                            info.OtaVersionFull = value;
+                        break;
+
                     case "ro.build.display.id":
                     case "ro.system_ext.build.version.incremental":
                     case "ro.vendor.build.display.id":
@@ -507,7 +513,7 @@ namespace LoveAlways.Qualcomm.Services
                         if (string.IsNullOrEmpty(info.DisplayId) && key == "ro.build.display.id")
                             info.DisplayId = value;
                         
-                        // 如果 ro.build.display.id.show 已设置，跳过 OtaVersion 设置
+                        // 如果 ro.build.display.id.show 已设置 (包含括号)，跳过 OtaVersion 设置
                         if (!string.IsNullOrEmpty(info.OtaVersion) && info.OtaVersion.Contains("("))
                             break;
                         
@@ -524,7 +530,7 @@ namespace LoveAlways.Qualcomm.Services
                         {
                             info.OtaVersion = value;
                         }
-                        // OPLUS 设备：完整 OTA 版本通常格式为 PKG110_xx.x.xxxx (CN01)
+                        // OPLUS 设备：完整 OTA 版本通常格式为 PKG110_14.0.0.801(CN01)
                         else if (value.Contains("(") && value.Contains(")") && (value.Contains("CN") || value.Contains("GL") || value.Contains("EU") || value.Contains("IN")))
                         {
                             info.OtaVersionFull = value;
@@ -762,9 +768,33 @@ namespace LoveAlways.Qualcomm.Services
                 uint tablesSize = BitConverter.ToUInt32(metadataData, 24);
                 int totalToRead = (int)(headerSize + tablesSize);
                 
+                _logDetail(string.Format("[LP] Header 偏移={0}, headerSize={1}, tablesSize={2}, 需读取={3} 字节", 
+                    finalOffset, headerSize, tablesSize, totalToRead));
+                
                 if (totalToRead > metadataData.Length)
                 {
+                    // 限制单次读取大小，防止超时
+                    if (totalToRead > 1024 * 1024)
+                    {
+                        _log(string.Format("LP Metadata 过大 ({0} 字节)，限制为 1MB", totalToRead));
+                        totalToRead = 1024 * 1024;
+                    }
+                    
                     metadataData = readFromDevice(finalOffset, totalToRead);
+                    if (metadataData == null)
+                    {
+                        _log(string.Format("无法读取 LP Metadata (偏移={0}, 大小={1})", finalOffset, totalToRead));
+                        return null;
+                    }
+                    if (metadataData.Length < totalToRead)
+                    {
+                        _log(string.Format("LP Metadata 读取不完整: 期望 {0} 字节, 实际 {1} 字节", totalToRead, metadataData.Length));
+                        // 尝试使用已读取的数据继续解析
+                        if (metadataData.Length < headerSize)
+                        {
+                            return null;
+                        }
+                    }
                 }
 
                 int tablesBase = (int)headerSize;

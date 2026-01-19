@@ -297,7 +297,9 @@ namespace LoveAlways.Qualcomm.Services
                         }
                         else
                         {
-                            _log("[高通] VIP 认证需要 Digest 和 Signature 文件");
+                            _log("[高通] VIP 认证需要 Digest 和 Signature 文件，将回退到普通模式");
+                            // 没有认证文件，回退到普通模式
+                            IsVipDevice = false;
                         }
                     }
                     else if (authModeLower == "xiaomi")
@@ -307,9 +309,15 @@ namespace LoveAlways.Qualcomm.Services
                     }
                     
                     if (authOk)
+                    {
                         _log(string.Format("[高通] {0} 认证成功", authMode.ToUpper()));
-                    else
-                        _log(string.Format("[高通] {0} 认证失败", authMode.ToUpper()));
+                    }
+                    else if (IsVipDevice)
+                    {
+                        // VIP 认证失败但有文件，回退到普通模式
+                        _log(string.Format("[高通] {0} 认证失败，回退到普通读取模式", authMode.ToUpper()));
+                        IsVipDevice = false;
+                    }
                 }
 
                 _log("正在配置 Firehose...");
@@ -1028,8 +1036,13 @@ namespace LoveAlways.Qualcomm.Services
             long startSector = partition.StartSector + (offset / sectorSize);
             int numSectors = (size + sectorSize - 1) / sectorSize;
 
+            // 只有 VIP 认证成功后才使用 VIP 模式读取
+            // IsVipDevice = true 表示 VIP 认证已成功
+            // IsOplusDevice 只用于判断是否需要 SHA256 校验，不用于读取模式
+            bool useVipMode = IsVipDevice;
+
             // 读取数据
-            byte[] data = await _firehose.ReadSectorsAsync(partition.Lun, startSector, numSectors, ct, IsVipDevice, partitionName);
+            byte[] data = await _firehose.ReadSectorsAsync(partition.Lun, startSector, numSectors, ct, useVipMode, partitionName);
             if (data == null) return null;
 
             // 如果有偏移对齐问题，截取正确的数据
