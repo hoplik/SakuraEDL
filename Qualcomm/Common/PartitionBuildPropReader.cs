@@ -518,7 +518,7 @@ namespace LoveAlways.Qualcomm.Common
     public static class BuildPropExtractor
     {
         /// <summary>
-        /// 提取设备基本信息
+        /// 提取设备基本信息 (增强版 - 支持小米/OPLUS/联想等)
         /// </summary>
         public static DeviceBasicInfo ExtractBasicInfo(Dictionary<string, string> props)
         {
@@ -531,27 +531,40 @@ namespace LoveAlways.Qualcomm.Common
                 "ro.product.vendor.brand",
                 "ro.product.odm.brand",
                 "ro.product.brand",
+                "ro.product.brand_for_attestation",
                 "ro.product.manufacturer");
 
             // 型号
             info.Model = GetFirstValue(props,
                 "ro.product.vendor.model",
                 "ro.product.odm.model",
-                "ro.product.model");
+                "ro.product.model",
+                "ro.product.model_for_attestation",
+                "ro.product.odm.cert");
 
-            // 市场名称
+            // 市场名称 (小米优先使用 odm.marketname)
             info.MarketName = GetFirstValue(props,
-                "ro.vendor.oplus.market.name",
+                "ro.product.odm.marketname",      // 小米: "Xiaomi 17"
+                "ro.vendor.oplus.market.name",    // OPLUS
                 "ro.vendor.oplus.market.enname",
                 "ro.product.marketname",
                 "ro.product.vendor.marketname",
-                "ro.lenovo.series");
+                "ro.lenovo.series");              // 联想
 
             // 设备代号
             info.Device = GetFirstValue(props,
                 "ro.product.device",
                 "ro.product.vendor.device",
+                "ro.product.odm.device",
+                "ro.product.device_for_attestation",
                 "ro.build.product");
+
+            // Fingerprint (先获取，用于后续解析)
+            info.Fingerprint = GetFirstValue(props,
+                "ro.build.fingerprint",
+                "ro.vendor.build.fingerprint",
+                "ro.system.build.fingerprint",
+                "ro.odm.build.fingerprint");
 
             // Android 版本
             info.AndroidVersion = GetFirstValue(props,
@@ -559,10 +572,22 @@ namespace LoveAlways.Qualcomm.Common
                 "ro.vendor.build.version.release",
                 "ro.system.build.version.release");
 
+            // 从 Fingerprint 推断 Android 版本 (如果属性中没有)
+            if (string.IsNullOrEmpty(info.AndroidVersion) && !string.IsNullOrEmpty(info.Fingerprint))
+            {
+                info.AndroidVersion = ParseAndroidVersionFromFingerprint(info.Fingerprint);
+            }
+
             // 安全补丁
             info.SecurityPatch = GetFirstValue(props,
                 "ro.build.version.security_patch",
                 "ro.vendor.build.security_patch");
+
+            // 从 Fingerprint 推断安全补丁 (如果属性中没有)
+            if (string.IsNullOrEmpty(info.SecurityPatch) && !string.IsNullOrEmpty(info.Fingerprint))
+            {
+                info.SecurityPatch = ParseSecurityPatchFromFingerprint(info.Fingerprint);
+            }
 
             // OTA 版本
             info.OtaVersion = GetFirstValue(props,
@@ -581,11 +606,6 @@ namespace LoveAlways.Qualcomm.Common
             info.OplusNvId = GetFirstValue(props,
                 "ro.build.oplus_nv_id");
 
-            // Fingerprint
-            info.Fingerprint = GetFirstValue(props,
-                "ro.build.fingerprint",
-                "ro.vendor.build.fingerprint");
-
             // 编译日期
             info.BuildDate = GetFirstValue(props,
                 "ro.build.date",
@@ -600,28 +620,91 @@ namespace LoveAlways.Qualcomm.Common
             // SDK 版本
             info.SdkVersion = GetFirstValue(props,
                 "ro.build.version.sdk",
-                "ro.system.build.version.sdk");
+                "ro.system.build.version.sdk",
+                "ro.product.first_api_level");
 
             // 基带版本
             info.BasebandVersion = GetFirstValue(props,
                 "gsm.version.baseband",
                 "ro.build.expect.baseband");
 
-            // MIUI/HyperOS 版本
+            // ========== 小米/HyperOS 特有 ==========
             info.MiuiVersion = GetFirstValue(props,
-                "ro.miui.ui.version.name",
-                "ro.mi.os.version.name");
+                "ro.miui.ui.version.name",        // MIUI V14.x.x
+                "ro.mi.os.version.name");          // HyperOS OS1.0.x
 
             info.MiuiOtaVersion = GetFirstValue(props,
+                "ro.mi.os.version.incremental",   // HyperOS: OS3.0.36.0.WPCCNXM
                 "ro.build.version.incremental",
                 "ro.system.build.version.incremental");
 
-            // ColorOS/realmeUI 版本
+            info.MiuiRegion = GetFirstValue(props,
+                "ro.miui.region",
+                "ro.boot.hwc");
+
+            // ========== ColorOS/realmeUI 特有 ==========
             info.ColorOsVersion = GetFirstValue(props,
                 "ro.build.display.id",
                 "ro.oplus.version");
 
             return info;
+        }
+
+        /// <summary>
+        /// 从 Fingerprint 解析 Android 版本
+        /// 格式: Brand/Name/Device:AndroidVer/BuildId/Incremental:Type/Keys
+        /// 例如: Xiaomi/pudding_in/pudding:16/BQ2A.250705.001/OS3.0.36.0.WPCCNXM:user/release-keys
+        /// </summary>
+        private static string ParseAndroidVersionFromFingerprint(string fingerprint)
+        {
+            if (string.IsNullOrEmpty(fingerprint))
+                return "";
+
+            try
+            {
+                var parts = fingerprint.Split('/');
+                if (parts.Length >= 3)
+                {
+                    // parts[2] 格式: device:androidVer
+                    string deviceVer = parts[2];
+                    int colonIdx = deviceVer.IndexOf(':');
+                    if (colonIdx > 0 && colonIdx < deviceVer.Length - 1)
+                    {
+                        return deviceVer.Substring(colonIdx + 1);
+                    }
+                }
+            }
+            catch { }
+            return "";
+        }
+
+        /// <summary>
+        /// 从 Fingerprint 解析安全补丁日期
+        /// 格式中 Build ID 包含日期: BQ2A.250705.001 -> 2025-07-05
+        /// </summary>
+        private static string ParseSecurityPatchFromFingerprint(string fingerprint)
+        {
+            if (string.IsNullOrEmpty(fingerprint))
+                return "";
+
+            try
+            {
+                // 查找 YYMMDD.NNN 格式
+                var match = System.Text.RegularExpressions.Regex.Match(fingerprint, @"(\d{6})\.\d{3}");
+                if (match.Success)
+                {
+                    string dateStr = match.Groups[1].Value;
+                    if (dateStr.Length == 6)
+                    {
+                        string year = "20" + dateStr.Substring(0, 2);
+                        string month = dateStr.Substring(2, 2);
+                        string day = dateStr.Substring(4, 2);
+                        return string.Format("{0}-{1}-{2}", year, month, day);
+                    }
+                }
+            }
+            catch { }
+            return "";
         }
 
         /// <summary>
@@ -643,7 +726,7 @@ namespace LoveAlways.Qualcomm.Common
     }
 
     /// <summary>
-    /// 设备基本信息
+    /// 设备基本信息 (增强版)
     /// </summary>
     public class DeviceBasicInfo
     {
@@ -668,9 +751,10 @@ namespace LoveAlways.Qualcomm.Common
         public string OplusNvId { get; set; } = "";
         public string ColorOsVersion { get; set; } = "";
         
-        // 小米特有
+        // 小米/HyperOS 特有
         public string MiuiVersion { get; set; } = "";
         public string MiuiOtaVersion { get; set; } = "";
+        public string MiuiRegion { get; set; } = "";
 
         /// <summary>
         /// 显示名称
@@ -697,14 +781,47 @@ namespace LoveAlways.Qualcomm.Common
         {
             get
             {
-                // MIUI/HyperOS 优先
-                if (!string.IsNullOrEmpty(MiuiOtaVersion) && MiuiOtaVersion.Length > 10)
+                // MIUI/HyperOS 优先 (格式如 OS3.0.36.0.WPCCNXM)
+                if (!string.IsNullOrEmpty(MiuiOtaVersion) && 
+                    (MiuiOtaVersion.StartsWith("OS") || MiuiOtaVersion.StartsWith("V")))
                     return MiuiOtaVersion;
                 // ColorOS
                 if (!string.IsNullOrEmpty(ColorOsVersion) && ColorOsVersion.Length > 5)
                     return ColorOsVersion;
                 // 通用 OTA
                 return OtaVersion;
+            }
+        }
+
+        /// <summary>
+        /// 获取系统类型名称
+        /// </summary>
+        public string SystemTypeName
+        {
+            get
+            {
+                string brandLower = (Brand ?? "").ToLowerInvariant();
+                
+                // 小米系
+                if (brandLower.Contains("xiaomi") || brandLower.Contains("redmi") || brandLower.Contains("poco"))
+                {
+                    // 判断 HyperOS 还是 MIUI
+                    if (!string.IsNullOrEmpty(MiuiOtaVersion) && MiuiOtaVersion.StartsWith("OS"))
+                        return "HyperOS";
+                    if (!string.IsNullOrEmpty(MiuiVersion) && MiuiVersion.StartsWith("OS"))
+                        return "HyperOS";
+                    return "MIUI";
+                }
+                
+                // OPLUS 系
+                if (brandLower.Contains("oppo") || brandLower.Contains("oneplus") || brandLower.Contains("realme"))
+                    return "ColorOS";
+                
+                // 联想
+                if (brandLower.Contains("lenovo") || brandLower.Contains("motorola"))
+                    return "ZUI";
+                
+                return "Android";
             }
         }
 
@@ -727,14 +844,23 @@ namespace LoveAlways.Qualcomm.Common
             if (!string.IsNullOrEmpty(AndroidVersion)) sb.AppendLine("  Android  : " + AndroidVersion);
             if (!string.IsNullOrEmpty(SdkVersion)) sb.AppendLine("  SDK 版本 : " + SdkVersion);
             
-            // OTA 版本 (智能显示)
+            // 系统类型 + OTA 版本 (智能显示)
+            string sysType = SystemTypeName;
             string otaDisplay = FullOtaVersion;
-            if (!string.IsNullOrEmpty(otaDisplay)) sb.AppendLine("  OTA 版本 : " + otaDisplay);
+            if (!string.IsNullOrEmpty(otaDisplay))
+            {
+                sb.AppendLine(string.Format("  {0,-8} : {1}", sysType, otaDisplay));
+            }
             
-            // MIUI/HyperOS
-            if (!string.IsNullOrEmpty(MiuiVersion)) sb.AppendLine("  MIUI/HyOS: " + MiuiVersion);
+            // MIUI/HyperOS 版本名
+            if (!string.IsNullOrEmpty(MiuiVersion) && MiuiVersion != otaDisplay) 
+                sb.AppendLine("  版 本 名 : " + MiuiVersion);
             
-            // ColorOS
+            // 区域
+            if (!string.IsNullOrEmpty(MiuiRegion))
+                sb.AppendLine("  区    域 : " + MiuiRegion);
+            
+            // ColorOS (如果不同于 OTA)
             if (!string.IsNullOrEmpty(ColorOsVersion) && ColorOsVersion != otaDisplay) 
                 sb.AppendLine("  ColorOS  : " + ColorOsVersion);
             
