@@ -2000,8 +2000,11 @@ namespace LoveAlways.Qualcomm.UI
         }
         
         /// <summary>
-        /// 直接更新进度条 (支持 double 精度)
+        /// 直接更新进度条 (支持 double 精度，防闪烁优化)
         /// </summary>
+        private int _lastProgressValue = -1;
+        private int _lastSubProgressValue = -1;
+        
         private void UpdateProgressBarDirect(dynamic progressBar, double percent)
         {
             if (progressBar == null) return;
@@ -2010,19 +2013,28 @@ namespace LoveAlways.Qualcomm.UI
                 // 将 0-100 映射到 0-10000 以获得更高精度
                 int intValue = (int)Math.Max(0, Math.Min(10000, percent * 100));
                 
+                // 检查是哪个进度条，避免重复更新相同值
+                bool isMainProgress = (progressBar == _progressBar);
+                int lastValue = isMainProgress ? _lastProgressValue : _lastSubProgressValue;
+                
+                // 值未变化时跳过更新，防止闪烁
+                if (intValue == lastValue) return;
+                
+                // 更新缓存值
+                if (isMainProgress) _lastProgressValue = intValue;
+                else _lastSubProgressValue = intValue;
+                
                 if (progressBar.InvokeRequired)
                 {
                     progressBar.BeginInvoke(new Action(() => {
                         if (progressBar.Maximum != 10000) progressBar.Maximum = 10000;
-                        progressBar.Value = intValue;
-                        progressBar.Update();
+                        if (progressBar.Value != intValue) progressBar.Value = intValue;
                     }));
                 }
                 else
                 {
                     if (progressBar.Maximum != 10000) progressBar.Maximum = 10000;
-                    progressBar.Value = intValue;
-                    progressBar.Update();
+                    if (progressBar.Value != intValue) progressBar.Value = intValue;
                 }
             }
             catch { }
@@ -2161,6 +2173,10 @@ namespace LoveAlways.Qualcomm.UI
             _currentStepBytes = totalBytes; // 单文件操作时，当前步骤字节数 = 总字节数
             _currentOperationName = operationName;
             
+            // 重置进度条缓存 (防闪烁)
+            _lastProgressValue = -1;
+            _lastSubProgressValue = -1;
+            
             UpdateLabelSafe(_operationLabel, "当前操作：" + operationName);
             UpdateLabelSafe(_timeLabel, "时间：00:00");
             UpdateLabelSafe(_speedLabel, "速度：--");
@@ -2178,6 +2194,7 @@ namespace LoveAlways.Qualcomm.UI
             _lastBytes = 0;
             _lastSpeedUpdate = DateTime.Now;
             _currentSpeed = 0;
+            _lastSubProgressValue = -1; // 重置缓存，确保下次更新生效
             UpdateProgressBarDirect(_subProgressBar, 0);
         }
         
@@ -2208,6 +2225,8 @@ namespace LoveAlways.Qualcomm.UI
             _currentStep = 0;
             _lastBytes = 0;
             _currentSpeed = 0;
+            _lastProgressValue = -1;    // 重置缓存
+            _lastSubProgressValue = -1; // 重置缓存
             UpdateProgressBarDirect(_progressBar, 0);
             UpdateProgressBarDirect(_subProgressBar, 0);
             UpdateLabelSafe(_timeLabel, "时间：00:00");
