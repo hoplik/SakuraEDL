@@ -246,9 +246,12 @@ namespace LoveAlways.Qualcomm.Protocol
         }
 
         /// <summary>
-        /// 握手并上传 Loader
+        /// 握手并上传 Loader (失败时自动尝试重置)
         /// </summary>
-        public async Task<bool> HandshakeAndUploadAsync(string loaderPath, CancellationToken ct = default(CancellationToken))
+        /// <param name="loaderPath">引导文件路径</param>
+        /// <param name="ct">取消令牌</param>
+        /// <param name="maxRetries">最大重试次数 (默认2次，即最多尝试3次)</param>
+        public async Task<bool> HandshakeAndUploadAsync(string loaderPath, CancellationToken ct = default(CancellationToken), int maxRetries = 2)
         {
             if (!File.Exists(loaderPath))
                 throw new FileNotFoundException("引导 文件不存在", loaderPath);
@@ -256,7 +259,47 @@ namespace LoveAlways.Qualcomm.Protocol
             byte[] fileBytes = File.ReadAllBytes(loaderPath);
             _log(string.Format("[Sahara] 加载引导: {0} ({1} KB)", Path.GetFileName(loaderPath), fileBytes.Length / 1024));
 
-            return await HandshakeAndLoadInternalAsync(fileBytes, ct);
+            // 尝试握手，失败时自动重置并重试
+            for (int attempt = 0; attempt <= maxRetries; attempt++)
+            {
+                if (ct.IsCancellationRequested) return false;
+                
+                if (attempt > 0)
+                {
+                    _log(string.Format("[Sahara] 握手失败，尝试重置 Sahara 状态 (第 {0} 次重试)...", attempt));
+                    
+                    // 尝试重置 Sahara 状态机
+                    bool resetOk = await TryResetSaharaAsync(ct);
+                    if (resetOk)
+                    {
+                        _log("[Sahara] ✓ 状态机重置成功，重新开始握手...");
+                    }
+                    else
+                    {
+                        _log("[Sahara] 状态机重置未确认，继续尝试握手...");
+                    }
+                    
+                    // 重置内部状态
+                    _chipInfoRead = false;
+                    _pendingHelloData = null;
+                    _doneSent = false;
+                    _totalSent = 0;
+                    IsConnected = false;
+                    
+                    await Task.Delay(300, ct);
+                }
+                
+                bool success = await HandshakeAndLoadInternalAsync(fileBytes, ct);
+                if (success)
+                {
+                    if (attempt > 0)
+                        _log(string.Format("[Sahara] ✓ 重试成功 (第 {0} 次尝试)", attempt + 1));
+                    return true;
+                }
+            }
+            
+            _log("[Sahara] ❌ 多次握手均失败，可能需要断电重启设备");
+            return false;
         }
 
         /// <summary>
