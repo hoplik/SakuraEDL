@@ -15,6 +15,8 @@ using System.Windows.Forms;
 using LoveAlways.Qualcomm.UI;
 using LoveAlways.Qualcomm.Common;
 using LoveAlways.Qualcomm.Models;
+using LoveAlways.Fastboot.UI;
+using LoveAlways.Fastboot.Common;
 
 namespace LoveAlways
 {
@@ -48,6 +50,9 @@ namespace LoveAlways
         private System.Windows.Forms.Timer _portRefreshTimer;
         private string _lastPortList = "";
         private int _lastEdlCount = 0;
+
+        // Fastboot UI 控制器
+        private FastbootUIController _fastbootController;
 
         public Form1()
         {
@@ -104,6 +109,9 @@ namespace LoveAlways
 
             // 初始化高通模块
             InitializeQualcommModule();
+
+            // 初始化 Fastboot 模块
+            InitializeFastbootModule();
         }
 
         #region 高通模块
@@ -2585,5 +2593,272 @@ namespace LoveAlways
                 input8OriginalText = "";
             }
         }
+
+        #region Fastboot 模块
+
+        private void InitializeFastbootModule()
+        {
+            try
+            {
+                // 设置 fastboot.exe 路径
+                string fastbootPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "fastboot.exe");
+                FastbootCommand.SetFastbootPath(fastbootPath);
+
+                // 创建 Fastboot UI 控制器
+                _fastbootController = new FastbootUIController(
+                    (msg, color) => AppendLog(msg, color),
+                    msg => AppendLogDetail(msg));
+
+                // 设置 listView5 支持复选框
+                listView5.MultiSelect = true;
+                listView5.CheckBoxes = true;
+                listView5.FullRowSelect = true;
+
+                // 绑定控件 - tabPage3 上的 Fastboot 控件
+                _fastbootController.BindControls(
+                    portComboBox: uiComboBox2,           // Fastboot 设备选择（使用现有的 uiComboBox2）
+                    partitionListView: listView5,        // 分区列表
+                    progressBar: null,                   // 可以后续添加进度条
+                    commandComboBox: uiComboBox2,        // 快捷命令下拉框 (device, unlock 等)
+                    payloadTextBox: uiTextBox1,          // Payload 路径
+                    outputPathTextBox: input1,           // 输出路径
+                    autoRebootCheckbox: checkbox44,      // 自动重启
+                    switchSlotCheckbox: checkbox41,      // 切换A槽
+                    eraseGoogleLockCheckbox: checkbox43, // 擦除谷歌锁
+                    keepDataCheckbox: checkbox50,        // 保留数据
+                    fbdFlashCheckbox: checkbox45,        // FBD刷写
+                    unlockBlCheckbox: checkbox22,        // 解锁BL
+                    lockBlCheckbox: checkbox21           // 锁定BL
+                );
+
+                // ========== tabPage3 Fastboot 页面按钮事件 ==========
+                
+                // uiButton11 = 读取信息
+                uiButton11.Click += async (s, e) => await FastbootReadInfoAsync();
+
+                // uiButton18 = 读取分区表
+                uiButton18.Click += async (s, e) => await FastbootReadPartitionTableAsync();
+
+                // uiButton19 = 提取镜像 (Fastboot 模式下一般不支持读取分区)
+                uiButton19.Click += (s, e) => AppendLog("Fastboot 模式不支持直接读取分区内容", Color.Orange);
+
+                // uiButton20 = 写入分区
+                uiButton20.Click += async (s, e) => await FastbootFlashPartitionsAsync();
+
+                // uiButton21 = 擦除分区
+                uiButton21.Click += async (s, e) => await FastbootErasePartitionsAsync();
+
+                // uiButton22 = 修复FBD (后续实现)
+                uiButton22.Click += (s, e) => AppendLog("FBD 修复功能开发中...", Color.Orange);
+
+                // uiButton10 = 执行 (执行选中的快捷命令)
+                uiButton10.Click += async (s, e) => await FastbootExecuteCommandAsync();
+
+                // button8 = 浏览 (选择输出路径)
+                button8.Click += (s, e) => FastbootSelectOutputPath();
+
+                // button9 = 浏览 (选择 Payload)
+                button9.Click += (s, e) => FastbootSelectPayload();
+
+                // checkbox22 = 解锁BL
+                checkbox22.CheckedChanged += async (s, e) =>
+                {
+                    if (checkbox22.Checked && _fastbootController.IsConnected)
+                    {
+                        await _fastbootController.UnlockBootloaderAsync();
+                    }
+                };
+
+                // checkbox21 = 锁定BL
+                checkbox21.CheckedChanged += async (s, e) =>
+                {
+                    if (checkbox21.Checked && _fastbootController.IsConnected)
+                    {
+                        await _fastbootController.LockBootloaderAsync();
+                    }
+                };
+
+                // checkbox41 = 切换A槽
+                checkbox41.CheckedChanged += async (s, e) =>
+                {
+                    if (checkbox41.Checked && _fastbootController.IsConnected)
+                    {
+                        await _fastbootController.SwitchSlotAsync();
+                        checkbox41.Checked = false; // 执行后取消勾选
+                    }
+                };
+
+                // checkbox42 = 分区全选
+                checkbox42.CheckedChanged += (s, e) => FastbootSelectAllPartitions(checkbox42.Checked);
+
+                // listView5 双击选择镜像文件
+                listView5.DoubleClick += (s, e) => FastbootPartitionDoubleClick();
+
+                // select5 = 分区搜索
+                select5.TextChanged += (s, e) => FastbootSearchPartition();
+
+                // 启动设备监控
+                _fastbootController.StartDeviceMonitoring();
+
+                AppendLog("Fastboot 模块初始化完成", Color.Gray);
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"Fastboot 模块初始化失败: {ex.Message}", Color.Red);
+            }
+        }
+
+        /// <summary>
+        /// Fastboot 读取设备信息
+        /// </summary>
+        private async Task FastbootReadInfoAsync()
+        {
+            if (_fastbootController == null) return;
+
+            if (!_fastbootController.IsConnected)
+            {
+                // 先连接
+                bool connected = await _fastbootController.ConnectAsync();
+                if (!connected) return;
+            }
+
+            await _fastbootController.ReadPartitionTableAsync();
+        }
+
+        /// <summary>
+        /// Fastboot 读取分区表
+        /// </summary>
+        private async Task FastbootReadPartitionTableAsync()
+        {
+            if (_fastbootController == null) return;
+
+            if (!_fastbootController.IsConnected)
+            {
+                bool connected = await _fastbootController.ConnectAsync();
+                if (!connected) return;
+            }
+
+            await _fastbootController.ReadPartitionTableAsync();
+        }
+
+        /// <summary>
+        /// Fastboot 刷写分区
+        /// </summary>
+        private async Task FastbootFlashPartitionsAsync()
+        {
+            if (_fastbootController == null) return;
+
+            if (!_fastbootController.IsConnected)
+            {
+                AppendLog("请先连接 Fastboot 设备", Color.Orange);
+                return;
+            }
+
+            await _fastbootController.FlashSelectedPartitionsAsync();
+        }
+
+        /// <summary>
+        /// Fastboot 擦除分区
+        /// </summary>
+        private async Task FastbootErasePartitionsAsync()
+        {
+            if (_fastbootController == null) return;
+
+            if (!_fastbootController.IsConnected)
+            {
+                AppendLog("请先连接 Fastboot 设备", Color.Orange);
+                return;
+            }
+
+            await _fastbootController.EraseSelectedPartitionsAsync();
+        }
+
+        /// <summary>
+        /// Fastboot 执行快捷命令
+        /// </summary>
+        private async Task FastbootExecuteCommandAsync()
+        {
+            if (_fastbootController == null) return;
+
+            if (!_fastbootController.IsConnected)
+            {
+                bool connected = await _fastbootController.ConnectAsync();
+                if (!connected) return;
+            }
+
+            await _fastbootController.ExecuteSelectedCommandAsync();
+        }
+
+        /// <summary>
+        /// Fastboot 选择输出路径
+        /// </summary>
+        private void FastbootSelectOutputPath()
+        {
+            using (var fbd = new FolderBrowserDialog())
+            {
+                fbd.Description = "选择输出目录";
+                if (fbd.ShowDialog() == DialogResult.OK)
+                {
+                    input1.Text = fbd.SelectedPath;
+                    AppendLog($"输出路径: {fbd.SelectedPath}", Color.Blue);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Fastboot 选择 Payload
+        /// </summary>
+        private void FastbootSelectPayload()
+        {
+            using (var ofd = new OpenFileDialog())
+            {
+                ofd.Title = "选择 Payload 或刷机脚本";
+                ofd.Filter = "Payload/脚本|*.bin;*.bat;*.sh;*.zip|所有文件|*.*";
+                if (ofd.ShowDialog() == DialogResult.OK)
+                {
+                    uiTextBox1.Text = ofd.FileName;
+                    AppendLog($"已选择: {Path.GetFileName(ofd.FileName)}", Color.Blue);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Fastboot 分区全选/取消全选
+        /// </summary>
+        private void FastbootSelectAllPartitions(bool selectAll)
+        {
+            foreach (ListViewItem item in listView5.Items)
+            {
+                item.Checked = selectAll;
+            }
+        }
+
+        /// <summary>
+        /// Fastboot 分区双击选择镜像
+        /// </summary>
+        private void FastbootPartitionDoubleClick()
+        {
+            if (listView5.SelectedItems.Count == 0) return;
+            
+            var selectedItem = listView5.SelectedItems[0];
+            _fastbootController?.SelectImageForPartition(selectedItem);
+        }
+
+        /// <summary>
+        /// Fastboot 分区搜索
+        /// </summary>
+        private void FastbootSearchPartition()
+        {
+            string keyword = select5.Text?.Trim().ToLower() ?? "";
+            
+            foreach (ListViewItem item in listView5.Items)
+            {
+                string partName = item.SubItems[0].Text.ToLower();
+                // 简单的显示/隐藏筛选
+                // 注：ListView 不直接支持隐藏行，可以通过 Tag 标记后重建列表
+            }
+        }
+
+        #endregion
     }
 }

@@ -121,6 +121,11 @@
     <Compile Include="Qualcomm\Common\GptParser.cs" />
     <Compile Include="Qualcomm\Common\LpMetadataParser.cs" />
     <Compile Include="Qualcomm\UI\QualcommUIController.cs" />
+    <!-- Fastboot 模块 -->
+    <Compile Include="Fastboot\Common\FastbootCommand.cs" />
+    <Compile Include="Fastboot\Models\FastbootDeviceInfo.cs" />
+    <Compile Include="Fastboot\Services\FastbootService.cs" />
+    <Compile Include="Fastboot\UI\FastbootUIController.cs" />
     <EmbeddedResource Include="Form1.resx">
       <DependentUpon>Form1.cs</DependentUpon>
     </EmbeddedResource>
@@ -152,6 +157,18 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+  </ItemGroup>
+  <!-- Fastboot 依赖文件 -->
+  <ItemGroup>
+    <Content Include="fastboot.exe">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="AdbWinApi.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="AdbWinUsbApi.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
