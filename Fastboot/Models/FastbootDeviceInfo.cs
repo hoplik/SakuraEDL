@@ -95,6 +95,22 @@ namespace LoveAlways.Fastboot.Models
         public bool HasABPartition => !string.IsNullOrEmpty(CurrentSlot);
 
         /// <summary>
+        /// 获取指定变量的值
+        /// </summary>
+        /// <param name="key">变量名（不区分大小写）</param>
+        /// <returns>变量值，如果不存在返回 null</returns>
+        public string GetVariable(string key)
+        {
+            if (string.IsNullOrEmpty(key)) return null;
+            
+            string lowKey = key.ToLowerInvariant();
+            if (RawVariables.TryGetValue(lowKey, out string value))
+                return value;
+            
+            return null;
+        }
+
+        /// <summary>
         /// 从 getvar all 输出解析设备信息
         /// </summary>
         public static FastbootDeviceInfo ParseFromGetvarAll(string rawData)

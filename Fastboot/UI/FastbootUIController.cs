@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
@@ -8,6 +9,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using LoveAlways.Fastboot.Common;
 using LoveAlways.Fastboot.Models;
+using LoveAlways.Fastboot.Payload;
 using LoveAlways.Fastboot.Services;
 
 namespace LoveAlways.Fastboot.UI
@@ -27,12 +29,28 @@ namespace LoveAlways.Fastboot.UI
         private bool _disposed;
 
         // UI 控件绑定
-        private dynamic _portComboBox;        // 设备选择下拉框
+        private dynamic _deviceComboBox;      // 设备选择下拉框（独立）
         private dynamic _partitionListView;   // 分区列表
-        private dynamic _progressBar;         // 进度条
+        private dynamic _progressBar;         // 总进度条
+        private dynamic _subProgressBar;      // 子进度条
         private dynamic _commandComboBox;     // 快捷命令下拉框
         private dynamic _payloadTextBox;      // Payload 路径
         private dynamic _outputPathTextBox;   // 输出路径
+
+        // 设备信息标签 (右上角信息区域)
+        private dynamic _brandLabel;          // 品牌
+        private dynamic _chipLabel;           // 芯片/平台
+        private dynamic _modelLabel;          // 设备型号
+        private dynamic _serialLabel;         // 序列号
+        private dynamic _storageLabel;        // 存储类型
+        private dynamic _unlockLabel;         // 解锁状态
+        private dynamic _slotLabel;           // 当前槽位
+
+        // 时间/速度/操作状态标签
+        private dynamic _timeLabel;           // 时间标签
+        private dynamic _speedLabel;          // 速度标签
+        private dynamic _operationLabel;      // 当前操作标签
+        private dynamic _deviceCountLabel;    // 设备数量标签
 
         // Checkbox 控件
         private dynamic _autoRebootCheckbox;      // 自动重启
@@ -43,21 +61,54 @@ namespace LoveAlways.Fastboot.UI
         private dynamic _unlockBlCheckbox;        // 解锁BL
         private dynamic _lockBlCheckbox;          // 锁定BL
 
+        // 计时器和速度计算
+        private Stopwatch _operationStopwatch;
+        private long _lastBytes;
+        private DateTime _lastSpeedUpdate;
+        private double _currentSpeed; // 当前速度 (bytes/s)
+        private long _totalOperationBytes;
+        private long _completedBytes;
+        private string _currentOperationName;
+
+        // 设备列表缓存
+        private List<FastbootDeviceListItem> _cachedDevices = new List<FastbootDeviceListItem>();
+
+        // Payload 服务
+        private PayloadService _payloadService;
+        private RemotePayloadService _remotePayloadService;
+
         // 状态
         public bool IsBusy { get; private set; }
         public bool IsConnected => _service?.IsConnected ?? false;
         public FastbootDeviceInfo DeviceInfo => _service?.DeviceInfo;
         public List<FastbootPartitionInfo> Partitions => _service?.DeviceInfo?.GetPartitions();
+        public int DeviceCount => _cachedDevices?.Count ?? 0;
+        
+        // Payload 状态
+        public bool IsPayloadLoaded => (_payloadService?.IsLoaded ?? false) || (_remotePayloadService?.IsLoaded ?? false);
+        public IReadOnlyList<PayloadPartition> PayloadPartitions => _payloadService?.Partitions;
+        public PayloadSummary PayloadSummary => _payloadService?.GetSummary();
+        
+        // 远程 Payload 状态
+        public bool IsRemotePayloadLoaded => _remotePayloadService?.IsLoaded ?? false;
+        public IReadOnlyList<RemotePayloadPartition> RemotePayloadPartitions => _remotePayloadService?.Partitions;
+        public RemotePayloadSummary RemotePayloadSummary => _remotePayloadService?.GetSummary();
 
         // 事件
         public event EventHandler<bool> ConnectionStateChanged;
         public event EventHandler<List<FastbootPartitionInfo>> PartitionsLoaded;
         public event EventHandler<List<FastbootDeviceListItem>> DevicesRefreshed;
+        public event EventHandler<PayloadSummary> PayloadLoaded;
+        public event EventHandler<PayloadExtractProgress> PayloadExtractProgress;
 
         public FastbootUIController(Action<string, Color?> log, Action<string> logDetail = null)
         {
             _log = log ?? ((msg, color) => { });
             _logDetail = logDetail ?? (msg => { });
+
+            // 初始化计时器
+            _operationStopwatch = new Stopwatch();
+            _lastSpeedUpdate = DateTime.Now;
 
             // 初始化设备刷新定时器
             _deviceRefreshTimer = new System.Windows.Forms.Timer();
@@ -80,12 +131,27 @@ namespace LoveAlways.Fastboot.UI
         /// 绑定 UI 控件
         /// </summary>
         public void BindControls(
-            object portComboBox = null,
+            object deviceComboBox = null,
             object partitionListView = null,
             object progressBar = null,
+            object subProgressBar = null,
             object commandComboBox = null,
             object payloadTextBox = null,
             object outputPathTextBox = null,
+            // 设备信息标签
+            object brandLabel = null,
+            object chipLabel = null,
+            object modelLabel = null,
+            object serialLabel = null,
+            object storageLabel = null,
+            object unlockLabel = null,
+            object slotLabel = null,
+            // 时间/速度/操作标签
+            object timeLabel = null,
+            object speedLabel = null,
+            object operationLabel = null,
+            object deviceCountLabel = null,
+            // Checkbox 控件
             object autoRebootCheckbox = null,
             object switchSlotCheckbox = null,
             object eraseGoogleLockCheckbox = null,
@@ -94,12 +160,30 @@ namespace LoveAlways.Fastboot.UI
             object unlockBlCheckbox = null,
             object lockBlCheckbox = null)
         {
-            _portComboBox = portComboBox;
+            _deviceComboBox = deviceComboBox;
             _partitionListView = partitionListView;
             _progressBar = progressBar;
+            _subProgressBar = subProgressBar;
             _commandComboBox = commandComboBox;
             _payloadTextBox = payloadTextBox;
             _outputPathTextBox = outputPathTextBox;
+
+            // 设备信息标签
+            _brandLabel = brandLabel;
+            _chipLabel = chipLabel;
+            _modelLabel = modelLabel;
+            _serialLabel = serialLabel;
+            _storageLabel = storageLabel;
+            _unlockLabel = unlockLabel;
+            _slotLabel = slotLabel;
+
+            // 时间/速度/操作标签
+            _timeLabel = timeLabel;
+            _speedLabel = speedLabel;
+            _operationLabel = operationLabel;
+            _deviceCountLabel = deviceCountLabel;
+
+            // Checkbox
             _autoRebootCheckbox = autoRebootCheckbox;
             _switchSlotCheckbox = switchSlotCheckbox;
             _eraseGoogleLockCheckbox = eraseGoogleLockCheckbox;
@@ -119,6 +203,112 @@ namespace LoveAlways.Fastboot.UI
                 }
                 catch { }
             }
+
+            // 初始化设备信息显示
+            ResetDeviceInfoLabels();
+        }
+
+        /// <summary>
+        /// 重置设备信息标签为默认值
+        /// </summary>
+        public void ResetDeviceInfoLabels()
+        {
+            UpdateLabelSafe(_brandLabel, "品牌：等待连接");
+            UpdateLabelSafe(_chipLabel, "芯片：等待连接");
+            UpdateLabelSafe(_modelLabel, "型号：等待连接");
+            UpdateLabelSafe(_serialLabel, "序列号：等待连接");
+            UpdateLabelSafe(_storageLabel, "存储：等待连接");
+            UpdateLabelSafe(_unlockLabel, "解锁：等待连接");
+            UpdateLabelSafe(_slotLabel, "槽位：等待连接");
+            UpdateLabelSafe(_timeLabel, "时间：00:00");
+            UpdateLabelSafe(_speedLabel, "速度：0 KB/s");
+            UpdateLabelSafe(_operationLabel, "当前操作：空闲");
+            UpdateLabelSafe(_deviceCountLabel, "FB设备：0");
+        }
+
+        /// <summary>
+        /// 更新设备信息标签
+        /// </summary>
+        public void UpdateDeviceInfoLabels()
+        {
+            if (DeviceInfo == null)
+            {
+                ResetDeviceInfoLabels();
+                return;
+            }
+
+            // 品牌/厂商
+            string brand = DeviceInfo.GetVariable("ro.product.brand") 
+                ?? DeviceInfo.GetVariable("manufacturer") 
+                ?? "未知";
+            UpdateLabelSafe(_brandLabel, $"品牌：{brand}");
+
+            // 芯片/平台
+            string chip = DeviceInfo.GetVariable("ro.boot.hardware") 
+                ?? DeviceInfo.GetVariable("hw-revision") 
+                ?? DeviceInfo.GetVariable("variant") 
+                ?? "未知";
+            UpdateLabelSafe(_chipLabel, $"芯片：{chip}");
+
+            // 型号
+            string model = DeviceInfo.GetVariable("product") 
+                ?? DeviceInfo.GetVariable("ro.product.model") 
+                ?? "未知";
+            UpdateLabelSafe(_modelLabel, $"型号：{model}");
+
+            // 序列号
+            string serial = DeviceInfo.Serial ?? "未知";
+            UpdateLabelSafe(_serialLabel, $"序列号：{serial}");
+
+            // 存储类型
+            string storage = DeviceInfo.GetVariable("partition-type:userdata") ?? "未知";
+            if (storage.Contains("ext4") || storage.Contains("f2fs"))
+                storage = "eMMC/UFS";
+            UpdateLabelSafe(_storageLabel, $"存储：{storage}");
+
+            // 解锁状态
+            string unlocked = DeviceInfo.GetVariable("unlocked");
+            string secureState = DeviceInfo.GetVariable("secure");
+            string unlockStatus = "未知";
+            if (!string.IsNullOrEmpty(unlocked))
+            {
+                unlockStatus = unlocked.ToLower() == "yes" || unlocked == "1" ? "已解锁" : "已锁定";
+            }
+            else if (!string.IsNullOrEmpty(secureState))
+            {
+                unlockStatus = secureState.ToLower() == "no" || secureState == "0" ? "已解锁" : "已锁定";
+            }
+            UpdateLabelSafe(_unlockLabel, $"解锁：{unlockStatus}");
+
+            // 当前槽位
+            string slot = DeviceInfo.GetVariable("current-slot") ?? "N/A";
+            if (slot != "N/A" && !slot.StartsWith("_"))
+                slot = "_" + slot;
+            UpdateLabelSafe(_slotLabel, $"槽位：{slot}");
+        }
+
+        /// <summary>
+        /// 安全更新 Label 文本
+        /// </summary>
+        private void UpdateLabelSafe(dynamic label, string text)
+        {
+            if (label == null) return;
+
+            try
+            {
+                if (label.InvokeRequired)
+                {
+                    label.BeginInvoke(new Action(() =>
+                    {
+                        try { label.Text = text; } catch { }
+                    }));
+                }
+                else
+                {
+                    label.Text = text;
+                }
+            }
+            catch { }
         }
 
         /// <summary>
@@ -152,15 +342,16 @@ namespace LoveAlways.Fastboot.UI
                 using (var tempService = new FastbootService(msg => { }))
                 {
                     var devices = await tempService.GetDevicesAsync();
+                    _cachedDevices = devices ?? new List<FastbootDeviceListItem>();
                     
                     // 在 UI 线程更新
-                    if (_portComboBox != null)
+                    if (_deviceComboBox != null)
                     {
                         try
                         {
-                            if (_portComboBox.InvokeRequired)
+                            if (_deviceComboBox.InvokeRequired)
                             {
-                                _portComboBox.BeginInvoke(new Action(() => UpdateDeviceComboBox(devices)));
+                                _deviceComboBox.BeginInvoke(new Action(() => UpdateDeviceComboBox(devices)));
                             }
                             else
                             {
@@ -169,6 +360,9 @@ namespace LoveAlways.Fastboot.UI
                         }
                         catch { }
                     }
+
+                    // 更新设备数量显示
+                    UpdateDeviceCountLabel();
 
                     DevicesRefreshed?.Invoke(this, devices);
                 }
@@ -181,30 +375,43 @@ namespace LoveAlways.Fastboot.UI
 
         private void UpdateDeviceComboBox(List<FastbootDeviceListItem> devices)
         {
-            if (_portComboBox == null) return;
+            if (_deviceComboBox == null) return;
 
             try
             {
                 string currentSelection = null;
-                try { currentSelection = _portComboBox.SelectedItem?.ToString(); } catch { }
+                try { currentSelection = _deviceComboBox.SelectedItem?.ToString(); } catch { }
 
-                _portComboBox.Items.Clear();
+                _deviceComboBox.Items.Clear();
                 foreach (var device in devices)
                 {
-                    _portComboBox.Items.Add(device.ToString());
+                    _deviceComboBox.Items.Add(device.ToString());
                 }
 
                 // 尝试恢复之前的选择
-                if (!string.IsNullOrEmpty(currentSelection) && _portComboBox.Items.Contains(currentSelection))
+                if (!string.IsNullOrEmpty(currentSelection) && _deviceComboBox.Items.Contains(currentSelection))
                 {
-                    _portComboBox.SelectedItem = currentSelection;
+                    _deviceComboBox.SelectedItem = currentSelection;
                 }
-                else if (_portComboBox.Items.Count > 0)
+                else if (_deviceComboBox.Items.Count > 0)
                 {
-                    _portComboBox.SelectedIndex = 0;
+                    _deviceComboBox.SelectedIndex = 0;
                 }
             }
             catch { }
+        }
+
+        /// <summary>
+        /// 更新设备数量显示标签
+        /// </summary>
+        private void UpdateDeviceCountLabel()
+        {
+            int count = _cachedDevices?.Count ?? 0;
+            string text = count == 0 ? "FB设备：0" 
+                : count == 1 ? $"FB设备：{_cachedDevices[0].Serial}" 
+                : $"FB设备：{count}个";
+            
+            UpdateLabelSafe(_deviceCountLabel, text);
         }
 
         /// <summary>
@@ -233,39 +440,56 @@ namespace LoveAlways.Fastboot.UI
                 IsBusy = true;
                 _cts = new CancellationTokenSource();
 
+                StartOperationTimer("连接设备");
+                UpdateProgressBar(0);
+                UpdateLabelSafe(_operationLabel, "当前操作：连接设备");
+
                 _service = new FastbootService(
                     msg => Log(msg, null),
-                    (current, total) => UpdateProgress(current, total),
+                    (current, total) => UpdateProgressWithSpeed(current, total),
                     _logDetail
                 );
 
+                UpdateProgressBar(30);
                 bool success = await _service.SelectDeviceAsync(serial, _cts.Token);
 
                 if (success)
                 {
+                    UpdateProgressBar(70);
                     Log("Fastboot 设备连接成功", Color.Green);
+                    
+                    // 更新设备信息标签
+                    UpdateDeviceInfoLabels();
                     
                     // 更新分区列表
                     UpdatePartitionListView();
                     
+                    UpdateProgressBar(100);
                     ConnectionStateChanged?.Invoke(this, true);
                     PartitionsLoaded?.Invoke(this, Partitions);
                 }
                 else
                 {
                     Log("Fastboot 设备连接失败", Color.Red);
+                    ResetDeviceInfoLabels();
+                    UpdateProgressBar(0);
                 }
 
+                StopOperationTimer();
                 return success;
             }
             catch (Exception ex)
             {
                 Log($"连接异常: {ex.Message}", Color.Red);
+                ResetDeviceInfoLabels();
+                UpdateProgressBar(0);
+                StopOperationTimer();
                 return false;
             }
             finally
             {
                 IsBusy = false;
+                UpdateLabelSafe(_operationLabel, "当前操作：空闲");
             }
         }
 
@@ -275,6 +499,7 @@ namespace LoveAlways.Fastboot.UI
         public void Disconnect()
         {
             _service?.Disconnect();
+            ResetDeviceInfoLabels();
             ConnectionStateChanged?.Invoke(this, false);
         }
 
@@ -282,8 +507,8 @@ namespace LoveAlways.Fastboot.UI
         {
             try
             {
-                if (_portComboBox == null) return null;
-                return _portComboBox.SelectedItem?.ToString();
+                if (_deviceComboBox == null) return null;
+                return _deviceComboBox.SelectedItem?.ToString();
             }
             catch
             {
@@ -308,27 +533,48 @@ namespace LoveAlways.Fastboot.UI
                 IsBusy = true;
                 _cts = new CancellationTokenSource();
 
+                StartOperationTimer("读取分区表");
+                UpdateProgressBar(0);
+                UpdateLabelSafe(_operationLabel, "当前操作：读取分区表");
+                UpdateLabelSafe(_speedLabel, "速度：读取中...");
+
                 Log("正在读取 Fastboot 分区表...", Color.Blue);
 
+                UpdateProgressBar(30);
                 bool success = await _service.RefreshDeviceInfoAsync(_cts.Token);
 
                 if (success)
                 {
+                    UpdateProgressBar(70);
+                    
+                    // 更新设备信息标签
+                    UpdateDeviceInfoLabels();
+                    
                     UpdatePartitionListView();
+                    UpdateProgressBar(100);
+                    
                     Log($"成功读取 {Partitions?.Count ?? 0} 个分区", Color.Green);
                     PartitionsLoaded?.Invoke(this, Partitions);
                 }
+                else
+                {
+                    UpdateProgressBar(0);
+                }
 
+                StopOperationTimer();
                 return success;
             }
             catch (Exception ex)
             {
                 Log($"读取分区表失败: {ex.Message}", Color.Red);
+                UpdateProgressBar(0);
+                StopOperationTimer();
                 return false;
             }
             finally
             {
                 IsBusy = false;
+                UpdateLabelSafe(_operationLabel, "当前操作：空闲");
             }
         }
 
@@ -417,29 +663,52 @@ namespace LoveAlways.Fastboot.UI
                 IsBusy = true;
                 _cts = new CancellationTokenSource();
 
+                StartOperationTimer("刷写分区");
+                UpdateProgressBar(0);
+                UpdateLabelSafe(_operationLabel, $"当前操作：刷写 {partitionsWithFiles.Count} 个分区");
+                UpdateLabelSafe(_speedLabel, "速度：计算中...");
+
                 Log($"开始刷写 {partitionsWithFiles.Count} 个分区...", Color.Blue);
 
-                int success = await _service.FlashPartitionsBatchAsync(partitionsWithFiles, _cts.Token);
+                int successCount = 0;
+                int total = partitionsWithFiles.Count;
 
-                Log($"刷写完成: {success}/{partitionsWithFiles.Count} 成功", 
-                    success == partitionsWithFiles.Count ? Color.Green : Color.Orange);
+                for (int i = 0; i < total; i++)
+                {
+                    var part = partitionsWithFiles[i];
+                    UpdateLabelSafe(_operationLabel, $"当前操作：刷写 {part.Item1} ({i + 1}/{total})");
+                    UpdateProgressBar((i * 100.0) / total);
+
+                    bool result = await _service.FlashPartitionAsync(part.Item1, part.Item2, false, _cts.Token);
+                    if (result)
+                        successCount++;
+                }
+
+                UpdateProgressBar(100);
+                StopOperationTimer();
+
+                Log($"刷写完成: {successCount}/{total} 成功", 
+                    successCount == total ? Color.Green : Color.Orange);
 
                 // 自动重启
-                if (IsAutoRebootEnabled() && success > 0)
+                if (IsAutoRebootEnabled() && successCount > 0)
                 {
                     await _service.RebootAsync(_cts.Token);
                 }
 
-                return success == partitionsWithFiles.Count;
+                return successCount == total;
             }
             catch (Exception ex)
             {
                 Log($"刷写失败: {ex.Message}", Color.Red);
+                UpdateProgressBar(0);
+                StopOperationTimer();
                 return false;
             }
             finally
             {
                 IsBusy = false;
+                UpdateLabelSafe(_operationLabel, "当前操作：空闲");
             }
         }
 
@@ -463,6 +732,10 @@ namespace LoveAlways.Fastboot.UI
                 IsBusy = true;
                 _cts = new CancellationTokenSource();
 
+                StartOperationTimer("擦除分区");
+                UpdateProgressBar(0);
+                UpdateLabelSafe(_speedLabel, "速度：擦除中...");
+
                 int success = 0;
                 int total = selectedItems.Count;
 
@@ -471,8 +744,8 @@ namespace LoveAlways.Fastboot.UI
                 foreach (ListViewItem item in selectedItems)
                 {
                     string partName = item.SubItems[0].Text;
-                    
-                    UpdateProgress(success, total);
+                    UpdateLabelSafe(_operationLabel, $"当前操作：擦除 {partName} ({success + 1}/{total})");
+                    UpdateProgressBar((success * 100.0) / total);
                     
                     if (await _service.ErasePartitionAsync(partName, _cts.Token))
                     {
@@ -480,7 +753,9 @@ namespace LoveAlways.Fastboot.UI
                     }
                 }
 
-                UpdateProgress(total, total);
+                UpdateProgressBar(100);
+                StopOperationTimer();
+
                 Log($"擦除完成: {success}/{total} 成功", 
                     success == total ? Color.Green : Color.Orange);
 
@@ -489,11 +764,14 @@ namespace LoveAlways.Fastboot.UI
             catch (Exception ex)
             {
                 Log($"擦除失败: {ex.Message}", Color.Red);
+                UpdateProgressBar(0);
+                StopOperationTimer();
                 return false;
             }
             finally
             {
                 IsBusy = false;
+                UpdateLabelSafe(_operationLabel, "当前操作：空闲");
             }
         }
 
@@ -714,6 +992,153 @@ namespace LoveAlways.Fastboot.UI
             return true;
         }
 
+        /// <summary>
+        /// 启动操作计时器
+        /// </summary>
+        private void StartOperationTimer(string operationName)
+        {
+            _currentOperationName = operationName;
+            _operationStopwatch.Restart();
+            _lastBytes = 0;
+            _lastSpeedUpdate = DateTime.Now;
+            _currentSpeed = 0;
+            _completedBytes = 0;
+            _totalOperationBytes = 0;
+        }
+
+        /// <summary>
+        /// 停止操作计时器
+        /// </summary>
+        private void StopOperationTimer()
+        {
+            _operationStopwatch.Stop();
+            UpdateTimeLabel();
+        }
+
+        /// <summary>
+        /// 更新时间标签
+        /// </summary>
+        private void UpdateTimeLabel()
+        {
+            if (_timeLabel == null) return;
+
+            var elapsed = _operationStopwatch.Elapsed;
+            string timeText = elapsed.Hours > 0
+                ? $"时间：{elapsed:hh\\:mm\\:ss}"
+                : $"时间：{elapsed:mm\\:ss}";
+            
+            UpdateLabelSafe(_timeLabel, timeText);
+        }
+
+        /// <summary>
+        /// 更新速度标签
+        /// </summary>
+        private void UpdateSpeedLabel()
+        {
+            if (_speedLabel == null) return;
+
+            string speedText;
+            if (_currentSpeed >= 1024 * 1024)
+                speedText = $"速度：{_currentSpeed / (1024 * 1024):F1} MB/s";
+            else if (_currentSpeed >= 1024)
+                speedText = $"速度：{_currentSpeed / 1024:F1} KB/s";
+            else
+                speedText = $"速度：{_currentSpeed:F0} B/s";
+            
+            UpdateLabelSafe(_speedLabel, speedText);
+        }
+        
+        /// <summary>
+        /// 更新速度标签 (使用格式化的速度字符串)
+        /// </summary>
+        private void UpdateSpeedLabel(string formattedSpeed)
+        {
+            if (_speedLabel == null) return;
+            UpdateLabelSafe(_speedLabel, $"速度：{formattedSpeed}");
+        }
+
+        /// <summary>
+        /// 更新进度条 (百分比)
+        /// </summary>
+        private void UpdateProgressBar(double percent)
+        {
+            if (_progressBar == null) return;
+
+            try
+            {
+                int value = Math.Min(100, Math.Max(0, (int)percent));
+                
+                if (_progressBar.InvokeRequired)
+                {
+                    _progressBar.BeginInvoke(new Action(() =>
+                    {
+                        try { _progressBar.Value = value; } catch { }
+                    }));
+                }
+                else
+                {
+                    _progressBar.Value = value;
+                }
+            }
+            catch { }
+        }
+
+        /// <summary>
+        /// 更新子进度条
+        /// </summary>
+        private void UpdateSubProgressBar(double percent)
+        {
+            if (_subProgressBar == null) return;
+
+            try
+            {
+                int value = Math.Min(100, Math.Max(0, (int)percent));
+                
+                if (_subProgressBar.InvokeRequired)
+                {
+                    _subProgressBar.BeginInvoke(new Action(() =>
+                    {
+                        try { _subProgressBar.Value = value; } catch { }
+                    }));
+                }
+                else
+                {
+                    _subProgressBar.Value = value;
+                }
+            }
+            catch { }
+        }
+
+        /// <summary>
+        /// 带速度计算的进度更新 (用于文件传输)
+        /// </summary>
+        private void UpdateProgressWithSpeed(long current, long total)
+        {
+            // 计算进度
+            if (total > 0)
+            {
+                double percent = 100.0 * current / total;
+                UpdateSubProgressBar(percent);
+            }
+
+            // 计算速度
+            long bytesDelta = current - _lastBytes;
+            double timeDelta = (DateTime.Now - _lastSpeedUpdate).TotalSeconds;
+            
+            if (timeDelta >= 0.2 && bytesDelta > 0) // 每200ms更新一次
+            {
+                double instantSpeed = bytesDelta / timeDelta;
+                // 指数移动平均平滑速度
+                _currentSpeed = (_currentSpeed > 0) ? (_currentSpeed * 0.6 + instantSpeed * 0.4) : instantSpeed;
+                _lastBytes = current;
+                _lastSpeedUpdate = DateTime.Now;
+                
+                // 更新速度和时间显示
+                UpdateSpeedLabel();
+                UpdateTimeLabel();
+            }
+        }
+
         private void UpdateProgress(int current, int total)
         {
             if (_progressBar == null) return;
@@ -721,18 +1146,7 @@ namespace LoveAlways.Fastboot.UI
             try
             {
                 int percent = total > 0 ? (current * 100 / total) : 0;
-                
-                if (_progressBar.InvokeRequired)
-                {
-                    _progressBar.BeginInvoke(new Action(() =>
-                    {
-                        _progressBar.Value = percent;
-                    }));
-                }
-                else
-                {
-                    _progressBar.Value = percent;
-                }
+                UpdateProgressBar(percent);
             }
             catch { }
         }
@@ -755,6 +1169,8 @@ namespace LoveAlways.Fastboot.UI
         public void CancelOperation()
         {
             _cts?.Cancel();
+            StopOperationTimer();
+            UpdateLabelSafe(_operationLabel, "当前操作：已取消");
         }
 
         #endregion
@@ -964,6 +1380,10 @@ namespace LoveAlways.Fastboot.UI
                 IsBusy = true;
                 _cts = new CancellationTokenSource();
 
+                StartOperationTimer("执行刷机脚本");
+                UpdateProgressBar(0);
+                UpdateLabelSafe(_speedLabel, "速度：准备中...");
+
                 int total = selectedTasks.Count;
                 int success = 0;
                 int failed = 0;
@@ -977,7 +1397,8 @@ namespace LoveAlways.Fastboot.UI
                     _cts.Token.ThrowIfCancellationRequested();
 
                     var task = selectedTasks[i];
-                    UpdateProgress(i, total);
+                    UpdateProgressBar((i * 100.0) / total);
+                    UpdateLabelSafe(_operationLabel, $"当前操作：{task.Operation} {task.PartitionName} ({i + 1}/{total})");
 
                     bool taskSuccess = false;
 
@@ -1053,7 +1474,8 @@ namespace LoveAlways.Fastboot.UI
                         failed++;
                 }
 
-                UpdateProgress(total, total);
+                UpdateProgressBar(100);
+                StopOperationTimer();
 
                 // 如果没有重启命令但需要锁定BL，在这里执行
                 bool hasReboot = selectedTasks.Any(t => t.Operation == "reboot");
@@ -1071,16 +1493,21 @@ namespace LoveAlways.Fastboot.UI
             catch (OperationCanceledException)
             {
                 Log("刷机操作已取消", Color.Orange);
+                UpdateProgressBar(0);
+                StopOperationTimer();
                 return false;
             }
             catch (Exception ex)
             {
                 Log($"刷机失败: {ex.Message}", Color.Red);
+                UpdateProgressBar(0);
+                StopOperationTimer();
                 return false;
             }
             finally
             {
                 IsBusy = false;
+                UpdateLabelSafe(_operationLabel, "当前操作：空闲");
             }
         }
 
@@ -1108,6 +1535,828 @@ namespace LoveAlways.Fastboot.UI
 
         #endregion
 
+        #region Payload 解析
+
+        /// <summary>
+        /// 从 URL 加载远程 Payload (云端解析)
+        /// </summary>
+        public async Task<bool> LoadPayloadFromUrlAsync(string url)
+        {
+            if (string.IsNullOrEmpty(url))
+            {
+                Log("请输入 URL", Color.Orange);
+                return false;
+            }
+
+            if (IsBusy)
+            {
+                Log("操作进行中", Color.Orange);
+                return false;
+            }
+
+            try
+            {
+                IsBusy = true;
+                _cts = new CancellationTokenSource();
+
+                StartOperationTimer("解析云端 Payload");
+                UpdateProgressBar(0);
+                UpdateLabelSafe(_operationLabel, "当前操作：解析云端 Payload");
+                UpdateLabelSafe(_speedLabel, "速度：连接中...");
+
+                Log($"正在解析云端 Payload...", Color.Blue);
+
+                // 创建或重用 RemotePayloadService
+                if (_remotePayloadService == null)
+                {
+                    _remotePayloadService = new RemotePayloadService(
+                        msg => Log(msg, null),
+                        (current, total) => UpdateProgressWithSpeed(current, total),
+                        _logDetail
+                    );
+
+                    _remotePayloadService.ExtractProgressChanged += (s, e) =>
+                    {
+                        UpdateSubProgressBar(e.Percent);
+                        // 更新速度显示
+                        if (e.SpeedBytesPerSecond > 0)
+                        {
+                            UpdateSpeedLabel(e.SpeedFormatted);
+                        }
+                    };
+                }
+
+                // 先获取真实 URL (处理重定向)
+                UpdateProgressBar(10);
+                var (realUrl, expiresTime) = await _remotePayloadService.GetRedirectUrlAsync(url, _cts.Token);
+                
+                if (string.IsNullOrEmpty(realUrl))
+                {
+                    Log("无法获取下载链接", Color.Red);
+                    UpdateProgressBar(0);
+                    return false;
+                }
+
+                if (realUrl != url)
+                {
+                    Log("已获取真实下载链接", Color.Green);
+                    if (expiresTime.HasValue)
+                    {
+                        Log($"链接过期时间: {expiresTime.Value:yyyy-MM-dd HH:mm:ss}", Color.Blue);
+                    }
+                }
+
+                UpdateProgressBar(30);
+                bool success = await _remotePayloadService.LoadFromUrlAsync(realUrl, _cts.Token);
+
+                if (success)
+                {
+                    UpdateProgressBar(70);
+
+                    var summary = _remotePayloadService.GetSummary();
+                    Log($"云端 Payload 解析成功: {summary.PartitionCount} 个分区", Color.Green);
+                    Log($"文件大小: {summary.TotalSizeFormatted}", Color.Blue);
+
+                    // 更新分区列表显示
+                    UpdatePartitionListFromRemotePayload();
+
+                    UpdateProgressBar(100);
+                }
+                else
+                {
+                    Log("云端 Payload 解析失败", Color.Red);
+                    UpdateProgressBar(0);
+                }
+
+                StopOperationTimer();
+                return success;
+            }
+            catch (Exception ex)
+            {
+                Log($"云端 Payload 加载失败: {ex.Message}", Color.Red);
+                _logDetail($"云端 Payload 加载错误: {ex}");
+                UpdateProgressBar(0);
+                StopOperationTimer();
+                return false;
+            }
+            finally
+            {
+                IsBusy = false;
+                UpdateLabelSafe(_operationLabel, "当前操作：空闲");
+            }
+        }
+
+        /// <summary>
+        /// 从远程 Payload 更新分区列表
+        /// </summary>
+        private void UpdatePartitionListFromRemotePayload()
+        {
+            if (_partitionListView == null || _remotePayloadService == null || !_remotePayloadService.IsLoaded) return;
+
+            try
+            {
+                if (_partitionListView.InvokeRequired)
+                {
+                    _partitionListView.BeginInvoke(new Action(UpdatePartitionListFromRemotePayloadInternal));
+                }
+                else
+                {
+                    UpdatePartitionListFromRemotePayloadInternal();
+                }
+            }
+            catch { }
+        }
+
+        private void UpdatePartitionListFromRemotePayloadInternal()
+        {
+            try
+            {
+                _partitionListView.Items.Clear();
+
+                foreach (var partition in _remotePayloadService.Partitions)
+                {
+                    var item = new ListViewItem(new string[]
+                    {
+                        partition.Name,
+                        "云端提取",  // 操作列
+                        partition.SizeFormatted,
+                        $"{partition.Operations.Count} ops"  // 操作数
+                    });
+
+                    item.Tag = partition;
+                    item.Checked = true;  // 默认勾选
+
+                    // 标记常用分区
+                    string name = partition.Name.ToLowerInvariant();
+                    if (name.Contains("system") || name.Contains("vendor") || name.Contains("product"))
+                    {
+                        item.ForeColor = Color.Blue;
+                    }
+                    else if (name.Contains("boot") || name.Contains("dtbo") || name.Contains("vbmeta"))
+                    {
+                        item.ForeColor = Color.DarkGreen;
+                    }
+
+                    _partitionListView.Items.Add(item);
+                }
+            }
+            catch { }
+        }
+
+        /// <summary>
+        /// 从云端提取选中的分区
+        /// </summary>
+        public async Task<bool> ExtractSelectedRemotePartitionsAsync(string outputDir)
+        {
+            if (_remotePayloadService == null || !_remotePayloadService.IsLoaded)
+            {
+                Log("请先加载云端 Payload", Color.Orange);
+                return false;
+            }
+
+            if (string.IsNullOrEmpty(outputDir))
+            {
+                Log("请指定输出目录", Color.Orange);
+                return false;
+            }
+
+            if (IsBusy)
+            {
+                Log("操作进行中", Color.Orange);
+                return false;
+            }
+
+            // 获取选中的分区名称
+            var selectedNames = new List<string>();
+            try
+            {
+                foreach (ListViewItem item in _partitionListView.CheckedItems)
+                {
+                    if (item.Tag is RemotePayloadPartition partition)
+                    {
+                        selectedNames.Add(partition.Name);
+                    }
+                }
+            }
+            catch { }
+
+            if (selectedNames.Count == 0)
+            {
+                Log("请选择要提取的分区", Color.Orange);
+                return false;
+            }
+
+            try
+            {
+                IsBusy = true;
+                _cts = new CancellationTokenSource();
+
+                StartOperationTimer("云端提取分区");
+                UpdateProgressBar(0);
+                UpdateLabelSafe(_speedLabel, "速度：准备中...");
+
+                if (!Directory.Exists(outputDir))
+                    Directory.CreateDirectory(outputDir);
+
+                Log($"开始从云端提取 {selectedNames.Count} 个分区到: {outputDir}", Color.Blue);
+
+                int success = 0;
+                int total = selectedNames.Count;
+
+                for (int i = 0; i < total; i++)
+                {
+                    _cts.Token.ThrowIfCancellationRequested();
+
+                    string name = selectedNames[i];
+                    string outputPath = Path.Combine(outputDir, $"{name}.img");
+
+                    UpdateLabelSafe(_operationLabel, $"当前操作：云端提取 {name} ({i + 1}/{total})");
+                    UpdateProgressBar((i * 100.0) / total);
+
+                    if (await _remotePayloadService.ExtractPartitionAsync(name, outputPath, _cts.Token))
+                    {
+                        success++;
+                        Log($"提取成功: {name}.img", Color.Green);
+                    }
+                    else
+                    {
+                        Log($"提取失败: {name}", Color.Red);
+                    }
+                }
+
+                UpdateProgressBar(100);
+                StopOperationTimer();
+
+                Log($"云端提取完成: {success}/{total} 成功", success == total ? Color.Green : Color.Orange);
+
+                return success == total;
+            }
+            catch (OperationCanceledException)
+            {
+                Log("提取操作已取消", Color.Orange);
+                UpdateProgressBar(0);
+                StopOperationTimer();
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Log($"提取失败: {ex.Message}", Color.Red);
+                UpdateProgressBar(0);
+                StopOperationTimer();
+                return false;
+            }
+            finally
+            {
+                IsBusy = false;
+                UpdateLabelSafe(_operationLabel, "当前操作：空闲");
+            }
+        }
+
+        /// <summary>
+        /// 加载 Payload 文件 (支持 .bin 和 .zip)
+        /// </summary>
+        public async Task<bool> LoadPayloadAsync(string filePath)
+        {
+            if (string.IsNullOrEmpty(filePath))
+            {
+                Log("请选择 Payload 文件", Color.Orange);
+                return false;
+            }
+
+            if (!File.Exists(filePath))
+            {
+                Log($"文件不存在: {filePath}", Color.Red);
+                return false;
+            }
+
+            if (IsBusy)
+            {
+                Log("操作进行中", Color.Orange);
+                return false;
+            }
+
+            try
+            {
+                IsBusy = true;
+                _cts = new CancellationTokenSource();
+
+                StartOperationTimer("解析 Payload");
+                UpdateProgressBar(0);
+                UpdateLabelSafe(_operationLabel, "当前操作：解析 Payload");
+                UpdateLabelSafe(_speedLabel, "速度：解析中...");
+
+                Log($"正在加载 Payload: {Path.GetFileName(filePath)}...", Color.Blue);
+
+                // 创建或重用 PayloadService
+                if (_payloadService == null)
+                {
+                    _payloadService = new PayloadService(
+                        msg => Log(msg, null),
+                        (current, total) => UpdateProgressWithSpeed(current, total),
+                        _logDetail
+                    );
+
+                    _payloadService.ExtractProgressChanged += (s, e) =>
+                    {
+                        PayloadExtractProgress?.Invoke(this, e);
+                        UpdateSubProgressBar(e.Percent);
+                    };
+                }
+
+                UpdateProgressBar(30);
+                bool success = await _payloadService.LoadPayloadAsync(filePath, _cts.Token);
+
+                if (success)
+                {
+                    UpdateProgressBar(70);
+
+                    var summary = _payloadService.GetSummary();
+                    Log($"Payload 解析成功: {summary.PartitionCount} 个分区", Color.Green);
+                    Log($"总大小: {summary.TotalSizeFormatted}, 压缩后: {summary.TotalCompressedSizeFormatted}", Color.Blue);
+
+                    // 更新分区列表显示
+                    UpdatePartitionListFromPayload();
+
+                    UpdateProgressBar(100);
+                    PayloadLoaded?.Invoke(this, summary);
+                }
+                else
+                {
+                    Log("Payload 解析失败", Color.Red);
+                    UpdateProgressBar(0);
+                }
+
+                StopOperationTimer();
+                return success;
+            }
+            catch (Exception ex)
+            {
+                Log($"Payload 加载失败: {ex.Message}", Color.Red);
+                _logDetail($"Payload 加载错误: {ex}");
+                UpdateProgressBar(0);
+                StopOperationTimer();
+                return false;
+            }
+            finally
+            {
+                IsBusy = false;
+                UpdateLabelSafe(_operationLabel, "当前操作：空闲");
+            }
+        }
+
+        /// <summary>
+        /// 从 Payload 更新分区列表
+        /// </summary>
+        private void UpdatePartitionListFromPayload()
+        {
+            if (_partitionListView == null || _payloadService == null || !_payloadService.IsLoaded) return;
+
+            try
+            {
+                if (_partitionListView.InvokeRequired)
+                {
+                    _partitionListView.BeginInvoke(new Action(UpdatePartitionListFromPayloadInternal));
+                }
+                else
+                {
+                    UpdatePartitionListFromPayloadInternal();
+                }
+            }
+            catch { }
+        }
+
+        private void UpdatePartitionListFromPayloadInternal()
+        {
+            try
+            {
+                _partitionListView.Items.Clear();
+
+                foreach (var partition in _payloadService.Partitions)
+                {
+                    var item = new ListViewItem(new string[]
+                    {
+                        partition.Name,
+                        "提取",  // 操作列
+                        partition.SizeFormatted,
+                        partition.CompressedSizeFormatted  // 压缩大小
+                    });
+
+                    item.Tag = partition;
+                    item.Checked = true;  // 默认勾选
+
+                    // 标记常用分区
+                    string name = partition.Name.ToLowerInvariant();
+                    if (name.Contains("system") || name.Contains("vendor") || name.Contains("product"))
+                    {
+                        item.ForeColor = Color.Blue;
+                    }
+                    else if (name.Contains("boot") || name.Contains("dtbo") || name.Contains("vbmeta"))
+                    {
+                        item.ForeColor = Color.DarkGreen;
+                    }
+
+                    _partitionListView.Items.Add(item);
+                }
+            }
+            catch { }
+        }
+
+        /// <summary>
+        /// 提取选中的 Payload 分区
+        /// </summary>
+        public async Task<bool> ExtractSelectedPayloadPartitionsAsync(string outputDir)
+        {
+            if (_payloadService == null || !_payloadService.IsLoaded)
+            {
+                Log("请先加载 Payload 文件", Color.Orange);
+                return false;
+            }
+
+            if (string.IsNullOrEmpty(outputDir))
+            {
+                Log("请指定输出目录", Color.Orange);
+                return false;
+            }
+
+            if (IsBusy)
+            {
+                Log("操作进行中", Color.Orange);
+                return false;
+            }
+
+            // 获取选中的分区名称
+            var selectedNames = new List<string>();
+            try
+            {
+                foreach (ListViewItem item in _partitionListView.CheckedItems)
+                {
+                    if (item.Tag is PayloadPartition partition)
+                    {
+                        selectedNames.Add(partition.Name);
+                    }
+                }
+            }
+            catch { }
+
+            if (selectedNames.Count == 0)
+            {
+                Log("请选择要提取的分区", Color.Orange);
+                return false;
+            }
+
+            try
+            {
+                IsBusy = true;
+                _cts = new CancellationTokenSource();
+
+                StartOperationTimer("提取 Payload 分区");
+                UpdateProgressBar(0);
+                UpdateLabelSafe(_speedLabel, "速度：准备中...");
+
+                Log($"开始提取 {selectedNames.Count} 个分区到: {outputDir}", Color.Blue);
+
+                int success = 0;
+                int total = selectedNames.Count;
+
+                for (int i = 0; i < total; i++)
+                {
+                    _cts.Token.ThrowIfCancellationRequested();
+
+                    string name = selectedNames[i];
+                    string outputPath = Path.Combine(outputDir, $"{name}.img");
+
+                    UpdateLabelSafe(_operationLabel, $"当前操作：提取 {name} ({i + 1}/{total})");
+                    UpdateProgressBar((i * 100.0) / total);
+
+                    if (await _payloadService.ExtractPartitionAsync(name, outputPath, _cts.Token))
+                    {
+                        success++;
+                        Log($"提取成功: {name}.img", Color.Green);
+                    }
+                    else
+                    {
+                        Log($"提取失败: {name}", Color.Red);
+                    }
+                }
+
+                UpdateProgressBar(100);
+                StopOperationTimer();
+
+                Log($"提取完成: {success}/{total} 成功", success == total ? Color.Green : Color.Orange);
+
+                return success == total;
+            }
+            catch (OperationCanceledException)
+            {
+                Log("提取操作已取消", Color.Orange);
+                UpdateProgressBar(0);
+                StopOperationTimer();
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Log($"提取失败: {ex.Message}", Color.Red);
+                UpdateProgressBar(0);
+                StopOperationTimer();
+                return false;
+            }
+            finally
+            {
+                IsBusy = false;
+                UpdateLabelSafe(_operationLabel, "当前操作：空闲");
+            }
+        }
+
+        /// <summary>
+        /// 提取 Payload 分区并直接刷写到设备
+        /// </summary>
+        public async Task<bool> FlashFromPayloadAsync()
+        {
+            if (_payloadService == null || !_payloadService.IsLoaded)
+            {
+                Log("请先加载 Payload 文件", Color.Orange);
+                return false;
+            }
+
+            if (!EnsureConnected()) return false;
+            if (IsBusy) { Log("操作进行中", Color.Orange); return false; }
+
+            // 获取选中的分区
+            var selectedPartitions = new List<PayloadPartition>();
+            try
+            {
+                foreach (ListViewItem item in _partitionListView.CheckedItems)
+                {
+                    if (item.Tag is PayloadPartition partition)
+                    {
+                        selectedPartitions.Add(partition);
+                    }
+                }
+            }
+            catch { }
+
+            if (selectedPartitions.Count == 0)
+            {
+                Log("请选择要刷写的分区", Color.Orange);
+                return false;
+            }
+
+            try
+            {
+                IsBusy = true;
+                _cts = new CancellationTokenSource();
+
+                StartOperationTimer("Payload 刷写");
+                UpdateProgressBar(0);
+                UpdateLabelSafe(_speedLabel, "速度：准备中...");
+
+                Log($"开始从 Payload 刷写 {selectedPartitions.Count} 个分区...", Color.Blue);
+
+                int success = 0;
+                int total = selectedPartitions.Count;
+                string tempDir = Path.Combine(Path.GetTempPath(), $"payload_flash_{Guid.NewGuid():N}");
+                Directory.CreateDirectory(tempDir);
+
+                try
+                {
+                    for (int i = 0; i < total; i++)
+                    {
+                        _cts.Token.ThrowIfCancellationRequested();
+
+                        var partition = selectedPartitions[i];
+                        string tempPath = Path.Combine(tempDir, $"{partition.Name}.img");
+
+                        UpdateLabelSafe(_operationLabel, $"当前操作：提取+刷写 {partition.Name} ({i + 1}/{total})");
+                        UpdateProgressBar((i * 100.0) / total);
+
+                        // 1. 提取分区
+                        Log($"提取 {partition.Name}...", Color.Blue);
+                        if (!await _payloadService.ExtractPartitionAsync(partition.Name, tempPath, _cts.Token))
+                        {
+                            Log($"提取 {partition.Name} 失败，跳过刷写", Color.Red);
+                            continue;
+                        }
+
+                        // 2. 刷写分区
+                        Log($"刷写 {partition.Name}...", Color.Blue);
+                        if (await _service.FlashPartitionAsync(partition.Name, tempPath, false, _cts.Token))
+                        {
+                            success++;
+                            Log($"刷写成功: {partition.Name}", Color.Green);
+                        }
+                        else
+                        {
+                            Log($"刷写失败: {partition.Name}", Color.Red);
+                        }
+
+                        // 3. 删除临时文件
+                        try { File.Delete(tempPath); } catch { }
+                    }
+                }
+                finally
+                {
+                    // 清理临时目录
+                    try { Directory.Delete(tempDir, true); } catch { }
+                }
+
+                UpdateProgressBar(100);
+                StopOperationTimer();
+
+                Log($"Payload 刷写完成: {success}/{total} 成功", success == total ? Color.Green : Color.Orange);
+
+                // 自动重启
+                if (IsAutoRebootEnabled() && success > 0)
+                {
+                    await _service.RebootAsync(_cts.Token);
+                }
+
+                return success == total;
+            }
+            catch (OperationCanceledException)
+            {
+                Log("刷写操作已取消", Color.Orange);
+                UpdateProgressBar(0);
+                StopOperationTimer();
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Log($"刷写失败: {ex.Message}", Color.Red);
+                UpdateProgressBar(0);
+                StopOperationTimer();
+                return false;
+            }
+            finally
+            {
+                IsBusy = false;
+                UpdateLabelSafe(_operationLabel, "当前操作：空闲");
+            }
+        }
+
+        /// <summary>
+        /// 从云端 Payload 直接刷写分区到设备
+        /// </summary>
+        public async Task<bool> FlashFromRemotePayloadAsync()
+        {
+            if (_remotePayloadService == null || !_remotePayloadService.IsLoaded)
+            {
+                Log("请先解析云端 Payload", Color.Orange);
+                return false;
+            }
+
+            if (!EnsureConnected()) return false;
+            if (IsBusy) { Log("操作进行中", Color.Orange); return false; }
+
+            // 获取选中的分区
+            var selectedPartitions = new List<RemotePayloadPartition>();
+            try
+            {
+                foreach (ListViewItem item in _partitionListView.CheckedItems)
+                {
+                    if (item.Tag is RemotePayloadPartition partition)
+                    {
+                        selectedPartitions.Add(partition);
+                    }
+                }
+            }
+            catch { }
+
+            if (selectedPartitions.Count == 0)
+            {
+                Log("请选择要刷写的分区", Color.Orange);
+                return false;
+            }
+
+            try
+            {
+                IsBusy = true;
+                _cts = new CancellationTokenSource();
+
+                StartOperationTimer("云端 Payload 刷写");
+                UpdateProgressBar(0);
+                UpdateLabelSafe(_speedLabel, "速度：准备中...");
+
+                Log($"开始从云端刷写 {selectedPartitions.Count} 个分区...", Color.Blue);
+
+                int success = 0;
+                int total = selectedPartitions.Count;
+
+                // 注册流式刷写进度事件
+                EventHandler<RemotePayloadService.StreamFlashProgressEventArgs> progressHandler = (s, e) =>
+                {
+                    double overallPercent = ((success * 100.0) + e.Percent) / total;
+                    UpdateProgressBar(overallPercent);
+                    UpdateSubProgressBar(e.Percent);
+                    
+                    // 根据阶段显示不同的速度
+                    if (e.Phase == RemotePayloadService.StreamFlashPhase.Downloading)
+                    {
+                        UpdateSpeedLabel($"{e.DownloadSpeedFormatted} (下载)");
+                    }
+                    else if (e.Phase == RemotePayloadService.StreamFlashPhase.Flashing)
+                    {
+                        UpdateSpeedLabel($"{e.FlashSpeedFormatted} (刷写)");
+                    }
+                    else if (e.Phase == RemotePayloadService.StreamFlashPhase.Completed && e.FlashSpeedBytesPerSecond > 0)
+                    {
+                        UpdateSpeedLabel($"{e.FlashSpeedFormatted} (Fastboot)");
+                    }
+                };
+
+                _remotePayloadService.StreamFlashProgressChanged += progressHandler;
+
+                try
+                {
+                    for (int i = 0; i < total; i++)
+                    {
+                        _cts.Token.ThrowIfCancellationRequested();
+
+                        var partition = selectedPartitions[i];
+                        
+                        UpdateLabelSafe(_operationLabel, $"当前操作：下载+刷写 {partition.Name} ({i + 1}/{total})");
+
+                        // 使用流式刷写
+                        bool flashResult = await _remotePayloadService.ExtractAndFlashPartitionAsync(
+                            partition.Name,
+                            async (tempPath) =>
+                            {
+                                // 刷写回调 - 测量 Fastboot 通讯速度
+                                var flashStartTime = DateTime.Now;
+                                var fileInfo = new FileInfo(tempPath);
+                                long fileSize = fileInfo.Length;
+                                
+                                bool flashSuccess = await _service.FlashPartitionAsync(
+                                    partition.Name, tempPath, false, _cts.Token);
+                                
+                                var flashElapsed = (DateTime.Now - flashStartTime).TotalSeconds;
+                                
+                                return (flashSuccess, fileSize, flashElapsed);
+                            },
+                            _cts.Token
+                        );
+
+                        if (flashResult)
+                        {
+                            success++;
+                            Log($"刷写成功: {partition.Name}", Color.Green);
+                        }
+                        else
+                        {
+                            Log($"刷写失败: {partition.Name}", Color.Red);
+                        }
+                    }
+                }
+                finally
+                {
+                    _remotePayloadService.StreamFlashProgressChanged -= progressHandler;
+                }
+
+                UpdateProgressBar(100);
+                StopOperationTimer();
+
+                if (success == total)
+                {
+                    Log($"✓ 全部 {total} 个分区刷写成功", Color.Green);
+                }
+                else
+                {
+                    Log($"刷写完成: {success}/{total} 成功", success > 0 ? Color.Orange : Color.Red);
+                }
+
+                return success == total;
+            }
+            catch (OperationCanceledException)
+            {
+                Log("刷写操作已取消", Color.Orange);
+                UpdateProgressBar(0);
+                StopOperationTimer();
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Log($"刷写失败: {ex.Message}", Color.Red);
+                UpdateProgressBar(0);
+                StopOperationTimer();
+                return false;
+            }
+            finally
+            {
+                IsBusy = false;
+                UpdateLabelSafe(_operationLabel, "当前操作：空闲");
+            }
+        }
+
+        /// <summary>
+        /// 关闭 Payload
+        /// </summary>
+        public void ClosePayload()
+        {
+            _payloadService?.Close();
+            Log("Payload 已关闭", Color.Gray);
+        }
+
+        #endregion
+
         public void Dispose()
         {
             if (!_disposed)
@@ -1115,6 +2364,8 @@ namespace LoveAlways.Fastboot.UI
                 StopDeviceMonitoring();
                 _deviceRefreshTimer?.Dispose();
                 _service?.Dispose();
+                _payloadService?.Dispose();
+                _remotePayloadService?.Dispose();
                 _cts?.Dispose();
                 _disposed = true;
             }

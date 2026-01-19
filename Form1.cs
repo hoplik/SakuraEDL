@@ -12,6 +12,7 @@ using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Microsoft.VisualBasic;
 using LoveAlways.Qualcomm.UI;
 using LoveAlways.Qualcomm.Common;
 using LoveAlways.Qualcomm.Models;
@@ -2615,32 +2616,48 @@ namespace LoveAlways
                 listView5.FullRowSelect = true;
 
                 // 绑定控件 - tabPage3 上的 Fastboot 控件
+                // 注意: 设备信息标签(uiGroupBox3内)与高通模块共用，通过标签页切换来更新
                 _fastbootController.BindControls(
-                    portComboBox: uiComboBox2,           // Fastboot 设备选择（使用现有的 uiComboBox2）
-                    partitionListView: listView5,        // 分区列表
-                    progressBar: null,                   // 可以后续添加进度条
-                    commandComboBox: uiComboBox2,        // 快捷命令下拉框 (device, unlock 等)
-                    payloadTextBox: uiTextBox1,          // Payload 路径
-                    outputPathTextBox: input1,           // 输出路径
-                    autoRebootCheckbox: checkbox44,      // 自动重启
-                    switchSlotCheckbox: checkbox41,      // 切换A槽
-                    eraseGoogleLockCheckbox: checkbox43, // 擦除谷歌锁
-                    keepDataCheckbox: checkbox50,        // 保留数据
-                    fbdFlashCheckbox: checkbox45,        // FBD刷写
-                    unlockBlCheckbox: checkbox22,        // 解锁BL
-                    lockBlCheckbox: checkbox21           // 锁定BL
+                    deviceComboBox: uiComboBox1,          // 使用全局端口选择下拉框 (共用)
+                    partitionListView: listView5,         // 分区列表
+                    progressBar: uiProcessBar1,           // 总进度条 (共用)
+                    subProgressBar: uiProcessBar2,        // 子进度条 (共用)
+                    commandComboBox: uiComboBox2,         // 快捷命令下拉框 (device, unlock 等)
+                    payloadTextBox: uiTextBox1,           // Payload 路径
+                    outputPathTextBox: input1,            // 输出路径
+                    // 设备信息标签 (uiGroupBox3 - 共用)
+                    brandLabel: uiLabel9,                 // 品牌
+                    chipLabel: uiLabel11,                 // 芯片
+                    modelLabel: uiLabel3,                 // 型号
+                    serialLabel: uiLabel10,               // 序列号
+                    storageLabel: uiLabel13,              // 存储
+                    unlockLabel: uiLabel14,               // 解锁状态
+                    slotLabel: uiLabel12,                 // 槽位 (复用OTA版本标签)
+                    // 时间/速度/操作标签 (共用)
+                    timeLabel: uiLabel6,                  // 时间
+                    speedLabel: uiLabel7,                 // 速度
+                    operationLabel: uiLabel8,             // 当前操作
+                    deviceCountLabel: uiLabel4,           // 设备数量 (复用)
+                    // Checkbox 控件
+                    autoRebootCheckbox: checkbox44,       // 自动重启
+                    switchSlotCheckbox: checkbox41,       // 切换A槽
+                    eraseGoogleLockCheckbox: checkbox43,  // 擦除谷歌锁
+                    keepDataCheckbox: checkbox50,         // 保留数据
+                    fbdFlashCheckbox: checkbox45,         // FBD刷写
+                    unlockBlCheckbox: checkbox22,         // 解锁BL
+                    lockBlCheckbox: checkbox21            // 锁定BL
                 );
 
                 // ========== tabPage3 Fastboot 页面按钮事件 ==========
                 
-                // uiButton11 = 读取信息
-                uiButton11.Click += async (s, e) => await FastbootReadInfoAsync();
+                // uiButton11 = 解析Payload (本地文件或云端URL)
+                uiButton11.Click += (s, e) => FastbootOpenPayloadDialog();
 
-                // uiButton18 = 读取分区表
-                uiButton18.Click += async (s, e) => await FastbootReadPartitionTableAsync();
+                // uiButton18 = 读取分区表 (同时读取设备信息)
+                uiButton18.Click += async (s, e) => await FastbootReadPartitionTableWithInfoAsync();
 
-                // uiButton19 = 提取镜像 (Fastboot 模式下一般不支持读取分区)
-                uiButton19.Click += (s, e) => AppendLog("Fastboot 模式不支持直接读取分区内容", Color.Orange);
+                // uiButton19 = 提取镜像 (支持从 Payload 提取，自定义或全部)
+                uiButton19.Click += async (s, e) => await FastbootExtractPartitionsWithOptionsAsync();
 
                 // uiButton20 = 写入分区
                 uiButton20.Click += async (s, e) => await FastbootFlashPartitionsAsync();
@@ -2659,6 +2676,22 @@ namespace LoveAlways
 
                 // button9 = 浏览 (选择 Payload/刷机脚本)
                 button9.Click += (s, e) => FastbootSelectPayload();
+
+                // uiTextBox1 = Payload/URL 输入框，支持回车键触发解析
+                uiTextBox1.Watermark = "请选择本地Payload或输入云端链接";
+                uiTextBox1.KeyDown += (s, e) =>
+                {
+                    if (e.KeyCode == Keys.Enter)
+                    {
+                        e.SuppressKeyPress = true;
+                        FastbootParsePayloadInput(uiTextBox1.Text);
+                    }
+                };
+
+                // 修改按钮文字
+                uiButton11.Text = "云端解析";
+                uiButton18.Text = "读取分区表";
+                uiButton19.Text = "提取分区";
 
                 // checkbox22 = 解锁BL (手动操作时执行，脚本执行时作为标志)
                 // checkbox21 = 锁定BL (手动操作时执行，脚本执行时作为标志)
@@ -2682,9 +2715,13 @@ namespace LoveAlways
 
                 // select5 = 分区搜索
                 select5.TextChanged += (s, e) => FastbootSearchPartition();
+                select5.SelectedIndexChanged += (s, e) => { _fbIsSelectingFromDropdown = true; };
 
                 // 启动设备监控
                 _fastbootController.StartDeviceMonitoring();
+
+                // 绑定标签页切换事件 - 更新右侧设备信息显示
+                tabs1.SelectedIndexChanged += OnTabPageChanged;
 
                 AppendLog("Fastboot 模块初始化完成", Color.Gray);
             }
@@ -2695,36 +2732,168 @@ namespace LoveAlways
         }
 
         /// <summary>
-        /// Fastboot 读取设备信息
+        /// 标签页切换事件 - 切换设备信息显示
         /// </summary>
-        private async Task FastbootReadInfoAsync()
+        private void OnTabPageChanged(object sender, EventArgs e)
+        {
+            try
+            {
+                // 获取当前选中的标签页
+                int selectedIndex = tabs1.SelectedIndex;
+                var selectedTab = tabs1.Pages[selectedIndex];
+
+                // tabPage3 是引导模式 (Fastboot)
+                if (selectedTab == tabPage3)
+                {
+                    // 切换到 Fastboot 标签页，更新设备信息
+                    if (_fastbootController != null)
+                    {
+                        _fastbootController.UpdateDeviceInfoLabels();
+                        // 更新设备计数标签
+                        int deviceCount = _fastbootController.DeviceCount;
+                        if (deviceCount == 0)
+                            uiLabel4.Text = "FB设备：0";
+                        else if (deviceCount == 1)
+                            uiLabel4.Text = $"FB设备：已连接";
+                        else
+                            uiLabel4.Text = $"FB设备：{deviceCount}个";
+                    }
+                }
+                // tabPage2 是高通平台 (EDL)
+                else if (selectedTab == tabPage2)
+                {
+                    // 切换到高通标签页，恢复高通设备信息
+                    if (_qualcommController != null && _qualcommController.IsConnected)
+                    {
+                        // 高通控制器会自动更新，这里不需要额外操作
+                    }
+                    else
+                    {
+                        // 重置为等待连接状态
+                        uiLabel9.Text = "品牌：等待连接";
+                        uiLabel11.Text = "芯片：等待连接";
+                        uiLabel3.Text = "型号：等待连接";
+                        uiLabel10.Text = "序列号：等待连接";
+                        uiLabel13.Text = "存储：等待连接";
+                        uiLabel14.Text = "型号：等待连接";
+                        uiLabel12.Text = "OTA：等待连接";
+                    }
+                }
+            }
+            catch { }
+        }
+
+        /// <summary>
+        /// Fastboot 云端链接解析
+        /// </summary>
+        private void FastbootOpenPayloadDialog()
+        {
+            // 如果文本框中已有内容，直接解析
+            if (!string.IsNullOrWhiteSpace(uiTextBox1.Text))
+            {
+                FastbootParsePayloadInput(uiTextBox1.Text.Trim());
+                return;
+            }
+
+            // 文本框为空时，弹出输入框
+            string url = Microsoft.VisualBasic.Interaction.InputBox(
+                "请输入 OTA 下载链接:\n\n支持 OPPO/OnePlus/Realme 官方链接\n或直接的 ZIP/Payload 链接",
+                "云端链接解析",
+                "");
+
+            if (!string.IsNullOrWhiteSpace(url))
+            {
+                uiTextBox1.Text = url.Trim();
+                FastbootParsePayloadInput(url.Trim());
+            }
+        }
+
+        /// <summary>
+        /// Fastboot 读取分区表 (同时读取设备信息)
+        /// </summary>
+        private async Task FastbootReadPartitionTableWithInfoAsync()
         {
             if (_fastbootController == null) return;
 
             if (!_fastbootController.IsConnected)
             {
-                // 先连接
+                AppendLog("正在连接 Fastboot 设备...", Color.Blue);
                 bool connected = await _fastbootController.ConnectAsync();
-                if (!connected) return;
+                if (!connected)
+                {
+                    AppendLog("连接失败，请检查设备是否处于 Fastboot 模式", Color.Red);
+                    return;
+                }
             }
 
+            // 读取分区表和设备信息
             await _fastbootController.ReadPartitionTableAsync();
         }
 
         /// <summary>
-        /// Fastboot 读取分区表
+        /// Fastboot 提取分区 (提取已勾选的分区)
         /// </summary>
-        private async Task FastbootReadPartitionTableAsync()
+        private async Task FastbootExtractPartitionsWithOptionsAsync()
         {
             if (_fastbootController == null) return;
 
-            if (!_fastbootController.IsConnected)
+            // 检查是否已加载 Payload (本地或云端)
+            bool hasLocalPayload = _fastbootController.PayloadSummary != null;
+            bool hasRemotePayload = _fastbootController.IsRemotePayloadLoaded;
+
+            if (!hasLocalPayload && !hasRemotePayload)
             {
-                bool connected = await _fastbootController.ConnectAsync();
-                if (!connected) return;
+                AppendLog("请先解析 Payload (本地文件或云端链接)", Color.Orange);
+                return;
             }
 
-            await _fastbootController.ReadPartitionTableAsync();
+            // 让用户选择保存目录
+            string outputDir;
+            using (var fbd = new FolderBrowserDialog())
+            {
+                fbd.Description = "选择分区提取保存目录";
+                // 如果之前有选过目录，作为默认路径
+                if (!string.IsNullOrEmpty(input1.Text) && Directory.Exists(input1.Text))
+                {
+                    fbd.SelectedPath = input1.Text;
+                }
+                
+                if (fbd.ShowDialog() == DialogResult.OK)
+                {
+                    outputDir = fbd.SelectedPath;
+                    input1.Text = outputDir;
+                }
+                else
+                {
+                    return;
+                }
+            }
+
+            // 根据加载的类型选择提取方法
+            if (hasRemotePayload)
+            {
+                await _fastbootController.ExtractSelectedRemotePartitionsAsync(outputDir);
+            }
+            else
+            {
+                await _fastbootController.ExtractSelectedPayloadPartitionsAsync(outputDir);
+            }
+        }
+
+        /// <summary>
+        /// Fastboot 读取设备信息 (保留兼容)
+        /// </summary>
+        private async Task FastbootReadInfoAsync()
+        {
+            await FastbootReadPartitionTableWithInfoAsync();
+        }
+
+        /// <summary>
+        /// Fastboot 读取分区表 (保留兼容)
+        /// </summary>
+        private async Task FastbootReadPartitionTableAsync()
+        {
+            await FastbootReadPartitionTableWithInfoAsync();
         }
 
         /// <summary>
@@ -2740,7 +2909,27 @@ namespace LoveAlways
                 return;
             }
 
-            await _fastbootController.FlashSelectedPartitionsAsync();
+            // 检查是否有 Payload 加载 (本地或云端)
+            bool hasLocalPayload = _fastbootController.PayloadSummary != null;
+            bool hasRemotePayload = _fastbootController.IsRemotePayloadLoaded;
+
+            if (hasRemotePayload)
+            {
+                // 使用云端 Payload 刷写 (边下载边刷写)
+                AppendLog("使用云端 Payload 刷写模式", Color.Blue);
+                await _fastbootController.FlashFromRemotePayloadAsync();
+            }
+            else if (hasLocalPayload)
+            {
+                // 使用本地 Payload 刷写
+                AppendLog("使用本地 Payload 刷写模式", Color.Blue);
+                await _fastbootController.FlashFromPayloadAsync();
+            }
+            else
+            {
+                // 普通刷写 (需要选择镜像文件)
+                await _fastbootController.FlashSelectedPartitionsAsync();
+            }
         }
 
         /// <summary>
@@ -2772,8 +2961,13 @@ namespace LoveAlways
                 if (!connected) return;
             }
 
-            // 如果有加载的刷机任务，执行刷机脚本
-            if (_fastbootController.FlashTasks != null && _fastbootController.FlashTasks.Count > 0)
+            // 优先级 1: 如果有加载的 Payload，执行 Payload 刷写
+            if (_fastbootController.IsPayloadLoaded)
+            {
+                await _fastbootController.FlashFromPayloadAsync();
+            }
+            // 优先级 2: 如果有加载的刷机任务，执行刷机脚本
+            else if (_fastbootController.FlashTasks != null && _fastbootController.FlashTasks.Count > 0)
             {
                 // 读取用户选项
                 bool keepData = checkbox50.Checked;   // 保留数据
@@ -2805,6 +2999,15 @@ namespace LoveAlways
         }
 
         /// <summary>
+        /// Fastboot 提取分区 (从 Payload 提取，支持本地和云端)
+        /// </summary>
+        private async Task FastbootExtractPartitionsAsync()
+        {
+            // 直接调用带选项的方法
+            await FastbootExtractPartitionsWithOptionsAsync();
+        }
+
+        /// <summary>
         /// Fastboot 选择输出路径
         /// </summary>
         private void FastbootSelectOutputPath()
@@ -2828,18 +3031,96 @@ namespace LoveAlways
             using (var ofd = new OpenFileDialog())
             {
                 ofd.Title = "选择 Payload 或刷机脚本";
-                ofd.Filter = "刷机脚本|*.bat;*.sh|Payload|*.bin;*.zip|所有文件|*.*";
+                ofd.Filter = "Payload|*.bin;*.zip|刷机脚本|*.bat;*.sh;*.cmd|所有文件|*.*";
                 if (ofd.ShowDialog() == DialogResult.OK)
                 {
                     uiTextBox1.Text = ofd.FileName;
-                    AppendLog($"已选择: {Path.GetFileName(ofd.FileName)}", Color.Blue);
+                    FastbootParsePayloadInput(ofd.FileName);
+                }
+            }
+        }
 
-                    // 自动解析 bat/sh 脚本
-                    string ext = Path.GetExtension(ofd.FileName).ToLowerInvariant();
-                    if (ext == ".bat" || ext == ".sh" || ext == ".cmd")
-                    {
-                        FastbootLoadScript(ofd.FileName);
-                    }
+        /// <summary>
+        /// 解析 Payload 输入 (支持本地文件和 URL)
+        /// </summary>
+        private void FastbootParsePayloadInput(string input)
+        {
+            if (string.IsNullOrWhiteSpace(input)) return;
+
+            input = input.Trim();
+
+            // 判断是 URL 还是本地文件
+            if (input.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+                input.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            {
+                // URL - 云端解析
+                AppendLog($"检测到云端 URL，开始解析...", Color.Blue);
+                _ = FastbootLoadPayloadFromUrlAsync(input);
+            }
+            else if (File.Exists(input))
+            {
+                // 本地文件
+                AppendLog($"已选择: {Path.GetFileName(input)}", Color.Blue);
+
+                string ext = Path.GetExtension(input).ToLowerInvariant();
+                string fileName = Path.GetFileName(input).ToLowerInvariant();
+
+                if (ext == ".bat" || ext == ".sh" || ext == ".cmd")
+                {
+                    // 刷机脚本
+                    FastbootLoadScript(input);
+                }
+                else if (ext == ".bin" || ext == ".zip" || fileName == "payload.bin")
+                {
+                    // Payload 文件
+                    _ = FastbootLoadPayloadAsync(input);
+                }
+            }
+            else
+            {
+                AppendLog($"无效的输入: 文件不存在或 URL 格式错误", Color.Red);
+            }
+        }
+
+        /// <summary>
+        /// Fastboot 加载 Payload 文件
+        /// </summary>
+        private async Task FastbootLoadPayloadAsync(string payloadPath)
+        {
+            if (_fastbootController == null) return;
+
+            bool success = await _fastbootController.LoadPayloadAsync(payloadPath);
+            
+            if (success)
+            {
+                // 更新输出路径为 Payload 所在目录
+                input1.Text = Path.GetDirectoryName(payloadPath);
+                
+                // 显示 Payload 摘要信息
+                var summary = _fastbootController.PayloadSummary;
+                if (summary != null)
+                {
+                    AppendLog($"[Payload] 分区数: {summary.PartitionCount}, 总大小: {summary.TotalSizeFormatted}", Color.Blue);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Fastboot 从 URL 加载云端 Payload
+        /// </summary>
+        private async Task FastbootLoadPayloadFromUrlAsync(string url)
+        {
+            if (_fastbootController == null) return;
+
+            bool success = await _fastbootController.LoadPayloadFromUrlAsync(url);
+            
+            if (success)
+            {
+                // 显示远程 Payload 摘要信息
+                var summary = _fastbootController.RemotePayloadSummary;
+                if (summary != null)
+                {
+                    AppendLog($"[云端Payload] 分区数: {summary.PartitionCount}, 文件大小: {summary.TotalSizeFormatted}", Color.Blue);
                 }
             }
         }
@@ -2939,18 +3220,147 @@ namespace LoveAlways
             _fastbootController?.SelectImageForPartition(selectedItem);
         }
 
+        // Fastboot 分区搜索相关变量
+        private string _fbLastSearchKeyword = "";
+        private List<ListViewItem> _fbSearchMatches = new List<ListViewItem>();
+        private int _fbCurrentMatchIndex = 0;
+        private bool _fbIsSelectingFromDropdown = false;
+
         /// <summary>
         /// Fastboot 分区搜索
         /// </summary>
         private void FastbootSearchPartition()
         {
-            string keyword = select5.Text?.Trim().ToLower() ?? "";
+            // 如果是从下拉选择触发的，直接定位
+            if (_fbIsSelectingFromDropdown)
+            {
+                _fbIsSelectingFromDropdown = false;
+                string selectedName = select5.Text?.Trim()?.ToLower();
+                if (!string.IsNullOrEmpty(selectedName))
+                {
+                    FastbootLocatePartitionByName(selectedName);
+                }
+                return;
+            }
+
+            string keyword = select5.Text?.Trim()?.ToLower() ?? "";
+            
+            // 如果搜索框为空，重置所有高亮
+            if (string.IsNullOrEmpty(keyword))
+            {
+                FastbootResetPartitionHighlights();
+                _fbLastSearchKeyword = "";
+                _fbSearchMatches.Clear();
+                _fbCurrentMatchIndex = 0;
+                return;
+            }
+            
+            // 如果关键词相同，跳转到下一个匹配项
+            if (keyword == _fbLastSearchKeyword && _fbSearchMatches.Count > 1)
+            {
+                FastbootJumpToNextMatch();
+                return;
+            }
+            
+            _fbLastSearchKeyword = keyword;
+            _fbSearchMatches.Clear();
+            _fbCurrentMatchIndex = 0;
+            
+            // 收集匹配的分区名称用于下拉建议
+            var suggestions = new List<string>();
+            
+            listView5.BeginUpdate();
             
             foreach (ListViewItem item in listView5.Items)
             {
                 string partName = item.SubItems[0].Text.ToLower();
-                // 简单的显示/隐藏筛选
-                // 注：ListView 不直接支持隐藏行，可以通过 Tag 标记后重建列表
+                
+                if (partName.Contains(keyword))
+                {
+                    // 高亮匹配的项
+                    item.BackColor = Color.LightYellow;
+                    _fbSearchMatches.Add(item);
+                    
+                    // 添加到建议列表
+                    if (!suggestions.Contains(item.SubItems[0].Text))
+                    {
+                        suggestions.Add(item.SubItems[0].Text);
+                    }
+                }
+                else
+                {
+                    item.BackColor = Color.Transparent;
+                }
+            }
+            
+            listView5.EndUpdate();
+            
+            // 更新下拉建议列表
+            FastbootUpdateSearchSuggestions(suggestions);
+            
+            // 滚动到第一个匹配项
+            if (_fbSearchMatches.Count > 0)
+            {
+                _fbSearchMatches[0].Selected = true;
+                _fbSearchMatches[0].EnsureVisible();
+                _fbCurrentMatchIndex = 0;
+            }
+        }
+
+        private void FastbootJumpToNextMatch()
+        {
+            if (_fbSearchMatches.Count == 0) return;
+            
+            // 取消当前选中项的选中状态
+            if (_fbCurrentMatchIndex < _fbSearchMatches.Count)
+            {
+                _fbSearchMatches[_fbCurrentMatchIndex].Selected = false;
+            }
+            
+            // 移动到下一个
+            _fbCurrentMatchIndex = (_fbCurrentMatchIndex + 1) % _fbSearchMatches.Count;
+            
+            // 选中并滚动到新的匹配项
+            _fbSearchMatches[_fbCurrentMatchIndex].Selected = true;
+            _fbSearchMatches[_fbCurrentMatchIndex].EnsureVisible();
+        }
+
+        private void FastbootResetPartitionHighlights()
+        {
+            listView5.BeginUpdate();
+            foreach (ListViewItem item in listView5.Items)
+            {
+                item.BackColor = Color.Transparent;
+            }
+            listView5.EndUpdate();
+        }
+
+        private void FastbootUpdateSearchSuggestions(List<string> suggestions)
+        {
+            string currentText = select5.Text;
+            
+            select5.Items.Clear();
+            foreach (var name in suggestions)
+            {
+                select5.Items.Add(name);
+            }
+            
+            select5.Text = currentText;
+        }
+
+        private void FastbootLocatePartitionByName(string partitionName)
+        {
+            FastbootResetPartitionHighlights();
+            
+            foreach (ListViewItem item in listView5.Items)
+            {
+                if (item.SubItems[0].Text.Equals(partitionName, StringComparison.OrdinalIgnoreCase))
+                {
+                    item.BackColor = Color.LightYellow;
+                    item.Selected = true;
+                    item.EnsureVisible();
+                    break;
+                }
             }
         }
 

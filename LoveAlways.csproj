@@ -139,6 +139,7 @@
     <!-- Fastboot Payload 解析 -->
     <Compile Include="Fastboot\Payload\PayloadParser.cs" />
     <Compile Include="Fastboot\Payload\PayloadService.cs" />
+    <Compile Include="Fastboot\Payload\RemotePayloadService.cs" />
     <EmbeddedResource Include="Form1.resx">
       <DependentUpon>Form1.cs</DependentUpon>
     </EmbeddedResource>
