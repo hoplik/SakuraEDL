@@ -8,7 +8,7 @@ namespace LoveAlways.Fastboot.Protocol
     /// 基于 Google AOSP platform/system/core/fastboot 源码分析
     /// 
     /// 协议格式：
-    /// - 命令：ASCII 字符串，最大 64 字节
+    /// - 命令：ASCII 字符串，最大 4096 字节
     /// - 响应：4 字节前缀 + 可选数据
     ///   - "OKAY" - 命令成功
     ///   - "FAIL" - 命令失败，后跟错误信息
@@ -18,13 +18,12 @@ namespace LoveAlways.Fastboot.Protocol
     public static class FastbootProtocol
     {
         // 协议常量 (根据 Google 官方 README.md)
-        // 命令长度: 主机发送的 ASCII 命令字符串 ≤ 4096 字节
-        // 响应长度: 设备响应的 packet ≤ 256 字节
         public const int MAX_COMMAND_LENGTH = 4096;
         public const int MAX_RESPONSE_LENGTH = 256;
         public const int RESPONSE_PREFIX_LENGTH = 4;
         public const int DEFAULT_TIMEOUT_MS = 30000;
         public const int DATA_TIMEOUT_MS = 60000;
+        public const string PROTOCOL_VERSION = "0.4";
         
         // USB 协议常量
         public const int USB_CLASS_FASTBOOT = 0xFF;
@@ -48,8 +47,7 @@ namespace LoveAlways.Fastboot.Protocol
         public const int USB_VID_LENOVO = 0x17EF;       // 联想
         public const int USB_VID_VIVO = 0x2D95;         // VIVO
         public const int USB_VID_MEIZU = 0x2A45;        // 魅族
-        public const int USB_VID_ZTE = 0x19D2;          // 中兴
-        public const int USB_VID_NUBIA = 0x19D2;        // 努比亚 (同 ZTE)
+        public const int USB_VID_ZTE = 0x19D2;          // 中兴/努比亚
         public const int USB_VID_REALME = 0x22D9;       // Realme (同 OPPO)
         public const int USB_VID_NOTHING = 0x2970;      // Nothing Phone
         public const int USB_VID_FAIRPHONE = 0x2AE5;    // Fairphone
@@ -75,15 +73,6 @@ namespace LoveAlways.Fastboot.Protocol
         public const string RESPONSE_INFO = "INFO";
         public const string RESPONSE_TEXT = "TEXT";
         
-<<<<<<< HEAD
-        // 标准命令 (根据 Google 官方协议)
-        public const string CMD_GETVAR = "getvar";
-        public const string CMD_DOWNLOAD = "download";
-        public const string CMD_UPLOAD = "upload";           // 从设备上传数据
-        public const string CMD_FLASH = "flash";
-        public const string CMD_ERASE = "erase";
-        public const string CMD_BOOT = "boot";
-=======
         #region Google 官方标准命令 (必须支持)
         
         // 基础命令
@@ -96,7 +85,6 @@ namespace LoveAlways.Fastboot.Protocol
         public const string CMD_CONTINUE = "continue";          // 继续启动流程
         
         // 重启命令
->>>>>>> 0f35593 (feat: add complete Google commands and vendor OEM commands support)
         public const string CMD_REBOOT = "reboot";
         public const string CMD_REBOOT_BOOTLOADER = "reboot-bootloader";
         public const string CMD_REBOOT_FASTBOOT = "reboot-fastboot";     // 重启到 fastbootd
@@ -113,8 +101,6 @@ namespace LoveAlways.Fastboot.Protocol
         public const string CMD_FLASHING_UNLOCK_CRITICAL = "flashing unlock_critical";
         public const string CMD_FLASHING_LOCK_CRITICAL = "flashing lock_critical";
         public const string CMD_FLASHING_GET_UNLOCK_ABILITY = "flashing get_unlock_ability";
-<<<<<<< HEAD
-=======
         
         // 动态分区命令 (Android 10+)
         public const string CMD_UPDATE_SUPER = "update-super";
@@ -124,9 +110,11 @@ namespace LoveAlways.Fastboot.Protocol
         public const string CMD_WIPE_SUPER = "wipe-super";
         
         // GSI/快照命令
+        public const string CMD_GSI = "gsi";
         public const string CMD_GSI_WIPE = "gsi wipe";
         public const string CMD_GSI_DISABLE = "gsi disable";
         public const string CMD_GSI_STATUS = "gsi status";
+        public const string CMD_SNAPSHOT_UPDATE = "snapshot-update";
         public const string CMD_SNAPSHOT_UPDATE_CANCEL = "snapshot-update cancel";
         public const string CMD_SNAPSHOT_UPDATE_MERGE = "snapshot-update merge";
         
@@ -134,49 +122,8 @@ namespace LoveAlways.Fastboot.Protocol
         public const string CMD_FETCH = "fetch";                // 从设备获取分区数据
         
         // OEM 通用命令
->>>>>>> 0f35593 (feat: add complete Google commands and vendor OEM commands support)
         public const string CMD_OEM = "oem";
-        public const string CMD_GSI = "gsi";                 // GSI 相关命令
-        public const string CMD_SNAPSHOT_UPDATE = "snapshot-update";  // VAB 快照更新
-        public const string CMD_FETCH = "fetch";             // 从设备获取分区
-        public const string CMD_CREATE_LOGICAL_PARTITION = "create-logical-partition";
-        public const string CMD_DELETE_LOGICAL_PARTITION = "delete-logical-partition";
-        public const string CMD_RESIZE_LOGICAL_PARTITION = "resize-logical-partition";
-        public const string CMD_UPDATE_SUPER = "update-super";
-        public const string CMD_WIPE_SUPER = "wipe-super";
         
-<<<<<<< HEAD
-        // 协议版本 (当前版本 0.4)
-        public const string PROTOCOL_VERSION = "0.4";
-        
-        // 常用变量名 (根据 Google 官方协议)
-        public const string VAR_VERSION = "version";               // 协议版本
-        public const string VAR_VERSION_BOOTLOADER = "version-bootloader";
-        public const string VAR_VERSION_BASEBAND = "version-baseband";
-        public const string VAR_PRODUCT = "product";               // 产品名
-        public const string VAR_SERIALNO = "serialno";             // 序列号
-        public const string VAR_SECURE = "secure";                 // 安全启动状态
-        public const string VAR_UNLOCKED = "unlocked";             // BL 解锁状态
-        public const string VAR_OFF_MODE_CHARGE = "off-mode-charge";
-        public const string VAR_VARIANT = "variant";               // 硬件变体
-        public const string VAR_BATTERY_VOLTAGE = "battery-voltage";
-        public const string VAR_BATTERY_SOC_OK = "battery-soc-ok";
-        public const string VAR_MAX_DOWNLOAD_SIZE = "max-download-size";  // 最大下载大小
-        public const string VAR_CURRENT_SLOT = "current-slot";     // 当前 A/B 槽位
-        public const string VAR_SLOT_COUNT = "slot-count";         // 槽位数量
-        public const string VAR_SLOT_SUCCESSFUL = "slot-successful";
-        public const string VAR_SLOT_UNBOOTABLE = "slot-unbootable";
-        public const string VAR_SLOT_RETRY_COUNT = "slot-retry-count";
-        public const string VAR_HAS_SLOT = "has-slot";             // 分区是否有槽位后缀
-        public const string VAR_PARTITION_SIZE = "partition-size"; // 分区大小
-        public const string VAR_PARTITION_TYPE = "partition-type"; // 分区类型
-        public const string VAR_IS_LOGICAL = "is-logical";         // 是否为逻辑分区
-        public const string VAR_IS_USERSPACE = "is-userspace";     // 是否为 Fastbootd 模式
-        public const string VAR_SNAPSHOT_UPDATE_STATUS = "snapshot-update-status";  // VAB 更新状态
-        public const string VAR_SUPER_PARTITION_NAME = "super-partition-name";
-        public const string VAR_HW_REVISION = "hw-revision";       // 硬件版本
-        public const string VAR_ALL = "all";                       // 获取所有变量
-=======
         #endregion
         
         #region 厂商专属命令 (OEM Commands)
@@ -323,7 +270,6 @@ namespace LoveAlways.Fastboot.Protocol
         public const string VAR_QC_SECURESTATE = "securestate";
         
         #endregion
->>>>>>> 0f35593 (feat: add complete Google commands and vendor OEM commands support)
         
         /// <summary>
         /// 构建命令字节
