@@ -17,19 +17,56 @@ namespace LoveAlways.Fastboot.Protocol
     /// </summary>
     public static class FastbootProtocol
     {
-        // 协议常量
-        public const int MAX_COMMAND_LENGTH = 64;
+        // 协议常量 (根据 Google 官方 README.md)
+        // 命令长度: 主机发送的 ASCII 命令字符串 ≤ 4096 字节
+        // 响应长度: 设备响应的 packet ≤ 256 字节
+        public const int MAX_COMMAND_LENGTH = 4096;
         public const int MAX_RESPONSE_LENGTH = 256;
         public const int RESPONSE_PREFIX_LENGTH = 4;
         public const int DEFAULT_TIMEOUT_MS = 30000;
         public const int DATA_TIMEOUT_MS = 60000;
         
-        // USB 常量
-        public const int USB_VENDOR_ID_GOOGLE = 0x18D1;
-        public const int USB_PRODUCT_ID_FASTBOOT = 0x4EE0;
+        // USB 协议常量
         public const int USB_CLASS_FASTBOOT = 0xFF;
         public const int USB_SUBCLASS_FASTBOOT = 0x42;
         public const int USB_PROTOCOL_FASTBOOT = 0x03;
+        
+        #region 厂商 USB Vendor ID
+        
+        public const int USB_VID_GOOGLE = 0x18D1;       // Google / Pixel
+        public const int USB_VID_XIAOMI = 0x2717;       // 小米
+        public const int USB_VID_OPPO = 0x22D9;         // OPPO
+        public const int USB_VID_ONEPLUS = 0x2A70;      // 一加
+        public const int USB_VID_QUALCOMM = 0x05C6;     // 高通
+        public const int USB_VID_SAMSUNG = 0x04E8;      // 三星
+        public const int USB_VID_HUAWEI = 0x12D1;       // 华为
+        public const int USB_VID_MOTOROLA = 0x22B8;     // 摩托罗拉
+        public const int USB_VID_SONY = 0x0FCE;         // 索尼
+        public const int USB_VID_LG = 0x1004;           // LG
+        public const int USB_VID_HTC = 0x0BB4;          // HTC
+        public const int USB_VID_ASUS = 0x0B05;         // 华硕
+        public const int USB_VID_LENOVO = 0x17EF;       // 联想
+        public const int USB_VID_VIVO = 0x2D95;         // VIVO
+        public const int USB_VID_MEIZU = 0x2A45;        // 魅族
+        public const int USB_VID_ZTE = 0x19D2;          // 中兴
+        public const int USB_VID_NUBIA = 0x19D2;        // 努比亚 (同 ZTE)
+        public const int USB_VID_REALME = 0x22D9;       // Realme (同 OPPO)
+        public const int USB_VID_NOTHING = 0x2970;      // Nothing Phone
+        public const int USB_VID_FAIRPHONE = 0x2AE5;    // Fairphone
+        public const int USB_VID_ESSENTIAL = 0x2E17;    // Essential
+        public const int USB_VID_NVIDIA = 0x0955;       // NVIDIA Shield
+        public const int USB_VID_MTK = 0x0E8D;          // 联发科 MTK
+        
+        // 所有支持的 Vendor ID 列表
+        public static readonly int[] SUPPORTED_VENDOR_IDS = {
+            USB_VID_GOOGLE, USB_VID_XIAOMI, USB_VID_OPPO, USB_VID_ONEPLUS,
+            USB_VID_QUALCOMM, USB_VID_SAMSUNG, USB_VID_HUAWEI, USB_VID_MOTOROLA,
+            USB_VID_SONY, USB_VID_LG, USB_VID_HTC, USB_VID_ASUS, USB_VID_LENOVO,
+            USB_VID_VIVO, USB_VID_MEIZU, USB_VID_ZTE, USB_VID_NOTHING,
+            USB_VID_FAIRPHONE, USB_VID_ESSENTIAL, USB_VID_NVIDIA, USB_VID_MTK
+        };
+        
+        #endregion
         
         // 响应前缀
         public const string RESPONSE_OKAY = "OKAY";
@@ -38,38 +75,255 @@ namespace LoveAlways.Fastboot.Protocol
         public const string RESPONSE_INFO = "INFO";
         public const string RESPONSE_TEXT = "TEXT";
         
-        // 标准命令
+<<<<<<< HEAD
+        // 标准命令 (根据 Google 官方协议)
         public const string CMD_GETVAR = "getvar";
         public const string CMD_DOWNLOAD = "download";
+        public const string CMD_UPLOAD = "upload";           // 从设备上传数据
         public const string CMD_FLASH = "flash";
         public const string CMD_ERASE = "erase";
         public const string CMD_BOOT = "boot";
+=======
+        #region Google 官方标准命令 (必须支持)
+        
+        // 基础命令
+        public const string CMD_GETVAR = "getvar";              // 查询变量
+        public const string CMD_DOWNLOAD = "download";          // 下载数据到设备内存
+        public const string CMD_UPLOAD = "upload";              // 从设备上传数据
+        public const string CMD_FLASH = "flash";                // 刷写分区
+        public const string CMD_ERASE = "erase";                // 擦除分区
+        public const string CMD_BOOT = "boot";                  // 从内存启动
+        public const string CMD_CONTINUE = "continue";          // 继续启动流程
+        
+        // 重启命令
+>>>>>>> 0f35593 (feat: add complete Google commands and vendor OEM commands support)
         public const string CMD_REBOOT = "reboot";
         public const string CMD_REBOOT_BOOTLOADER = "reboot-bootloader";
-        public const string CMD_REBOOT_FASTBOOT = "reboot-fastboot";
+        public const string CMD_REBOOT_FASTBOOT = "reboot-fastboot";     // 重启到 fastbootd
         public const string CMD_REBOOT_RECOVERY = "reboot-recovery";
-        public const string CMD_CONTINUE = "continue";
-        public const string CMD_SET_ACTIVE = "set_active";
+        public const string CMD_REBOOT_EDL = "reboot-edl";               // 重启到 EDL 模式
+        public const string CMD_POWERDOWN = "powerdown";                 // 关机
+        
+        // A/B 槽位命令
+        public const string CMD_SET_ACTIVE = "set_active";               // 设置活动槽位
+        
+        // 解锁/锁定命令
         public const string CMD_FLASHING_UNLOCK = "flashing unlock";
         public const string CMD_FLASHING_LOCK = "flashing lock";
-        public const string CMD_OEM = "oem";
+        public const string CMD_FLASHING_UNLOCK_CRITICAL = "flashing unlock_critical";
+        public const string CMD_FLASHING_LOCK_CRITICAL = "flashing lock_critical";
+        public const string CMD_FLASHING_GET_UNLOCK_ABILITY = "flashing get_unlock_ability";
+<<<<<<< HEAD
+=======
         
-        // 常用变量名
-        public const string VAR_VERSION = "version";
+        // 动态分区命令 (Android 10+)
+        public const string CMD_UPDATE_SUPER = "update-super";
+        public const string CMD_CREATE_LOGICAL_PARTITION = "create-logical-partition";
+        public const string CMD_DELETE_LOGICAL_PARTITION = "delete-logical-partition";
+        public const string CMD_RESIZE_LOGICAL_PARTITION = "resize-logical-partition";
+        public const string CMD_WIPE_SUPER = "wipe-super";
+        
+        // GSI/快照命令
+        public const string CMD_GSI_WIPE = "gsi wipe";
+        public const string CMD_GSI_DISABLE = "gsi disable";
+        public const string CMD_GSI_STATUS = "gsi status";
+        public const string CMD_SNAPSHOT_UPDATE_CANCEL = "snapshot-update cancel";
+        public const string CMD_SNAPSHOT_UPDATE_MERGE = "snapshot-update merge";
+        
+        // 数据获取命令
+        public const string CMD_FETCH = "fetch";                // 从设备获取分区数据
+        
+        // OEM 通用命令
+>>>>>>> 0f35593 (feat: add complete Google commands and vendor OEM commands support)
+        public const string CMD_OEM = "oem";
+        public const string CMD_GSI = "gsi";                 // GSI 相关命令
+        public const string CMD_SNAPSHOT_UPDATE = "snapshot-update";  // VAB 快照更新
+        public const string CMD_FETCH = "fetch";             // 从设备获取分区
+        public const string CMD_CREATE_LOGICAL_PARTITION = "create-logical-partition";
+        public const string CMD_DELETE_LOGICAL_PARTITION = "delete-logical-partition";
+        public const string CMD_RESIZE_LOGICAL_PARTITION = "resize-logical-partition";
+        public const string CMD_UPDATE_SUPER = "update-super";
+        public const string CMD_WIPE_SUPER = "wipe-super";
+        
+<<<<<<< HEAD
+        // 协议版本 (当前版本 0.4)
+        public const string PROTOCOL_VERSION = "0.4";
+        
+        // 常用变量名 (根据 Google 官方协议)
+        public const string VAR_VERSION = "version";               // 协议版本
+        public const string VAR_VERSION_BOOTLOADER = "version-bootloader";
+        public const string VAR_VERSION_BASEBAND = "version-baseband";
+        public const string VAR_PRODUCT = "product";               // 产品名
+        public const string VAR_SERIALNO = "serialno";             // 序列号
+        public const string VAR_SECURE = "secure";                 // 安全启动状态
+        public const string VAR_UNLOCKED = "unlocked";             // BL 解锁状态
+        public const string VAR_OFF_MODE_CHARGE = "off-mode-charge";
+        public const string VAR_VARIANT = "variant";               // 硬件变体
+        public const string VAR_BATTERY_VOLTAGE = "battery-voltage";
+        public const string VAR_BATTERY_SOC_OK = "battery-soc-ok";
+        public const string VAR_MAX_DOWNLOAD_SIZE = "max-download-size";  // 最大下载大小
+        public const string VAR_CURRENT_SLOT = "current-slot";     // 当前 A/B 槽位
+        public const string VAR_SLOT_COUNT = "slot-count";         // 槽位数量
+        public const string VAR_SLOT_SUCCESSFUL = "slot-successful";
+        public const string VAR_SLOT_UNBOOTABLE = "slot-unbootable";
+        public const string VAR_SLOT_RETRY_COUNT = "slot-retry-count";
+        public const string VAR_HAS_SLOT = "has-slot";             // 分区是否有槽位后缀
+        public const string VAR_PARTITION_SIZE = "partition-size"; // 分区大小
+        public const string VAR_PARTITION_TYPE = "partition-type"; // 分区类型
+        public const string VAR_IS_LOGICAL = "is-logical";         // 是否为逻辑分区
+        public const string VAR_IS_USERSPACE = "is-userspace";     // 是否为 Fastbootd 模式
+        public const string VAR_SNAPSHOT_UPDATE_STATUS = "snapshot-update-status";  // VAB 更新状态
+        public const string VAR_SUPER_PARTITION_NAME = "super-partition-name";
+        public const string VAR_HW_REVISION = "hw-revision";       // 硬件版本
+        public const string VAR_ALL = "all";                       // 获取所有变量
+=======
+        #endregion
+        
+        #region 厂商专属命令 (OEM Commands)
+        
+        // ========== 小米/红米 (Xiaomi/Redmi) ==========
+        public const string OEM_XIAOMI_DEVICE_INFO = "oem device-info";
+        public const string OEM_XIAOMI_REBOOT_EDL = "oem edl";
+        public const string OEM_XIAOMI_LOCK = "oem lock";
+        public const string OEM_XIAOMI_UNLOCK = "oem unlock";
+        public const string OEM_XIAOMI_LKSTATE = "oem lks";
+        public const string OEM_XIAOMI_GET_TOKEN = "oem get_token";
+        public const string OEM_XIAOMI_WRITE_PERSIST = "oem write_persist";
+        public const string OEM_XIAOMI_BATTERY = "oem battery";
+        public const string OEM_XIAOMI_REBOOT_FTMW = "oem ftmw";           // 工厂模式
+        public const string OEM_XIAOMI_CDMS = "oem cdms";
+        
+        // ========== 一加 (OnePlus) ==========
+        public const string OEM_ONEPLUS_DEVICE_INFO = "oem device-info";
+        public const string OEM_ONEPLUS_UNLOCK = "oem unlock";
+        public const string OEM_ONEPLUS_LOCK = "oem lock";
+        public const string OEM_ONEPLUS_ENABLE_DM_VERITY = "oem enable_dm_verity";
+        public const string OEM_ONEPLUS_DISABLE_DM_VERITY = "oem disable_dm_verity";
+        public const string OEM_ONEPLUS_SN = "oem sn";                     // 获取序列号
+        public const string OEM_ONEPLUS_4K = "oem 4k-video-supported";
+        public const string OEM_ONEPLUS_REBOOT_FTMW = "oem ftmw";
+        
+        // ========== OPPO/Realme ==========
+        public const string OEM_OPPO_DEVICE_INFO = "oem device-info";
+        public const string OEM_OPPO_UNLOCK = "oem unlock";
+        public const string OEM_OPPO_LOCK = "oem lock";
+        public const string OEM_OPPO_GET_UNLOCK_CODE = "oem get-unlock-code";
+        public const string OEM_OPPO_RW_FLAG = "oem rw_flag";
+        public const string OEM_OPPO_DM_VERITY = "oem dm-verity";
+        
+        // ========== 三星 (Samsung) - Odin 模式不同，部分支持 ==========
+        public const string OEM_SAMSUNG_UNLOCK = "oem unlock";
+        public const string OEM_SAMSUNG_FRPRESET = "oem frpreset";         // FRP 重置
+        
+        // ========== 华为 (Huawei) ==========
+        public const string OEM_HUAWEI_UNLOCK = "oem unlock";
+        public const string OEM_HUAWEI_GET_IDENTIFIER = "oem get-identifier-token";
+        public const string OEM_HUAWEI_CHECK_ROOTINFO = "oem check-rootinfo";
+        
+        // ========== 摩托罗拉 (Motorola) ==========
+        public const string OEM_MOTO_UNLOCK = "oem unlock";
+        public const string OEM_MOTO_LOCK = "oem lock";
+        public const string OEM_MOTO_GET_UNLOCK_DATA = "oem get_unlock_data";
+        public const string OEM_MOTO_BP_TOOLS_ON = "oem bp_tools_on";
+        public const string OEM_MOTO_CONFIG_CARRIER = "oem config carrier";
+        
+        // ========== 索尼 (Sony) ==========
+        public const string OEM_SONY_UNLOCK = "oem unlock";
+        public const string OEM_SONY_GET_KEY = "oem key";
+        public const string OEM_SONY_TA_BACKUP = "oem ta_backup";
+        
+        // ========== 高通通用 (Qualcomm Generic) ==========
+        public const string OEM_QC_DEVICE_INFO = "oem device-info";
+        public const string OEM_QC_ENABLE_CHARGER_SCREEN = "oem enable-charger-screen";
+        public const string OEM_QC_DISABLE_CHARGER_SCREEN = "oem disable-charger-screen";
+        public const string OEM_QC_OFF_MODE_CHARGE = "oem off-mode-charge";
+        public const string OEM_QC_SELECT_DISPLAY_PANEL = "oem select-display-panel";
+        
+        // ========== MTK 联发科通用 ==========
+        public const string OEM_MTK_REBOOT_META = "oem reboot-meta";
+        public const string OEM_MTK_LOG_ENABLE = "oem log_enable";
+        public const string OEM_MTK_P2U = "oem p2u";
+        
+        // ========== Google Pixel ==========
+        public const string OEM_PIXEL_UNLOCK = "flashing unlock";          // Pixel 使用标准命令
+        public const string OEM_PIXEL_LOCK = "flashing lock";
+        public const string OEM_PIXEL_GET_UNLOCK_ABILITY = "flashing get_unlock_ability";
+        public const string OEM_PIXEL_OFF_MODE_CHARGE = "oem off-mode-charge";
+        
+        #endregion
+        
+        #region 标准变量名 (getvar)
+        
+        // 协议/版本信息
+        public const string VAR_VERSION = "version";                       // 协议版本 (0.4)
+        public const string VAR_VERSION_BOOTLOADER = "version-bootloader";
+        public const string VAR_VERSION_BASEBAND = "version-baseband";
+        public const string VAR_VERSION_OS = "version-os";
+        public const string VAR_VERSION_VNDK = "version-vndk";
+        
+        // 设备信息
         public const string VAR_PRODUCT = "product";
         public const string VAR_SERIALNO = "serialno";
+        public const string VAR_VARIANT = "variant";
+        public const string VAR_HW_REVISION = "hw-revision";
+        
+        // 安全状态
         public const string VAR_SECURE = "secure";
         public const string VAR_UNLOCKED = "unlocked";
+        public const string VAR_DEVICE_STATE = "device-state";             // locked/unlocked
+        
+        // 容量限制
         public const string VAR_MAX_DOWNLOAD_SIZE = "max-download-size";
+        public const string VAR_MAX_FETCH_SIZE = "max-fetch-size";
+        
+        // A/B 槽位
         public const string VAR_CURRENT_SLOT = "current-slot";
         public const string VAR_SLOT_COUNT = "slot-count";
         public const string VAR_HAS_SLOT = "has-slot";
+        public const string VAR_SLOT_SUCCESSFUL = "slot-successful";
+        public const string VAR_SLOT_UNBOOTABLE = "slot-unbootable";
+        public const string VAR_SLOT_RETRY_COUNT = "slot-retry-count";
+        
+        // 分区信息
         public const string VAR_PARTITION_SIZE = "partition-size";
         public const string VAR_PARTITION_TYPE = "partition-type";
         public const string VAR_IS_LOGICAL = "is-logical";
+        
+        // Fastbootd / 动态分区
         public const string VAR_IS_USERSPACE = "is-userspace";
+        public const string VAR_SUPER_PARTITION_NAME = "super-partition-name";
         public const string VAR_SNAPSHOT_UPDATE_STATUS = "snapshot-update-status";
-        public const string VAR_ALL = "all";
+        
+        // 电池信息
+        public const string VAR_BATTERY_VOLTAGE = "battery-voltage";
+        public const string VAR_BATTERY_SOC_OK = "battery-soc-ok";
+        public const string VAR_CHARGER_SCREEN_ENABLED = "charger-screen-enabled";
+        public const string VAR_OFF_MODE_CHARGE = "off-mode-charge";
+        
+        // 通用
+        public const string VAR_ALL = "all";                               // 获取所有变量
+        
+        #endregion
+        
+        #region 厂商特有变量
+        
+        // 小米
+        public const string VAR_XIAOMI_ANTI = "anti";
+        public const string VAR_XIAOMI_TOKEN = "token";
+        public const string VAR_XIAOMI_PRODUCT_TYPE = "product_type";
+        
+        // 一加
+        public const string VAR_ONEPLUS_BUILD_TYPE = "build-type";
+        public const string VAR_ONEPLUS_CARRIER = "carrier";
+        
+        // 华为
+        public const string VAR_HUAWEI_IDENTIFIER_TOKEN = "identifier-token";
+        
+        // 高通
+        public const string VAR_QC_SECURESTATE = "securestate";
+        
+        #endregion
+>>>>>>> 0f35593 (feat: add complete Google commands and vendor OEM commands support)
         
         /// <summary>
         /// 构建命令字节
