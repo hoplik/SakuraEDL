@@ -80,6 +80,8 @@
     <Reference Include="System.Xml" />
     <Reference Include="System.Management" />
     <Reference Include="Microsoft.VisualBasic" />
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Form1.cs">
@@ -134,6 +136,9 @@
     <Compile Include="Fastboot\Transport\UsbTransport.cs" />
     <Compile Include="Fastboot\Image\SparseImage.cs" />
     <Compile Include="Fastboot\Services\FastbootNativeService.cs" />
+    <!-- Fastboot Payload 解析 -->
+    <Compile Include="Fastboot\Payload\PayloadParser.cs" />
+    <Compile Include="Fastboot\Payload\PayloadService.cs" />
     <EmbeddedResource Include="Form1.resx">
       <DependentUpon>Form1.cs</DependentUpon>
     </EmbeddedResource>
