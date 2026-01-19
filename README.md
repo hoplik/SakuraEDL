@@ -167,6 +167,8 @@ LoveAlways/
 | 认证失败 | Programmer 不匹配 | 使用正确的 Programmer 文件 |
 | 写入被拒绝 | 未通过 VIP 认证 | 选择正确的 Digest/Signature 文件 |
 | 解析超时 | 设备响应慢 | 等待或重新连接设备 |
+| VIP 认证回退 | 无认证文件 | 提供 Digest/Signature 或使用 OnePlus 认证 |
+| 设备信息读取失败 | LP Metadata 过大 | 程序会自动限制读取大小并继续 |
 
 ### Fastboot 模式问题
 | 问题 | 可能原因 | 解决方案 |
@@ -178,6 +180,12 @@ LoveAlways/
 | 刷写速度显示 0 | USB 2.0 连接 | 使用 USB 3.0 接口 |
 
 ## 📝 更新日志
+
+### v1.2.1 (2026-01)
+- ✅ **VIP 认证优化** - 认证失败/无文件时自动回退普通模式
+- ✅ **OTA 版本解析** - OPLUS 设备优先使用 `ro.build.display.id.show`
+- ✅ **LP Metadata 增强** - 增加读取大小限制和调试信息，防止超时
+- ✅ **读取模式修复** - 只有 VIP 认证成功才使用 VIP 模式读取
 
 ### v1.2.0 (2026-01)
 - ✅ **云端 OTA 支持** - 直接解析远程 OTA 链接中的 payload.bin
