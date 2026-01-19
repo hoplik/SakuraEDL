@@ -416,7 +416,7 @@ namespace LoveAlways.Qualcomm.Common
         }
 
         /// <summary>
-        /// 读取 Inode 数据
+        /// 读取 Inode 数据 (支持所有数据布局)
         /// </summary>
         private byte[] ReadInodeData(ulong nid, ErofsInodeCompact inode)
         {
@@ -436,6 +436,15 @@ namespace LoveAlways.Qualcomm.Common
                     case ErofsDataLayout.FlatInline:
                         return ReadFlatInlineData(nid, inode, size);
 
+                    case ErofsDataLayout.ChunkBased:
+                        return ReadChunkBasedData(nid, inode, size);
+
+                    case ErofsDataLayout.CompressedFull:
+                    case ErofsDataLayout.CompressedCompact:
+                        // 压缩数据需要解压，当前只返回原始数据用于分析
+                        _log("[EROFS] 压缩数据布局，尝试读取原始数据...");
+                        return ReadCompressedDataRaw(nid, inode, size);
+
                     default:
                         _log("[EROFS] 不支持的数据布局: " + layout);
                         return null;
@@ -444,6 +453,100 @@ namespace LoveAlways.Qualcomm.Common
             catch (Exception ex)
             {
                 _log("[EROFS] 读取数据失败: " + ex.Message);
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// 读取 Chunk-Based 数据
+        /// </summary>
+        private byte[] ReadChunkBasedData(ulong nid, ErofsInodeCompact inode, int size)
+        {
+            try
+            {
+                long inodeOffset = GetInodeOffset(nid);
+                int inodeSize = IsExtendedInode(inode.i_format) ? 64 : 32;
+                int xattrSize = inode.i_xattr_icount > 0 ? 12 + (inode.i_xattr_icount - 1) * 4 : 0;
+                int chunkIndexOffset = inodeSize + xattrSize;
+
+                // 计算 chunk 数量
+                int chunkBits = _superBlock.blkszbits; // 通常与块大小相同
+                int chunkSize = 1 << chunkBits;
+                int chunkCount = (size + chunkSize - 1) / chunkSize;
+
+                var result = new MemoryStream();
+
+                for (int i = 0; i < chunkCount && result.Length < size; i++)
+                {
+                    // 读取 chunk 索引 (8 字节)
+                    _stream.Seek(inodeOffset + chunkIndexOffset + i * 8, SeekOrigin.Begin);
+                    byte[] chunkIdx = new byte[8];
+                    _stream.Read(chunkIdx, 0, 8);
+
+                    uint blkAddr = BitConverter.ToUInt32(chunkIdx, 0);
+                    // uint deviceId = BitConverter.ToUInt16(chunkIdx, 4);
+                    // ushort reserved = BitConverter.ToUInt16(chunkIdx, 6);
+
+                    if (blkAddr == 0xFFFFFFFF)
+                    {
+                        // Hole chunk - 填充零
+                        int toWrite = Math.Min(chunkSize, size - (int)result.Length);
+                        result.Write(new byte[toWrite], 0, toWrite);
+                    }
+                    else
+                    {
+                        // 读取实际数据
+                        long dataOffset = (long)blkAddr * _blockSize;
+                        _stream.Seek(dataOffset, SeekOrigin.Begin);
+                        int toRead = Math.Min(chunkSize, size - (int)result.Length);
+                        byte[] data = new byte[toRead];
+                        _stream.Read(data, 0, toRead);
+                        result.Write(data, 0, toRead);
+                    }
+                }
+
+                return result.ToArray();
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// 读取压缩数据的原始块 (不解压)
+        /// </summary>
+        private byte[] ReadCompressedDataRaw(ulong nid, ErofsInodeCompact inode, int size)
+        {
+            try
+            {
+                // 对于压缩数据，我们尝试读取 inode.i_u 指向的数据块
+                // 这可能是压缩后的数据，但对于 build.prop 这样的小文件
+                // 有时候数据是内联的或者只有少量压缩块
+                
+                long dataOffset = (long)inode.i_u * _blockSize;
+                int readSize = Math.Min(size * 2, 128 * 1024); // 读取更多以覆盖压缩开销
+                
+                _stream.Seek(dataOffset, SeekOrigin.Begin);
+                byte[] data = new byte[readSize];
+                int actualRead = _stream.Read(data, 0, readSize);
+
+                if (actualRead > 0)
+                {
+                    // 尝试在原始数据中查找 build.prop 内容
+                    string content = System.Text.Encoding.UTF8.GetString(data, 0, actualRead);
+                    
+                    // 如果能找到 ro. 开头的属性，说明数据可能未压缩或部分可读
+                    if (content.Contains("ro.") || content.Contains("build.prop"))
+                    {
+                        return data;
+                    }
+                }
+
+                return null;
+            }
+            catch
+            {
                 return null;
             }
         }

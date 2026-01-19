@@ -561,11 +561,11 @@ namespace LoveAlways.Qualcomm.Common
         }
 
         /// <summary>
-        /// 读取直接块数据
+        /// 读取直接块数据 (完整支持间接块)
         /// </summary>
         private byte[] ReadDirectBlockData(Ext4Inode inode, int maxSize = 0)
         {
-            if (inode.i_block == null || inode.i_block.Length < 48)
+            if (inode.i_block == null || inode.i_block.Length < 60)
                 return null;
 
             long fileSize = inode.i_size_lo | ((long)inode.i_size_high << 32);
@@ -573,24 +573,96 @@ namespace LoveAlways.Qualcomm.Common
                 fileSize = maxSize;
 
             var result = new MemoryStream();
+            int pointersPerBlock = _blockSize / 4; // 每个块能容纳的指针数
 
-            // 直接块 (12个)
+            // 直接块 (12个, 偏移 0-47)
             for (int i = 0; i < 12 && result.Length < fileSize; i++)
             {
                 uint blockNum = BitConverter.ToUInt32(inode.i_block, i * 4);
                 if (blockNum == 0)
-                    break;
+                    continue;
 
-                _stream.Seek((long)blockNum * _blockSize, SeekOrigin.Begin);
-                int toRead = (int)Math.Min(_blockSize, fileSize - result.Length);
-                byte[] blockData = new byte[toRead];
-                _stream.Read(blockData, 0, toRead);
-                result.Write(blockData, 0, toRead);
+                ReadBlockToStream(blockNum, result, ref fileSize);
             }
 
-            // TODO: 间接块、二级间接块、三级间接块...
+            if (result.Length >= fileSize)
+                return result.ToArray();
+
+            // 一级间接块 (偏移 48)
+            uint indirectBlock = BitConverter.ToUInt32(inode.i_block, 48);
+            if (indirectBlock != 0)
+            {
+                ReadIndirectBlocks(indirectBlock, 1, result, ref fileSize, pointersPerBlock);
+            }
+
+            if (result.Length >= fileSize)
+                return result.ToArray();
+
+            // 二级间接块 (偏移 52)
+            uint doubleIndirectBlock = BitConverter.ToUInt32(inode.i_block, 52);
+            if (doubleIndirectBlock != 0)
+            {
+                ReadIndirectBlocks(doubleIndirectBlock, 2, result, ref fileSize, pointersPerBlock);
+            }
+
+            if (result.Length >= fileSize)
+                return result.ToArray();
+
+            // 三级间接块 (偏移 56)
+            uint tripleIndirectBlock = BitConverter.ToUInt32(inode.i_block, 56);
+            if (tripleIndirectBlock != 0)
+            {
+                ReadIndirectBlocks(tripleIndirectBlock, 3, result, ref fileSize, pointersPerBlock);
+            }
 
             return result.ToArray();
+        }
+
+        /// <summary>
+        /// 读取单个块到流
+        /// </summary>
+        private void ReadBlockToStream(uint blockNum, MemoryStream result, ref long remainingSize)
+        {
+            if (blockNum == 0 || result.Length >= remainingSize)
+                return;
+
+            _stream.Seek((long)blockNum * _blockSize, SeekOrigin.Begin);
+            int toRead = (int)Math.Min(_blockSize, remainingSize - result.Length);
+            byte[] blockData = new byte[toRead];
+            _stream.Read(blockData, 0, toRead);
+            result.Write(blockData, 0, toRead);
+        }
+
+        /// <summary>
+        /// 递归读取间接块
+        /// </summary>
+        private void ReadIndirectBlocks(uint blockNum, int level, MemoryStream result, ref long remainingSize, int pointersPerBlock)
+        {
+            if (blockNum == 0 || result.Length >= remainingSize || level < 1)
+                return;
+
+            // 读取指针块
+            _stream.Seek((long)blockNum * _blockSize, SeekOrigin.Begin);
+            byte[] pointerBlock = new byte[_blockSize];
+            _stream.Read(pointerBlock, 0, _blockSize);
+
+            for (int i = 0; i < pointersPerBlock && result.Length < remainingSize; i++)
+            {
+                uint nextBlock = BitConverter.ToUInt32(pointerBlock, i * 4);
+                if (nextBlock == 0)
+                    continue;
+
+                if (level == 1)
+                {
+                    // 直接数据块
+                    ReadBlockToStream(nextBlock, result, ref remainingSize);
+                }
+                else
+                {
+                    // 递归处理下一层间接块
+                    ReadIndirectBlocks(nextBlock, level - 1, result, ref remainingSize, pointersPerBlock);
+                }
+            }
         }
 
         /// <summary>
