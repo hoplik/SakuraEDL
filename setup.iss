@@ -53,11 +53,46 @@ VersionInfoCopyright=Copyright © xiri 2025-2026
 ShowLanguageDialog=auto
 
 [Languages]
-Name: "english"; MessagesFile: "compiler:Default.isl"
+Name: "chinese"; MessagesFile: "compiler:Default.isl"
+
+[Messages]
+; 中文界面
+SetupWindowTitle=安装 - %1
+WelcomeLabel1=欢迎使用 [name] 安装向导
+WelcomeLabel2=本向导将引导您完成 [name/ver] 的安装。%n%n建议您在继续之前关闭所有其他应用程序。
+SelectDirLabel3=安装程序将把 [name] 安装到以下文件夹。
+SelectDirBrowseLabel=若要继续，请单击"下一步"。若要选择其他文件夹，请单击"浏览"。
+DiskSpaceGBLabel=至少需要 [gb] GB 的可用磁盘空间。
+DiskSpaceMBLabel=至少需要 [mb] MB 的可用磁盘空间。
+SelectTasksLabel2=选择安装程序要执行的附加任务，然后单击"下一步"继续。
+ReadyLabel1=安装程序已准备好开始安装 [name]。
+ReadyLabel2a=单击"安装"继续安装，或单击"上一步"检查或更改设置。
+PreparingDesc=安装程序正在准备安装 [name]...
+InstallingLabel=请稍候，安装程序正在安装 [name]...
+FinishedHeadingLabel=完成 [name] 安装向导
+FinishedLabel=安装程序已在您的计算机上安装了 [name]。您可以通过已创建的快捷方式启动该应用程序。
+ClickFinish=单击"完成"退出安装向导。
+ButtonNext=下一步(&N) >
+ButtonInstall=安装(&I)
+ButtonBack=< 上一步(&B)
+ButtonCancel=取消
+ButtonFinish=完成(&F)
+ButtonBrowse=浏览(&R)...
+StatusExtractFiles=正在解压缩文件...
+StatusCreateIcons=正在创建快捷方式...
+StatusCreateDir=正在创建文件夹...
+StatusSavingUninstall=正在保存卸载信息...
+ExitSetupTitle=退出安装
+ExitSetupMessage=安装尚未完成。如果现在退出，程序将不会被安装。%n%n您确定要退出吗？
+UninstallProgram=卸载 %1
+LaunchProgram=运行 %1
+
+[CustomMessages]
+AdditionalIcons=附加图标:
+CreateDesktopIcon=创建桌面快捷方式(&D)
 
 [Tasks]
-Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
-Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked; OnlyBelowVersion: 6.1; Check: not IsAdminInstallMode
+Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
 
 [Files]
 ; 主程序
@@ -81,7 +116,6 @@ Source: "MultiFlash TOOL.ico"; DestDir: "{app}"; Flags: ignoreversion
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\MultiFlash TOOL.ico"
 Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\MultiFlash TOOL.ico"; Tasks: desktopicon
-Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: quicklaunchicon
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
