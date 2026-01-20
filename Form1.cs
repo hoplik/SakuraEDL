@@ -884,7 +884,7 @@ namespace LoveAlways
                     var sb = new System.Text.StringBuilder();
                     sb.AppendLine("<?xml version=\"1.0\" ?>");
                     sb.AppendLine("<data>");
-                    sb.AppendLine("  <!-- 由 LoveAlways EDL Tool 生成 - 回读分区 -->");
+                    sb.AppendLine("  <!-- 由 MultiFlash TOOL 生成 - 回读分区 -->");
                     
                     foreach (var p in lunPartitions)
                     {
@@ -1756,7 +1756,7 @@ namespace LoveAlways
             catch
             {
                 // 日志初始化失败时使用临时目录
-                logFilePath = Path.Combine(Path.GetTempPath(), $"LoveAlways_{DateTime.Now:yyyyMMdd_HHmmss}.log");
+                logFilePath = Path.Combine(Path.GetTempPath(), $"MultiFlash_{DateTime.Now:yyyyMMdd_HHmmss}.log");
             }
         }
 

@@ -1,6 +1,7 @@
-# LoveAlways - 多模式刷机工具
+# MultiFlash TOOL - 多模式刷机工具
 
 <p align="center">
+  <img src="https://img.shields.io/badge/Version-2.2.0-green?style=flat-square" alt="Version">
   <img src="https://img.shields.io/badge/Platform-Windows-blue?style=flat-square" alt="Platform">
   <img src="https://img.shields.io/badge/.NET-Framework%204.8-purple?style=flat-square" alt=".NET">
   <img src="https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey?style=flat-square" alt="License">
@@ -8,7 +9,7 @@
 
 ## 📖 项目简介
 
-LoveAlways 是一款功能强大的多模式刷机工具，支持 **高通 EDL (9008)** 和 **Fastboot** 两种刷机模式，提供多厂商设备的刷写、分区管理、云端 OTA 解析和设备信息读取功能。
+MultiFlash TOOL 是一款功能强大的多模式刷机工具，支持 **高通 EDL (9008)** 和 **Fastboot** 两种刷机模式，提供多厂商设备的刷写、分区管理、云端 OTA 解析和设备信息读取功能。
 
 ## ✨ 主要功能
 
@@ -72,7 +73,7 @@ LoveAlways 是一款功能强大的多模式刷机工具，支持 **高通 EDL (
 ## 📁 项目结构
 
 ```
-LoveAlways/
+MultiFlash/
 ├── Qualcomm/                   # 高通 EDL 模式
 │   ├── Authentication/         # 厂商认证策略
 │   │   ├── OnePlusAuthStrategy.cs

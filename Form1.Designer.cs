@@ -2417,7 +2417,7 @@ namespace LoveAlways
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
             this.Mode = AntdUI.TAMode.Light;
             this.Name = "Form1";
-            this.Text = "Form1";
+            this.Text = "MultiFlash TOOL v2.2.0";
             this.uiGroupBox1.ResumeLayout(false);
             this.menuStrip1.ResumeLayout(false);
             this.menuStrip1.PerformLayout();

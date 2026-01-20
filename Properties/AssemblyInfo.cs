@@ -1,17 +1,17 @@
-﻿using System.Reflection;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 // 有关程序集的一般信息由以下
 // 控制。更改这些特性值可修改
 // 与程序集关联的信息。
-[assembly: AssemblyTitle("LoveAlways EDL Tool")]
-[assembly: AssemblyDescription("高通 EDL 模式刷机工具 - Qualcomm Emergency Download Mode Flashing Tool")]
+[assembly: AssemblyTitle("MultiFlash TOOL")]
+[assembly: AssemblyDescription("多模式刷机工具 - Multi-Mode Flashing Tool (EDL/Fastboot)")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("xiri")]
-[assembly: AssemblyProduct("LoveAlways")]
-[assembly: AssemblyCopyright("Copyright © xiri 2025. All Rights Reserved.")]
-[assembly: AssemblyTrademark("LoveAlways™")]
+[assembly: AssemblyProduct("MultiFlash TOOL")]
+[assembly: AssemblyCopyright("Copyright © xiri 2025-2026. All Rights Reserved.")]
+[assembly: AssemblyTrademark("MultiFlash™")]
 [assembly: AssemblyCulture("")]
 
 // 将 ComVisible 设置为 false 会使此程序集中的类型
@@ -29,5 +29,5 @@ using System.Runtime.InteropServices;
 //      生成号
 //      修订号
 //
-[assembly: AssemblyVersion("1.0.0.0")]
-[assembly: AssemblyFileVersion("1.0.0.0")]
+[assembly: AssemblyVersion("2.2.0.0")]
+[assembly: AssemblyFileVersion("2.2.0.0")]
