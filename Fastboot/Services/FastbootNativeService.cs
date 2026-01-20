@@ -398,6 +398,18 @@ namespace LoveAlways.Fastboot.Services
             return await SetActiveSlotAsync(newSlot, ct);
         }
         
+        public async Task<string> GetCurrentSlotAsync(CancellationToken ct = default)
+        {
+            if (!IsConnected) return null;
+            
+            // 优先从已缓存的设备信息获取
+            if (DeviceInfo != null && !string.IsNullOrEmpty(DeviceInfo.CurrentSlot))
+                return DeviceInfo.CurrentSlot;
+            
+            // 否则直接查询
+            return await _client.GetVariableAsync("current-slot", ct);
+        }
+        
         #endregion
         
         #region 变量操作

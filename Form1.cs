@@ -215,6 +215,36 @@ namespace LoveAlways
                 toolStripMenuItem5.Click += async (s, e) => await _qualcommController.RebootToSystemAsync();
                 eDL切换槽位ToolStripMenuItem.Click += async (s, e) => await QualcommSwitchSlotAsync();
                 激活LUNToolStripMenuItem.Click += async (s, e) => await QualcommSetBootLunAsync();
+                
+                // ========== 快捷操作菜单事件 (设备管理器) ==========
+                // 重启系统 (ADB/Fastboot)
+                toolStripMenuItem2.Click += async (s, e) => await QuickRebootSystemAsync();
+                // 重启到 Fastboot (ADB/Fastboot)
+                toolStripMenuItem6.Click += async (s, e) => await QuickRebootBootloaderAsync();
+                // 重启到 Fastbootd (ADB/Fastboot)
+                toolStripMenuItem7.Click += async (s, e) => await QuickRebootFastbootdAsync();
+                // 重启到 Recovery (ADB/Fastboot)
+                重启恢复ToolStripMenuItem.Click += async (s, e) => await QuickRebootRecoveryAsync();
+                // MI踢EDL (Fastboot only)
+                mIToolStripMenuItem.Click += async (s, e) => await QuickMiRebootEdlAsync();
+                // 联想或安卓踢EDL (ADB only)
+                联想或安卓踢EDLToolStripMenuItem.Click += async (s, e) => await QuickAdbRebootEdlAsync();
+                // 擦除谷歌锁 (Fastboot only)
+                擦除谷歌锁ToolStripMenuItem.Click += async (s, e) => await QuickEraseFrpAsync();
+                // 切换槽位 (Fastboot only)
+                切换槽位ToolStripMenuItem.Click += async (s, e) => await QuickSwitchSlotAsync();
+                
+                // ========== 其他菜单事件 ==========
+                // 设备管理器
+                设备管理器ToolStripMenuItem.Click += (s, e) => OpenDeviceManager();
+                // CMD命令行
+                cMD命令行ToolStripMenuItem.Click += (s, e) => OpenCommandPrompt();
+                // 安卓驱动
+                安卓驱动ToolStripMenuItem.Click += (s, e) => OpenDriverInstaller("android");
+                // MTK驱动
+                mTK驱动ToolStripMenuItem.Click += (s, e) => OpenDriverInstaller("mtk");
+                // 高通驱动
+                高通驱动ToolStripMenuItem.Click += (s, e) => OpenDriverInstaller("qualcomm");
 
                 // ========== 停止按钮 ==========
                 uiButton1.Click += (s, e) => StopCurrentOperation();
@@ -3855,6 +3885,305 @@ namespace LoveAlways
             }
         }
 
+        #endregion
+
+        #region 快捷操作 (设备管理器)
+        
+        /// <summary>
+        /// 快捷重启系统 (优先 Fastboot，备选 ADB)
+        /// </summary>
+        private async Task QuickRebootSystemAsync()
+        {
+            AppendLog("执行: 重启系统...", Color.Cyan);
+            
+            // 优先尝试 Fastboot
+            if (_fastbootController != null && _fastbootController.IsConnected)
+            {
+                bool ok = await _fastbootController.RebootAsync();
+                if (ok)
+                {
+                    AppendLog("Fastboot: 重启成功", Color.Green);
+                    return;
+                }
+            }
+            
+            // 备选 ADB
+            var result = await LoveAlways.Fastboot.Common.AdbHelper.RebootAsync();
+            if (result.Success)
+                AppendLog("ADB: 重启成功", Color.Green);
+            else
+                AppendLog($"重启失败: {result.Error}", Color.Red);
+        }
+        
+        /// <summary>
+        /// 快捷重启到 Bootloader (优先 Fastboot，备选 ADB)
+        /// </summary>
+        private async Task QuickRebootBootloaderAsync()
+        {
+            AppendLog("执行: 重启到 Fastboot...", Color.Cyan);
+            
+            // 优先尝试 Fastboot
+            if (_fastbootController != null && _fastbootController.IsConnected)
+            {
+                bool ok = await _fastbootController.RebootBootloaderAsync();
+                if (ok)
+                {
+                    AppendLog("Fastboot: 重启到 Bootloader 成功", Color.Green);
+                    return;
+                }
+            }
+            
+            // 备选 ADB
+            var result = await LoveAlways.Fastboot.Common.AdbHelper.RebootBootloaderAsync();
+            if (result.Success)
+                AppendLog("ADB: 重启到 Bootloader 成功", Color.Green);
+            else
+                AppendLog($"重启失败: {result.Error}", Color.Red);
+        }
+        
+        /// <summary>
+        /// 快捷重启到 Fastbootd (优先 Fastboot，备选 ADB)
+        /// </summary>
+        private async Task QuickRebootFastbootdAsync()
+        {
+            AppendLog("执行: 重启到 Fastbootd...", Color.Cyan);
+            
+            // 优先尝试 Fastboot
+            if (_fastbootController != null && _fastbootController.IsConnected)
+            {
+                bool ok = await _fastbootController.RebootFastbootdAsync();
+                if (ok)
+                {
+                    AppendLog("Fastboot: 重启到 Fastbootd 成功", Color.Green);
+                    return;
+                }
+            }
+            
+            // 备选 ADB
+            var result = await LoveAlways.Fastboot.Common.AdbHelper.RebootFastbootAsync();
+            if (result.Success)
+                AppendLog("ADB: 重启到 Fastbootd 成功", Color.Green);
+            else
+                AppendLog($"重启失败: {result.Error}", Color.Red);
+        }
+        
+        /// <summary>
+        /// 快捷重启到 Recovery (优先 Fastboot，备选 ADB)
+        /// </summary>
+        private async Task QuickRebootRecoveryAsync()
+        {
+            AppendLog("执行: 重启到 Recovery...", Color.Cyan);
+            
+            // 优先尝试 Fastboot
+            if (_fastbootController != null && _fastbootController.IsConnected)
+            {
+                bool ok = await _fastbootController.RebootRecoveryAsync();
+                if (ok)
+                {
+                    AppendLog("Fastboot: 重启到 Recovery 成功", Color.Green);
+                    return;
+                }
+            }
+            
+            // 备选 ADB
+            var result = await LoveAlways.Fastboot.Common.AdbHelper.RebootRecoveryAsync();
+            if (result.Success)
+                AppendLog("ADB: 重启到 Recovery 成功", Color.Green);
+            else
+                AppendLog($"重启失败: {result.Error}", Color.Red);
+        }
+        
+        /// <summary>
+        /// MI踢EDL - Fastboot OEM EDL (仅限小米设备)
+        /// </summary>
+        private async Task QuickMiRebootEdlAsync()
+        {
+            AppendLog("执行: MI踢EDL (fastboot oem edl)...", Color.Cyan);
+            
+            if (_fastbootController == null || !_fastbootController.IsConnected)
+            {
+                AppendLog("请先连接 Fastboot 设备", Color.Orange);
+                return;
+            }
+            
+            bool ok = await _fastbootController.OemEdlAsync();
+            if (ok)
+                AppendLog("MI踢EDL: 成功，设备将进入 EDL 模式", Color.Green);
+            else
+                AppendLog("MI踢EDL: 失败，设备可能不支持此命令", Color.Red);
+        }
+        
+        /// <summary>
+        /// 联想或安卓踢EDL - ADB reboot edl
+        /// </summary>
+        private async Task QuickAdbRebootEdlAsync()
+        {
+            AppendLog("执行: 联想/安卓踢EDL (adb reboot edl)...", Color.Cyan);
+            
+            var result = await LoveAlways.Fastboot.Common.AdbHelper.RebootEdlAsync();
+            if (result.Success)
+                AppendLog("ADB: 踢EDL成功，设备将进入 EDL 模式", Color.Green);
+            else
+                AppendLog($"踢EDL失败: {result.Error}", Color.Red);
+        }
+        
+        /// <summary>
+        /// 擦除谷歌锁 (Fastboot erase frp)
+        /// </summary>
+        private async Task QuickEraseFrpAsync()
+        {
+            AppendLog("执行: 擦除谷歌锁 (fastboot erase frp)...", Color.Cyan);
+            
+            if (_fastbootController == null || !_fastbootController.IsConnected)
+            {
+                AppendLog("请先连接 Fastboot 设备", Color.Orange);
+                return;
+            }
+            
+            bool ok = await _fastbootController.EraseFrpAsync();
+            if (ok)
+                AppendLog("擦除谷歌锁: 成功", Color.Green);
+            else
+                AppendLog("擦除谷歌锁: 失败，设备可能已锁定 Bootloader", Color.Red);
+        }
+        
+        /// <summary>
+        /// 切换槽位 (Fastboot set_active)
+        /// </summary>
+        private async Task QuickSwitchSlotAsync()
+        {
+            AppendLog("执行: 切换槽位...", Color.Cyan);
+            
+            if (_fastbootController == null || !_fastbootController.IsConnected)
+            {
+                AppendLog("请先连接 Fastboot 设备", Color.Orange);
+                return;
+            }
+            
+            // 获取当前槽位
+            string currentSlot = await _fastbootController.GetCurrentSlotAsync();
+            if (string.IsNullOrEmpty(currentSlot))
+            {
+                AppendLog("无法获取当前槽位，设备可能不支持 A/B 分区", Color.Orange);
+                return;
+            }
+            
+            // 切换到另一个槽位
+            string targetSlot = currentSlot == "a" ? "b" : "a";
+            AppendLog($"当前槽位: {currentSlot}，切换到: {targetSlot}", Color.White);
+            
+            bool ok = await _fastbootController.SetActiveSlotAsync(targetSlot);
+            if (ok)
+                AppendLog($"切换槽位成功: {currentSlot} -> {targetSlot}", Color.Green);
+            else
+                AppendLog("切换槽位失败", Color.Red);
+        }
+        
+        #endregion
+        
+        #region 其他功能菜单
+        
+        /// <summary>
+        /// 打开设备管理器
+        /// </summary>
+        private void OpenDeviceManager()
+        {
+            try
+            {
+                System.Diagnostics.Process.Start("devmgmt.msc");
+                AppendLog("已打开设备管理器", Color.Blue);
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"打开设备管理器失败: {ex.Message}", Color.Red);
+            }
+        }
+        
+        /// <summary>
+        /// 打开 CMD 命令行 (在程序目录下)
+        /// </summary>
+        private void OpenCommandPrompt()
+        {
+            try
+            {
+                var psi = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "cmd.exe",
+                    WorkingDirectory = AppDomain.CurrentDomain.BaseDirectory,
+                    UseShellExecute = true
+                };
+                System.Diagnostics.Process.Start(psi);
+                AppendLog($"已打开命令行: {psi.WorkingDirectory}", Color.Blue);
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"打开命令行失败: {ex.Message}", Color.Red);
+            }
+        }
+        
+        /// <summary>
+        /// 打开驱动安装程序
+        /// </summary>
+        /// <param name="driverType">驱动类型: android, mtk, qualcomm</param>
+        private void OpenDriverInstaller(string driverType)
+        {
+            try
+            {
+                string appDir = AppDomain.CurrentDomain.BaseDirectory;
+                string driverPath = null;
+                string driverName = null;
+                
+                switch (driverType.ToLower())
+                {
+                    case "android":
+                        driverName = "安卓驱动";
+                        // 尝试多个可能的路径
+                        string[] androidPaths = {
+                            Path.Combine(appDir, "drivers", "android_usb_driver.exe"),
+                            Path.Combine(appDir, "drivers", "adb_driver.exe"),
+                            Path.Combine(appDir, "ADB_Driver.exe")
+                        };
+                        driverPath = androidPaths.FirstOrDefault(File.Exists);
+                        break;
+                        
+                    case "mtk":
+                        driverName = "MTK驱动";
+                        string[] mtkPaths = {
+                            Path.Combine(appDir, "drivers", "mtk_usb_driver.exe"),
+                            Path.Combine(appDir, "drivers", "MediaTek_USB_VCOM_Driver.exe"),
+                            Path.Combine(appDir, "MTK_Driver.exe")
+                        };
+                        driverPath = mtkPaths.FirstOrDefault(File.Exists);
+                        break;
+                        
+                    case "qualcomm":
+                        driverName = "高通驱动";
+                        string[] qcPaths = {
+                            Path.Combine(appDir, "drivers", "qualcomm_usb_driver.exe"),
+                            Path.Combine(appDir, "drivers", "Qualcomm_USB_Driver.exe"),
+                            Path.Combine(appDir, "QC_Driver.exe")
+                        };
+                        driverPath = qcPaths.FirstOrDefault(File.Exists);
+                        break;
+                }
+                
+                if (string.IsNullOrEmpty(driverPath))
+                {
+                    AppendLog($"{driverName}安装程序未找到，请手动安装", Color.Orange);
+                    MessageBox.Show($"{driverName}安装程序未找到。\n\n请前往官方网站下载对应驱动。", 
+                        "驱动未找到", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+                
+                System.Diagnostics.Process.Start(driverPath);
+                AppendLog($"已启动{driverName}安装程序", Color.Blue);
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"启动驱动安装程序失败: {ex.Message}", Color.Red);
+            }
+        }
+        
         #endregion
     }
 }

@@ -516,6 +516,28 @@ namespace LoveAlways.Fastboot.Services
                 return false;
             }
         }
+        
+        /// <summary>
+        /// 获取当前槽位
+        /// </summary>
+        public async Task<string> GetCurrentSlotAsync(CancellationToken ct = default)
+        {
+            if (_nativeService == null || !_nativeService.IsConnected)
+            {
+                _log("[Fastboot] 未连接设备");
+                return null;
+            }
+
+            try
+            {
+                return await _nativeService.GetCurrentSlotAsync(ct);
+            }
+            catch (Exception ex)
+            {
+                _log($"[Fastboot] 获取槽位失败: {ex.Message}");
+                return null;
+            }
+        }
 
         #endregion
 
@@ -541,6 +563,53 @@ namespace LoveAlways.Fastboot.Services
             {
                 _log($"[Fastboot] OEM 命令失败: {ex.Message}");
                 return null;
+            }
+        }
+        
+        /// <summary>
+        /// OEM EDL - 小米踢EDL (fastboot oem edl)
+        /// </summary>
+        public async Task<bool> OemEdlAsync(CancellationToken ct = default)
+        {
+            if (_nativeService == null || !_nativeService.IsConnected)
+            {
+                _log("[Fastboot] 未连接设备");
+                return false;
+            }
+
+            try
+            {
+                _log("[Fastboot] 执行 OEM EDL...");
+                string result = await _nativeService.ExecuteOemCommandAsync("edl", ct);
+                return result != null;
+            }
+            catch (Exception ex)
+            {
+                _log($"[Fastboot] OEM EDL 失败: {ex.Message}");
+                return false;
+            }
+        }
+        
+        /// <summary>
+        /// 擦除 FRP 分区 (谷歌锁)
+        /// </summary>
+        public async Task<bool> EraseFrpAsync(CancellationToken ct = default)
+        {
+            if (_nativeService == null || !_nativeService.IsConnected)
+            {
+                _log("[Fastboot] 未连接设备");
+                return false;
+            }
+
+            try
+            {
+                _log("[Fastboot] 擦除 FRP 分区...");
+                return await _nativeService.ErasePartitionAsync("frp", ct);
+            }
+            catch (Exception ex)
+            {
+                _log($"[Fastboot] 擦除 FRP 失败: {ex.Message}");
+                return false;
             }
         }
 

@@ -1103,6 +1103,48 @@ namespace LoveAlways.Fastboot.UI
             if (!await EnsureConnectedAsync()) return false;
             return await _service.RebootRecoveryAsync();
         }
+        
+        // 别名方法 (供快捷操作使用)
+        public Task<bool> RebootAsync() => RebootToSystemAsync();
+        public Task<bool> RebootBootloaderAsync() => RebootToBootloaderAsync();
+        public Task<bool> RebootFastbootdAsync() => RebootToFastbootdAsync();
+        public Task<bool> RebootRecoveryAsync() => RebootToRecoveryAsync();
+        
+        /// <summary>
+        /// OEM EDL - 小米踢EDL (fastboot oem edl)
+        /// </summary>
+        public async Task<bool> OemEdlAsync()
+        {
+            if (!await EnsureConnectedAsync()) return false;
+            return await _service.OemEdlAsync();
+        }
+        
+        /// <summary>
+        /// 擦除 FRP (谷歌锁)
+        /// </summary>
+        public async Task<bool> EraseFrpAsync()
+        {
+            if (!await EnsureConnectedAsync()) return false;
+            return await _service.EraseFrpAsync();
+        }
+        
+        /// <summary>
+        /// 获取当前槽位
+        /// </summary>
+        public async Task<string> GetCurrentSlotAsync()
+        {
+            if (!await EnsureConnectedAsync()) return null;
+            return await _service.GetCurrentSlotAsync();
+        }
+        
+        /// <summary>
+        /// 设置活动槽位
+        /// </summary>
+        public async Task<bool> SetActiveSlotAsync(string slot)
+        {
+            if (!await EnsureConnectedAsync()) return false;
+            return await _service.SetActiveSlotAsync(slot, _cts?.Token ?? CancellationToken.None);
+        }
 
         #endregion
 
