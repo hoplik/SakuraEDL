@@ -8,7 +8,7 @@
     <ProjectGuid>{A578AA98-3A86-41DC-8F5B-E9B54EBE1AE6}</ProjectGuid>
     <OutputType>WinExe</OutputType>
     <RootNamespace>LoveAlways</RootNamespace>
-    <AssemblyName>LoveAlways</AssemblyName>
+    <AssemblyName>MultiFlash</AssemblyName>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <LangVersion>latest</LangVersion>
     <FileAlignment>512</FileAlignment>
