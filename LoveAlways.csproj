@@ -22,8 +22,7 @@
     <Product>LoveAlways EDL Tool</Product>
     <Copyright>Copyright © xiri 2025. All Rights Reserved.</Copyright>
     <Description>高通 EDL 模式刷机工具</Description>
-    <ApplicationIcon>
-    </ApplicationIcon>
+    <ApplicationIcon>MultiFlash TOOL.ico</ApplicationIcon>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
