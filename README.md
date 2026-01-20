@@ -103,6 +103,7 @@ LoveAlways/
 │       └── QualcommUIController.cs
 ├── Fastboot/                   # Fastboot 模式
 │   ├── Common/                 # 通用工具
+│   │   ├── AdbHelper.cs        # ADB 命令辅助类
 │   │   ├── BatScriptParser.cs  # 刷机脚本解析
 │   │   └── FastbootCommand.cs  # 命令定义
 │   ├── Image/                  # 镜像处理
@@ -193,6 +194,21 @@ LoveAlways/
 | 刷写速度显示 0 | USB 2.0 连接 | 使用 USB 3.0 接口 |
 
 ## 📝 更新日志
+
+### v1.3.1 (2026-01-19)
+- ✅ **快捷操作菜单** - 设备管理器快捷功能
+  - 一键重启系统/Fastboot/Fastbootd/Recovery
+  - 小米踢EDL (fastboot oem edl)
+  - 联想/安卓踢EDL (adb reboot edl)
+  - 一键擦除谷歌锁 (FRP)
+  - 一键切换A/B槽位
+- ✅ **实用工具菜单** - 其他功能增强
+  - 快速打开设备管理器
+  - 管理员CMD命令行 (自动定位程序目录)
+  - 驱动安装快捷入口
+- ✅ **ADB 支持** - 新增 AdbHelper 辅助类
+  - 支持 ADB 命令执行
+  - Fastboot 优先，ADB 备选
 
 ### v1.3.0 (2026-01)
 - ✅ **EDL Loader 资源包** - 支持 256+ 多厂商 EDL Loader，按品牌分组显示
