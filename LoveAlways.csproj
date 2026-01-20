@@ -84,6 +84,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="PreloadManager.cs" />
+    <Compile Include="EmbeddedResourceExtractor.cs" />
     <Compile Include="Form1.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -180,17 +181,20 @@
   <ItemGroup>
     <None Include="App.config" />
   </ItemGroup>
-  <!-- Fastboot 依赖文件 -->
+  <!-- ADB/Fastboot 嵌入式资源（一体版本） -->
   <ItemGroup>
-    <Content Include="fastboot.exe">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="AdbWinApi.dll">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="AdbWinUsbApi.dll">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
+    <EmbeddedResource Include="adb.exe">
+      <LogicalName>LoveAlways.Resources.adb.exe</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="fastboot.exe">
+      <LogicalName>LoveAlways.Resources.fastboot.exe</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="AdbWinApi.dll">
+      <LogicalName>LoveAlways.Resources.AdbWinApi.dll</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="AdbWinUsbApi.dll">
+      <LogicalName>LoveAlways.Resources.AdbWinUsbApi.dll</LogicalName>
+    </EmbeddedResource>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">

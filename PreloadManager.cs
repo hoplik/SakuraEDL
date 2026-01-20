@@ -35,6 +35,12 @@ namespace LoveAlways
             {
                 try
                 {
+                    // 阶段0: 提取嵌入的工具文件
+                    CurrentStatus = "提取工具文件...";
+                    Progress = 5;
+                    await Task.Delay(30);
+                    EmbeddedResourceExtractor.ExtractAll();
+
                     // 阶段1: 检查 EDL PAK
                     CurrentStatus = "检查资源包...";
                     Progress = 10;
