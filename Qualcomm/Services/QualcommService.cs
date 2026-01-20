@@ -378,13 +378,24 @@ namespace LoveAlways.Qualcomm.Services
         }
 
         /// <summary>
-        /// 使用内嵌 Loader 数据连接设备 (VIP 模式)
+        /// 使用内嵌 Loader 数据连接设备 (VIP 模式，不含认证)
+        /// </summary>
+        public async Task<bool> ConnectWithLoaderDataAsync(string portName, byte[] loaderData, string storageType = "ufs", CancellationToken ct = default(CancellationToken))
+        {
+            return await ConnectWithVipAuthAsync(portName, loaderData, "", "", storageType, ct);
+        }
+
+        /// <summary>
+        /// 使用内嵌 Loader 数据连接并执行 VIP 认证 (使用文件路径方式)
+        /// 重要：VIP 认证在 Loader 上传后、Firehose 配置前执行
         /// </summary>
         /// <param name="portName">端口名</param>
         /// <param name="loaderData">Loader 二进制数据</param>
+        /// <param name="digestPath">VIP Digest 文件路径 (可选)</param>
+        /// <param name="signaturePath">VIP Signature 文件路径 (可选)</param>
         /// <param name="storageType">存储类型</param>
         /// <param name="ct">取消令牌</param>
-        public async Task<bool> ConnectWithLoaderDataAsync(string portName, byte[] loaderData, string storageType = "ufs", CancellationToken ct = default(CancellationToken))
+        public async Task<bool> ConnectWithVipAuthAsync(string portName, byte[] loaderData, string digestPath, string signaturePath, string storageType = "ufs", CancellationToken ct = default(CancellationToken))
         {
             try
             {
@@ -427,9 +438,7 @@ namespace LoveAlways.Qualcomm.Services
                 }
 
                 // 芯片信息已通过 _sahara.ChipInfo 保存，ChipInfo 属性会自动获取
-
-                // 标记为 VIP 设备
-                IsVipDevice = true;
+                // 注意：IsVipDevice 将在 VIP 认证成功后设置
 
                 // 等待 Firehose 就绪
                 _log("正在发送 Firehose 引导文件 : 成功");
@@ -447,10 +456,44 @@ namespace LoveAlways.Qualcomm.Services
                     return false;
                 }
 
-                // Firehose 配置
+                // 创建 Firehose 客户端
                 SetState(QualcommConnectionState.FirehoseMode);
                 _firehose = new FirehoseClient(_portManager, _log, _progress, _logDetail);
 
+                // ========== VIP 认证 (关键：必须在 Firehose 配置之前执行) ==========
+                // 使用文件路径方式发送二进制数据
+                bool vipAuthOk = false;
+                if (!string.IsNullOrEmpty(digestPath) && !string.IsNullOrEmpty(signaturePath) &&
+                    System.IO.File.Exists(digestPath) && System.IO.File.Exists(signaturePath))
+                {
+                    var digestInfo = new System.IO.FileInfo(digestPath);
+                    var sigInfo = new System.IO.FileInfo(signaturePath);
+                    _log(string.Format("[高通] 执行 VIP 认证 (Digest={0}B, Sign={1}B)...", digestInfo.Length, sigInfo.Length));
+                    
+                    // 使用文件路径方式发送
+                    vipAuthOk = await _firehose.PerformVipAuthAsync(digestPath, signaturePath, ct);
+                    if (!vipAuthOk)
+                    {
+                        _log("[高通] VIP 认证失败，回退到普通模式...");
+                        IsVipDevice = false;  // 重要：认证失败时使用普通读取模式
+                    }
+                    else
+                    {
+                        _log("[高通] VIP 认证成功，已激活高权限模式");
+                        IsVipDevice = true;
+                    }
+                }
+                else
+                {
+                    // 没有提供认证数据或文件不存在，使用普通模式
+                    if (!string.IsNullOrEmpty(digestPath) || !string.IsNullOrEmpty(signaturePath))
+                    {
+                        _log("[高通] VIP 认证文件不存在，使用普通模式");
+                    }
+                    IsVipDevice = false;
+                }
+
+                // Firehose 配置
                 _log("正在配置 Firehose...");
                 bool configOk = await _firehose.ConfigureAsync(storageType, 0, ct);
                 if (!configOk)

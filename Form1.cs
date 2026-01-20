@@ -699,7 +699,7 @@ namespace LoveAlways
                     return false;
                 }
 
-                // 检查资源包是否存在
+                // 检查 Loader 资源包是否存在
                 if (!ChimeraSignDatabase.IsLoaderPackAvailable())
                 {
                     AppendLog("错误: 找不到 firehose.pak 资源包", Color.Red);
@@ -715,15 +715,26 @@ namespace LoveAlways
                     return false;
                 }
 
-                AppendLog($"[VIP] {signData.Name} - Loader:{loaderData.Length/1024}KB Digest:{signData.DigestSize/1024}KB", Color.Blue);
+                // 从资源包获取 Digest 和 Signature 文件路径
+                string digestPath = ChimeraSignDatabase.GetDigestPath(platform);
+                string signaturePath = ChimeraSignDatabase.GetSignaturePath(platform);
                 
-                // 使用 VIP 连接 (Loader 从资源包, Digest+Sign 内嵌)
+                if (string.IsNullOrEmpty(digestPath) || string.IsNullOrEmpty(signaturePath))
+                {
+                    AppendLog($"错误: 平台 {platform} 的 VIP 认证数据不可用", Color.Red);
+                    AppendLog("请确保 firehose.pak (v2) 包含该平台的认证数据", Color.Orange);
+                    return false;
+                }
+
+                AppendLog($"[VIP] {signData.Name} - Loader: {loaderData.Length/1024}KB (资源包)", Color.Blue);
+                
+                // 使用 VIP 连接 (使用文件路径方式)
                 return await _qualcommController.ConnectWithVipDataAsync(
                     _storageType,
                     platform,
                     loaderData,
-                    signData.Digest,
-                    signData.Signature
+                    digestPath,
+                    signaturePath
                 );
             }
             
@@ -3156,11 +3167,16 @@ namespace LoveAlways
                 // button8 = 浏览 (选择刷机脚本)
                 button8.Click += (s, e) => FastbootSelectScript();
 
-                // button9 = 浏览 (选择 Payload/刷机脚本)
-                button9.Click += (s, e) => FastbootSelectPayload();
+                // button9 = 浏览 (左键选择文件，右键选择文件夹)
+                button9.Click += (s, e) => FastbootSelectPayloadFile();
+                button9.MouseUp += (s, e) =>
+                {
+                    if (e.Button == MouseButtons.Right)
+                        FastbootSelectPayloadFolder();
+                };
 
                 // uiTextBox1 = Payload/URL 输入框，支持回车键触发解析
-                uiTextBox1.Watermark = "请选择本地Payload或输入云端链接";
+                uiTextBox1.Watermark = "选择Payload/文件夹 或 输入云端链接 (右键浏览=选择文件夹)";
                 uiTextBox1.KeyDown += (s, e) =>
                 {
                     if (e.KeyCode == Keys.Enter)
@@ -3404,6 +3420,8 @@ namespace LoveAlways
 
         /// <summary>
         /// Fastboot 刷写分区
+        /// 支持: Payload.bin / URL 解析 / 已提取文件夹 / 普通镜像
+        /// 刷写模式: 欧加刷写 / 纯 FBD / AB 通刷 / 普通刷写
         /// </summary>
         private async Task FastbootFlashPartitionsAsync()
         {
@@ -3415,26 +3433,96 @@ namespace LoveAlways
                 return;
             }
 
-            // 检查是否有 Payload 加载 (本地或云端)
-            bool hasLocalPayload = _fastbootController.PayloadSummary != null;
-            bool hasRemotePayload = _fastbootController.IsRemotePayloadLoaded;
+            // 检查刷写模式选项
+            bool useOugaMode = checkbox7.Checked;      // 欧加刷写 = OnePlus/OPPO 主流程
+            bool usePureFbdMode = checkbox45.Checked;  // FBD刷写 = 纯 FBD 模式
+            bool useAbFlashMode = checkbox41.Checked;  // 切换A槽 = AB 通刷模式
+            bool clearData = !checkbox50.Checked;      // 保留数据的反义
+            bool eraseFrp = checkbox43.Checked;        // 擦除谷歌锁
+            bool autoReboot = checkbox44.Checked;      // 自动重启
 
-            if (hasRemotePayload)
+            // 优先判断：勾选欧加刷写或 FBD 刷写时，使用 OnePlus 刷写流程
+            // 支持 Payload 分区自动提取后刷写
+            if (useOugaMode || usePureFbdMode || useAbFlashMode)
             {
-                // 使用云端 Payload 刷写 (边下载边刷写)
-                AppendLog("使用云端 Payload 刷写模式", Color.Blue);
-                await _fastbootController.FlashFromRemotePayloadAsync();
-            }
-            else if (hasLocalPayload)
-            {
-                // 使用本地 Payload 刷写
-                AppendLog("使用本地 Payload 刷写模式", Color.Blue);
-                await _fastbootController.FlashFromPayloadAsync();
+                // OnePlus/OPPO 刷写模式 (支持 Payload/文件夹/镜像)
+                string modeDesc = useAbFlashMode ? "AB 通刷" : (usePureFbdMode ? "纯 FBD" : "欧加刷写");
+                AppendLog($"使用 OnePlus/OPPO {modeDesc}模式", Color.Blue);
+                
+                // 构建刷写分区列表 (支持 Payload 分区、解包文件夹、脚本任务、普通镜像)
+                var partitions = _fastbootController.BuildOnePlusFlashPartitions();
+                if (partitions.Count == 0)
+                {
+                    AppendLog("没有可刷写的分区（请解析 Payload 或选择镜像文件）", Color.Orange);
+                    return;
+                }
+
+                // 显示分区来源统计
+                int payloadCount = partitions.Count(p => p.IsPayloadPartition);
+                int fileCount = partitions.Count - payloadCount;
+                if (payloadCount > 0)
+                    AppendLog($"已选择 {partitions.Count} 个分区 (Payload: {payloadCount}, 文件: {fileCount})", Color.Blue);
+
+                // 如果是 AB 通刷模式，弹出槽位选择对话框
+                string targetSlot = "a";
+                if (useAbFlashMode)
+                {
+                    var result = MessageBox.Show(
+                        "您选择了 AB 通刷模式，请选择目标启动槽位：\n\n" +
+                        "点击「是」选择 A 槽位\n" +
+                        "点击「否」选择 B 槽位\n" +
+                        "点击「取消」放弃操作",
+                        "选择启动槽位",
+                        MessageBoxButtons.YesNoCancel,
+                        MessageBoxIcon.Question);
+
+                    if (result == DialogResult.Cancel)
+                    {
+                        AppendLog("用户取消了操作", Color.Orange);
+                        return;
+                    }
+                    targetSlot = result == DialogResult.Yes ? "a" : "b";
+                    AppendLog($"AB 通刷模式：目标槽位 {targetSlot.ToUpper()}", Color.Blue);
+                }
+
+                // 构建刷写选项
+                var options = new LoveAlways.Fastboot.UI.FastbootUIController.OnePlusFlashOptions
+                {
+                    ABFlashMode = useAbFlashMode,
+                    PureFBDMode = usePureFbdMode,
+                    PowerFlashMode = false,
+                    ClearData = clearData,
+                    EraseFrp = eraseFrp,
+                    AutoReboot = autoReboot,
+                    TargetSlot = targetSlot
+                };
+
+                // 执行 OnePlus 刷写流程 (自动提取 Payload 分区)
+                await _fastbootController.ExecuteOnePlusFlashAsync(partitions, options);
             }
             else
             {
-                // 普通刷写 (需要选择镜像文件)
-                await _fastbootController.FlashSelectedPartitionsAsync();
+                // 未勾选欧加/FBD 模式时，使用普通刷写流程
+                bool hasLocalPayload = _fastbootController.PayloadSummary != null;
+                bool hasRemotePayload = _fastbootController.IsRemotePayloadLoaded;
+
+                if (hasRemotePayload)
+                {
+                    // 云端 Payload 刷写 (边下载边刷写)
+                    AppendLog("使用云端 Payload 普通刷写模式", Color.Blue);
+                    await _fastbootController.FlashFromRemotePayloadAsync();
+                }
+                else if (hasLocalPayload)
+                {
+                    // 本地 Payload 刷写
+                    AppendLog("使用本地 Payload 普通刷写模式", Color.Blue);
+                    await _fastbootController.FlashFromPayloadAsync();
+                }
+                else
+                {
+                    // 普通刷写 (需要选择镜像文件)
+                    await _fastbootController.FlashSelectedPartitionsAsync();
+                }
             }
         }
 
@@ -3540,24 +3628,58 @@ namespace LoveAlways
         }
 
         /// <summary>
-        /// Fastboot 选择 Payload 或刷机脚本
+        /// Fastboot 选择 Payload 文件或文件夹
         /// </summary>
-        private void FastbootSelectPayload()
+        private void FastbootSelectPayloadFile()
         {
-            using (var ofd = new OpenFileDialog())
+            // 弹出选择对话框
+            var result = MessageBox.Show(
+                "请选择加载类型：\n\n" +
+                "「是」选择 Payload/脚本 文件\n" +
+                "「否」选择已提取的文件夹",
+                "选择类型",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question);
+
+            if (result == DialogResult.Yes)
             {
-                ofd.Title = "选择 Payload 或刷机脚本";
-                ofd.Filter = "Payload|*.bin;*.zip|刷机脚本|*.bat;*.sh;*.cmd|所有文件|*.*";
-                if (ofd.ShowDialog() == DialogResult.OK)
+                // 选择文件
+                using (var ofd = new OpenFileDialog())
                 {
-                    uiTextBox1.Text = ofd.FileName;
-                    FastbootParsePayloadInput(ofd.FileName);
+                    ofd.Title = "选择 Payload 或刷机脚本";
+                    ofd.Filter = "Payload|*.bin;*.zip|刷机脚本|*.bat;*.sh;*.cmd|所有文件|*.*";
+                    if (ofd.ShowDialog() == DialogResult.OK)
+                    {
+                        uiTextBox1.Text = ofd.FileName;
+                        FastbootParsePayloadInput(ofd.FileName);
+                    }
+                }
+            }
+            else
+            {
+                // 选择文件夹
+                FastbootSelectPayloadFolder();
+            }
+        }
+
+        /// <summary>
+        /// Fastboot 选择已提取的文件夹
+        /// </summary>
+        private void FastbootSelectPayloadFolder()
+        {
+            using (var fbd = new FolderBrowserDialog())
+            {
+                fbd.Description = "选择已提取的固件文件夹 (包含 .img 文件)";
+                if (fbd.ShowDialog() == DialogResult.OK)
+                {
+                    uiTextBox1.Text = fbd.SelectedPath;
+                    FastbootParsePayloadInput(fbd.SelectedPath);
                 }
             }
         }
 
         /// <summary>
-        /// 解析 Payload 输入 (支持本地文件和 URL)
+        /// 解析 Payload 输入 (支持本地文件、文件夹和 URL)
         /// </summary>
         private void FastbootParsePayloadInput(string input)
         {
@@ -3565,13 +3687,19 @@ namespace LoveAlways
 
             input = input.Trim();
 
-            // 判断是 URL 还是本地文件
+            // 判断是 URL、文件还是文件夹
             if (input.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
                 input.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
             {
                 // URL - 云端解析
                 AppendLog($"检测到云端 URL，开始解析...", Color.Blue);
                 _ = FastbootLoadPayloadFromUrlAsync(input);
+            }
+            else if (Directory.Exists(input))
+            {
+                // 已提取的文件夹
+                AppendLog($"已选择文件夹: {input}", Color.Blue);
+                _fastbootController?.LoadExtractedFolder(input);
             }
             else if (File.Exists(input))
             {
@@ -3594,7 +3722,7 @@ namespace LoveAlways
             }
             else
             {
-                AppendLog($"无效的输入: 文件不存在或 URL 格式错误", Color.Red);
+                AppendLog($"无效的输入: 文件/文件夹不存在或 URL 格式错误", Color.Red);
             }
         }
 
@@ -4183,7 +4311,12 @@ namespace LoveAlways
                 AppendLog($"启动驱动安装程序失败: {ex.Message}", Color.Red);
             }
         }
-        
+
         #endregion
+
+        private void checkbox22_CheckedChanged(object sender, AntdUI.BoolEventArgs e)
+        {
+
+        }
     }
 }

@@ -28,8 +28,8 @@ namespace LoveAlways
         /// </summary>
         private void InitializeComponent()
         {
-            AntdUI.Tabs.StyleLine styleLine2 = new AntdUI.Tabs.StyleLine();
             AntdUI.Tabs.StyleLine styleLine1 = new AntdUI.Tabs.StyleLine();
+            AntdUI.Tabs.StyleLine styleLine2 = new AntdUI.Tabs.StyleLine();
             this.uiProcessBar1 = new Sunny.UI.UIProcessBar();
             this.uiLabel2 = new Sunny.UI.UILabel();
             this.uiButton1 = new Sunny.UI.UIButton();
@@ -73,51 +73,6 @@ namespace LoveAlways
             this.高通驱动ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.查看日志ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.tabs1 = new AntdUI.Tabs();
-            this.tabPage6 = new AntdUI.TabPage();
-            this.button7 = new AntdUI.Button();
-            this.pictureBox1 = new System.Windows.Forms.PictureBox();
-            this.uiComboBox4 = new Sunny.UI.UIComboBox();
-            this.label4 = new AntdUI.Label();
-            this.uiComboBox3 = new Sunny.UI.UIComboBox();
-            this.button3 = new AntdUI.Button();
-            this.button2 = new AntdUI.Button();
-            this.label3 = new AntdUI.Label();
-            this.label2 = new AntdUI.Label();
-            this.slider1 = new AntdUI.Slider();
-            this.label1 = new AntdUI.Label();
-            this.tabPage5 = new AntdUI.TabPage();
-            this.tabPage4 = new AntdUI.TabPage();
-            this.tabPage3 = new AntdUI.TabPage();
-            this.labelDevRoot = new Sunny.UI.UILabel();
-            this.labelDevMTK = new Sunny.UI.UILabel();
-            this.labelDevSpreadtrum = new Sunny.UI.UILabel();
-            this.uiButton10 = new Sunny.UI.UIButton();
-            this.uiTextBox1 = new Sunny.UI.UITextBox();
-            this.uiComboBox2 = new Sunny.UI.UIComboBox();
-            this.checkbox22 = new AntdUI.Checkbox();
-            this.checkbox21 = new AntdUI.Checkbox();
-            this.uiButton11 = new Sunny.UI.UIButton();
-            this.select5 = new AntdUI.Select();
-            this.uiButton22 = new Sunny.UI.UIButton();
-            this.checkbox43 = new AntdUI.Checkbox();
-            this.button9 = new AntdUI.Button();
-            this.checkbox41 = new AntdUI.Checkbox();
-            this.input1 = new AntdUI.Input();
-            this.button8 = new AntdUI.Button();
-            this.uiGroupBox7 = new Sunny.UI.UIGroupBox();
-            this.checkbox42 = new AntdUI.Checkbox();
-            this.listView5 = new System.Windows.Forms.ListView();
-            this.columnHeader37 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
-            this.columnHeader38 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
-            this.columnHeader39 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
-            this.columnHeader40 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
-            this.uiButton18 = new Sunny.UI.UIButton();
-            this.uiButton19 = new Sunny.UI.UIButton();
-            this.uiButton20 = new Sunny.UI.UIButton();
-            this.uiButton21 = new Sunny.UI.UIButton();
-            this.checkbox44 = new AntdUI.Checkbox();
-            this.checkbox45 = new AntdUI.Checkbox();
-            this.checkbox50 = new AntdUI.Checkbox();
             this.tabPage2 = new AntdUI.TabPage();
             this.checkbox11 = new AntdUI.Checkbox();
             this.checkbox12 = new AntdUI.Checkbox();
@@ -153,7 +108,52 @@ namespace LoveAlways
             this.checkbox19 = new AntdUI.Checkbox();
             this.checkbox20 = new AntdUI.Checkbox();
             this.select4 = new AntdUI.Select();
+            this.tabPage6 = new AntdUI.TabPage();
+            this.button7 = new AntdUI.Button();
+            this.pictureBox1 = new System.Windows.Forms.PictureBox();
+            this.uiComboBox4 = new Sunny.UI.UIComboBox();
+            this.label4 = new AntdUI.Label();
+            this.uiComboBox3 = new Sunny.UI.UIComboBox();
+            this.button3 = new AntdUI.Button();
+            this.button2 = new AntdUI.Button();
+            this.label3 = new AntdUI.Label();
+            this.label2 = new AntdUI.Label();
+            this.slider1 = new AntdUI.Slider();
+            this.label1 = new AntdUI.Label();
             this.tabPage1 = new AntdUI.TabPage();
+            this.labelDevRoot = new Sunny.UI.UILabel();
+            this.tabPage3 = new AntdUI.TabPage();
+            this.uiButton10 = new Sunny.UI.UIButton();
+            this.uiTextBox1 = new Sunny.UI.UITextBox();
+            this.uiComboBox2 = new Sunny.UI.UIComboBox();
+            this.checkbox22 = new AntdUI.Checkbox();
+            this.checkbox21 = new AntdUI.Checkbox();
+            this.uiButton11 = new Sunny.UI.UIButton();
+            this.select5 = new AntdUI.Select();
+            this.uiButton22 = new Sunny.UI.UIButton();
+            this.checkbox43 = new AntdUI.Checkbox();
+            this.button9 = new AntdUI.Button();
+            this.checkbox41 = new AntdUI.Checkbox();
+            this.input1 = new AntdUI.Input();
+            this.button8 = new AntdUI.Button();
+            this.uiGroupBox7 = new Sunny.UI.UIGroupBox();
+            this.checkbox42 = new AntdUI.Checkbox();
+            this.listView5 = new System.Windows.Forms.ListView();
+            this.columnHeader37 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+            this.columnHeader38 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+            this.columnHeader39 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+            this.columnHeader40 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+            this.uiButton18 = new Sunny.UI.UIButton();
+            this.uiButton19 = new Sunny.UI.UIButton();
+            this.uiButton20 = new Sunny.UI.UIButton();
+            this.uiButton21 = new Sunny.UI.UIButton();
+            this.checkbox44 = new AntdUI.Checkbox();
+            this.checkbox45 = new AntdUI.Checkbox();
+            this.checkbox50 = new AntdUI.Checkbox();
+            this.tabPage4 = new AntdUI.TabPage();
+            this.labelDevMTK = new Sunny.UI.UILabel();
+            this.tabPage5 = new AntdUI.TabPage();
+            this.labelDevSpreadtrum = new Sunny.UI.UILabel();
             this.uiComboBox5 = new Sunny.UI.UIComboBox();
             this.uiButton3 = new Sunny.UI.UIButton();
             this.checkbox4 = new AntdUI.Checkbox();
@@ -201,16 +201,19 @@ namespace LoveAlways
             this.uiLabel13 = new Sunny.UI.UILabel();
             this.uiLabel3 = new Sunny.UI.UILabel();
             this.uiLabel10 = new Sunny.UI.UILabel();
+            this.checkbox7 = new AntdUI.Checkbox();
             this.uiGroupBox1.SuspendLayout();
             this.menuStrip1.SuspendLayout();
             this.tabs1.SuspendLayout();
-            this.tabPage6.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
-            this.tabPage3.SuspendLayout();
-            this.uiGroupBox7.SuspendLayout();
             this.tabPage2.SuspendLayout();
             this.uiGroupBox4.SuspendLayout();
+            this.tabPage6.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.tabPage1.SuspendLayout();
+            this.tabPage3.SuspendLayout();
+            this.uiGroupBox7.SuspendLayout();
+            this.tabPage4.SuspendLayout();
+            this.tabPage5.SuspendLayout();
             this.tabs2.SuspendLayout();
             this.tabPage7.SuspendLayout();
             this.uiGroupBox2.SuspendLayout();
@@ -229,10 +232,8 @@ namespace LoveAlways
             this.uiProcessBar1.Name = "uiProcessBar1";
             this.uiProcessBar1.Radius = 14;
             this.uiProcessBar1.RectColor = System.Drawing.Color.FromArgb(((int)(((byte)(200)))), ((int)(((byte)(220)))), ((int)(((byte)(255)))));
-            this.uiProcessBar1.ShowPercent = true;
             this.uiProcessBar1.Size = new System.Drawing.Size(1191, 30);
             this.uiProcessBar1.TabIndex = 4;
-            this.uiProcessBar1.Text = "";
             // 
             // uiLabel2
             // 
@@ -281,10 +282,8 @@ namespace LoveAlways
             this.uiProcessBar2.Name = "uiProcessBar2";
             this.uiProcessBar2.Radius = 14;
             this.uiProcessBar2.RectColor = System.Drawing.Color.FromArgb(((int)(((byte)(200)))), ((int)(((byte)(220)))), ((int)(((byte)(255)))));
-            this.uiProcessBar2.ShowPercent = true;
             this.uiProcessBar2.Size = new System.Drawing.Size(466, 28);
             this.uiProcessBar2.TabIndex = 8;
-            this.uiProcessBar2.Text = "";
             // 
             // uiGroupBox1
             // 
@@ -655,12 +654,12 @@ namespace LoveAlways
             // tabs1
             // 
             this.tabs1.BackColor = System.Drawing.Color.Transparent;
-            this.tabs1.Controls.Add(this.tabPage2);
-            this.tabs1.Controls.Add(this.tabPage6);
-            this.tabs1.Controls.Add(this.tabPage1);
             this.tabs1.Controls.Add(this.tabPage3);
+            this.tabs1.Controls.Add(this.tabPage2);
+            this.tabs1.Controls.Add(this.tabPage1);
             this.tabs1.Controls.Add(this.tabPage4);
             this.tabs1.Controls.Add(this.tabPage5);
+            this.tabs1.Controls.Add(this.tabPage6);
             this.tabs1.Cursor = System.Windows.Forms.Cursors.Default;
             this.tabs1.Location = new System.Drawing.Point(4, 60);
             this.tabs1.Name = "tabs1";
@@ -670,656 +669,11 @@ namespace LoveAlways
             this.tabs1.Pages.Add(this.tabPage4);
             this.tabs1.Pages.Add(this.tabPage5);
             this.tabs1.Pages.Add(this.tabPage6);
-            this.tabs1.SelectedIndex = 1;
+            this.tabs1.SelectedIndex = 2;
             this.tabs1.Size = new System.Drawing.Size(829, 692);
-            this.tabs1.Style = styleLine2;
+            this.tabs1.Style = styleLine1;
             this.tabs1.TabIndex = 15;
             this.tabs1.Text = "tabs1";
-            // 
-            // tabPage6
-            // 
-            this.tabPage6.Controls.Add(this.button7);
-            this.tabPage6.Controls.Add(this.pictureBox1);
-            this.tabPage6.Controls.Add(this.uiComboBox4);
-            this.tabPage6.Controls.Add(this.label4);
-            this.tabPage6.Controls.Add(this.uiComboBox3);
-            this.tabPage6.Controls.Add(this.button3);
-            this.tabPage6.Controls.Add(this.button2);
-            this.tabPage6.Controls.Add(this.label3);
-            this.tabPage6.Controls.Add(this.label2);
-            this.tabPage6.Controls.Add(this.slider1);
-            this.tabPage6.Controls.Add(this.label1);
-            this.tabPage6.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.tabPage6.Location = new System.Drawing.Point(0, 33);
-            this.tabPage6.Name = "tabPage6";
-            this.tabPage6.Size = new System.Drawing.Size(829, 659);
-            this.tabPage6.TabIndex = 4;
-            this.tabPage6.Text = "设置";
-            // 
-            // button7
-            // 
-            this.button7.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(223)))), ((int)(((byte)(200)))), ((int)(((byte)(239)))));
-            this.button7.Location = new System.Drawing.Point(4, 61);
-            this.button7.Name = "button7";
-            this.button7.Size = new System.Drawing.Size(176, 34);
-            this.button7.TabIndex = 37;
-            this.button7.Text = "清理缓存日志";
-            this.button7.WaveSize = 0;
-            // 
-            // pictureBox1
-            // 
-            this.pictureBox1.BackColor = System.Drawing.Color.White;
-            this.pictureBox1.Location = new System.Drawing.Point(4, 256);
-            this.pictureBox1.Name = "pictureBox1";
-            this.pictureBox1.Size = new System.Drawing.Size(530, 285);
-            this.pictureBox1.TabIndex = 36;
-            this.pictureBox1.TabStop = false;
-            // 
-            // uiComboBox4
-            // 
-            this.uiComboBox4.DataSource = null;
-            this.uiComboBox4.DropDownStyle = Sunny.UI.UIDropDownStyle.DropDownList;
-            this.uiComboBox4.DropDownWidth = 215;
-            this.uiComboBox4.FillColor = System.Drawing.Color.Empty;
-            this.uiComboBox4.FillColor2 = System.Drawing.Color.Transparent;
-            this.uiComboBox4.Font = new System.Drawing.Font("微软雅黑", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.uiComboBox4.ImeMode = System.Windows.Forms.ImeMode.Disable;
-            this.uiComboBox4.ItemHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
-            this.uiComboBox4.ItemRectColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
-            this.uiComboBox4.Items.AddRange(new object[] {
-            "简体中文",
-            "English"});
-            this.uiComboBox4.ItemSelectBackColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
-            this.uiComboBox4.ItemSelectForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(235)))), ((int)(((byte)(243)))), ((int)(((byte)(255)))));
-            this.uiComboBox4.Location = new System.Drawing.Point(4, 569);
-            this.uiComboBox4.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            this.uiComboBox4.MinimumSize = new System.Drawing.Size(63, 0);
-            this.uiComboBox4.Name = "uiComboBox4";
-            this.uiComboBox4.Padding = new System.Windows.Forms.Padding(0, 0, 30, 2);
-            this.uiComboBox4.Radius = 14;
-            this.uiComboBox4.RectColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(128)))), ((int)(((byte)(255)))));
-            this.uiComboBox4.Size = new System.Drawing.Size(226, 30);
-            this.uiComboBox4.SymbolSize = 24;
-            this.uiComboBox4.TabIndex = 35;
-            this.uiComboBox4.Text = "简体中文";
-            this.uiComboBox4.TextAlignment = System.Drawing.ContentAlignment.MiddleLeft;
-            this.uiComboBox4.Watermark = "";
-            // 
-            // label4
-            // 
-            this.label4.Font = new System.Drawing.Font("微软雅黑", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.label4.Location = new System.Drawing.Point(7, 547);
-            this.label4.Name = "label4";
-            this.label4.Size = new System.Drawing.Size(160, 23);
-            this.label4.TabIndex = 34;
-            this.label4.Text = "语言";
-            // 
-            // uiComboBox3
-            // 
-            this.uiComboBox3.DataSource = null;
-            this.uiComboBox3.DropDownWidth = 300;
-            this.uiComboBox3.FillColor = System.Drawing.Color.Empty;
-            this.uiComboBox3.FillColor2 = System.Drawing.Color.Transparent;
-            this.uiComboBox3.Font = new System.Drawing.Font("微软雅黑", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.uiComboBox3.ImeMode = System.Windows.Forms.ImeMode.NoControl;
-            this.uiComboBox3.ItemHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
-            this.uiComboBox3.ItemRectColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
-            this.uiComboBox3.ItemSelectBackColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
-            this.uiComboBox3.ItemSelectForeColor = System.Drawing.Color.White;
-            this.uiComboBox3.Location = new System.Drawing.Point(4, 137);
-            this.uiComboBox3.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            this.uiComboBox3.MinimumSize = new System.Drawing.Size(63, 0);
-            this.uiComboBox3.Name = "uiComboBox3";
-            this.uiComboBox3.Padding = new System.Windows.Forms.Padding(0, 0, 30, 2);
-            this.uiComboBox3.Radius = 14;
-            this.uiComboBox3.RectColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
-            this.uiComboBox3.Size = new System.Drawing.Size(356, 34);
-            this.uiComboBox3.StyleDropDown = Sunny.UI.UIStyle.Green;
-            this.uiComboBox3.SymbolSize = 24;
-            this.uiComboBox3.TabIndex = 32;
-            this.uiComboBox3.TextAlignment = System.Drawing.ContentAlignment.MiddleLeft;
-            this.uiComboBox3.Watermark = "输入Url";
-            this.uiComboBox3.WatermarkActiveColor = System.Drawing.Color.Silver;
-            this.uiComboBox3.WatermarkColor = System.Drawing.Color.Silver;
-            // 
-            // button3
-            // 
-            this.button3.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(223)))), ((int)(((byte)(200)))), ((int)(((byte)(239)))));
-            this.button3.Location = new System.Drawing.Point(209, 176);
-            this.button3.Name = "button3";
-            this.button3.Size = new System.Drawing.Size(151, 34);
-            this.button3.TabIndex = 31;
-            this.button3.Text = "应用";
-            this.button3.WaveSize = 0;
-            // 
-            // button2
-            // 
-            this.button2.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(223)))), ((int)(((byte)(200)))), ((int)(((byte)(239)))));
-            this.button2.Location = new System.Drawing.Point(3, 176);
-            this.button2.Name = "button2";
-            this.button2.Size = new System.Drawing.Size(160, 34);
-            this.button2.TabIndex = 30;
-            this.button2.Text = "本地壁纸";
-            this.button2.WaveSize = 0;
-            // 
-            // label3
-            // 
-            this.label3.Font = new System.Drawing.Font("微软雅黑", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.label3.Location = new System.Drawing.Point(7, 227);
-            this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(515, 23);
-            this.label3.TabIndex = 4;
-            this.label3.Text = "预览";
-            // 
-            // label2
-            // 
-            this.label2.Font = new System.Drawing.Font("微软雅黑", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.label2.Location = new System.Drawing.Point(8, 112);
-            this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(276, 23);
-            this.label2.TabIndex = 3;
-            this.label2.Text = "壁纸";
-            // 
-            // slider1
-            // 
-            this.slider1.Font = new System.Drawing.Font("微软雅黑", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.slider1.Location = new System.Drawing.Point(0, 32);
-            this.slider1.Name = "slider1";
-            this.slider1.Size = new System.Drawing.Size(431, 23);
-            this.slider1.TabIndex = 2;
-            this.slider1.Text = "slider1";
-            this.slider1.Value = 100;
-            // 
-            // label1
-            // 
-            this.label1.Font = new System.Drawing.Font("微软雅黑", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.label1.Location = new System.Drawing.Point(8, 3);
-            this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(242, 23);
-            this.label1.TabIndex = 1;
-            this.label1.Text = "背景模糊度";
-            // 
-            // tabPage5
-            // 
-            this.tabPage5.Controls.Add(this.labelDevSpreadtrum);
-            this.tabPage5.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.tabPage5.Location = new System.Drawing.Point(0, 33);
-            this.tabPage5.Name = "tabPage5";
-            this.tabPage5.Size = new System.Drawing.Size(829, 659);
-            this.tabPage5.TabIndex = 3;
-            this.tabPage5.Text = "展讯平台";
-            // 
-            // tabPage4
-            // 
-            this.tabPage4.Controls.Add(this.labelDevMTK);
-            this.tabPage4.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.tabPage4.Location = new System.Drawing.Point(0, 33);
-            this.tabPage4.Name = "tabPage4";
-            this.tabPage4.Size = new System.Drawing.Size(829, 659);
-            this.tabPage4.TabIndex = 2;
-            this.tabPage4.Text = "MTK平台";
-            // 
-            // labelDevRoot
-            // 
-            this.labelDevRoot.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.labelDevRoot.Font = new System.Drawing.Font("微软雅黑", 24F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.labelDevRoot.ForeColor = System.Drawing.Color.Silver;
-            this.labelDevRoot.Location = new System.Drawing.Point(0, 0);
-            this.labelDevRoot.Name = "labelDevRoot";
-            this.labelDevRoot.Size = new System.Drawing.Size(829, 659);
-            this.labelDevRoot.TabIndex = 0;
-            this.labelDevRoot.Text = "开发中...";
-            this.labelDevRoot.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-            // 
-            // labelDevMTK
-            // 
-            this.labelDevMTK.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.labelDevMTK.Font = new System.Drawing.Font("微软雅黑", 24F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.labelDevMTK.ForeColor = System.Drawing.Color.Silver;
-            this.labelDevMTK.Location = new System.Drawing.Point(0, 0);
-            this.labelDevMTK.Name = "labelDevMTK";
-            this.labelDevMTK.Size = new System.Drawing.Size(829, 659);
-            this.labelDevMTK.TabIndex = 0;
-            this.labelDevMTK.Text = "开发中...";
-            this.labelDevMTK.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-            // 
-            // labelDevSpreadtrum
-            // 
-            this.labelDevSpreadtrum.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.labelDevSpreadtrum.Font = new System.Drawing.Font("微软雅黑", 24F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.labelDevSpreadtrum.ForeColor = System.Drawing.Color.Silver;
-            this.labelDevSpreadtrum.Location = new System.Drawing.Point(0, 0);
-            this.labelDevSpreadtrum.Name = "labelDevSpreadtrum";
-            this.labelDevSpreadtrum.Size = new System.Drawing.Size(829, 659);
-            this.labelDevSpreadtrum.TabIndex = 0;
-            this.labelDevSpreadtrum.Text = "开发中...";
-            this.labelDevSpreadtrum.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-            // 
-            // tabPage3
-            // 
-            this.tabPage3.Controls.Add(this.uiButton10);
-            this.tabPage3.Controls.Add(this.uiTextBox1);
-            this.tabPage3.Controls.Add(this.uiComboBox2);
-            this.tabPage3.Controls.Add(this.checkbox22);
-            this.tabPage3.Controls.Add(this.checkbox21);
-            this.tabPage3.Controls.Add(this.uiButton11);
-            this.tabPage3.Controls.Add(this.select5);
-            this.tabPage3.Controls.Add(this.uiButton22);
-            this.tabPage3.Controls.Add(this.checkbox43);
-            this.tabPage3.Controls.Add(this.button9);
-            this.tabPage3.Controls.Add(this.checkbox41);
-            this.tabPage3.Controls.Add(this.input1);
-            this.tabPage3.Controls.Add(this.button8);
-            this.tabPage3.Controls.Add(this.uiGroupBox7);
-            this.tabPage3.Controls.Add(this.uiButton18);
-            this.tabPage3.Controls.Add(this.uiButton19);
-            this.tabPage3.Controls.Add(this.uiButton20);
-            this.tabPage3.Controls.Add(this.uiButton21);
-            this.tabPage3.Controls.Add(this.checkbox44);
-            this.tabPage3.Controls.Add(this.checkbox45);
-            this.tabPage3.Controls.Add(this.checkbox50);
-            this.tabPage3.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.tabPage3.Location = new System.Drawing.Point(0, 33);
-            this.tabPage3.Name = "tabPage3";
-            this.tabPage3.Size = new System.Drawing.Size(829, 659);
-            this.tabPage3.TabIndex = 5;
-            this.tabPage3.Text = "引导模式";
-            // 
-            // uiButton10
-            // 
-            this.uiButton10.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.uiButton10.FillColor = System.Drawing.Color.Silver;
-            this.uiButton10.FillColor2 = System.Drawing.Color.Silver;
-            this.uiButton10.FillHoverColor = System.Drawing.Color.Silver;
-            this.uiButton10.FillPressColor = System.Drawing.Color.Gray;
-            this.uiButton10.FillSelectedColor = System.Drawing.Color.FromArgb(((int)(((byte)(224)))), ((int)(((byte)(224)))), ((int)(((byte)(224)))));
-            this.uiButton10.Font = new System.Drawing.Font("微软雅黑", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.uiButton10.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(64)))), ((int)(((byte)(64)))));
-            this.uiButton10.Location = new System.Drawing.Point(692, 585);
-            this.uiButton10.MinimumSize = new System.Drawing.Size(1, 1);
-            this.uiButton10.Name = "uiButton10";
-            this.uiButton10.Radius = 10;
-            this.uiButton10.RectColor = System.Drawing.Color.FromArgb(((int)(((byte)(224)))), ((int)(((byte)(224)))), ((int)(((byte)(224)))));
-            this.uiButton10.RectHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(224)))), ((int)(((byte)(224)))), ((int)(((byte)(224)))));
-            this.uiButton10.RectPressColor = System.Drawing.Color.Silver;
-            this.uiButton10.RectSelectedColor = System.Drawing.Color.FromArgb(((int)(((byte)(224)))), ((int)(((byte)(224)))), ((int)(((byte)(224)))));
-            this.uiButton10.Size = new System.Drawing.Size(133, 34);
-            this.uiButton10.TabIndex = 153;
-            this.uiButton10.Text = "执行";
-            this.uiButton10.TipsFont = new System.Drawing.Font("微软雅黑", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            // 
-            // uiTextBox1
-            // 
-            this.uiTextBox1.ButtonFillColor = System.Drawing.Color.FromArgb(((int)(((byte)(224)))), ((int)(((byte)(224)))), ((int)(((byte)(224)))));
-            this.uiTextBox1.ButtonFillHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(224)))), ((int)(((byte)(224)))), ((int)(((byte)(224)))));
-            this.uiTextBox1.ButtonFillPressColor = System.Drawing.Color.Silver;
-            this.uiTextBox1.ButtonRectColor = System.Drawing.Color.Silver;
-            this.uiTextBox1.ButtonRectHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(224)))), ((int)(((byte)(224)))), ((int)(((byte)(224)))));
-            this.uiTextBox1.ButtonRectPressColor = System.Drawing.Color.Silver;
-            this.uiTextBox1.ButtonStyleInherited = false;
-            this.uiTextBox1.Cursor = System.Windows.Forms.Cursors.Default;
-            this.uiTextBox1.Font = new System.Drawing.Font("微软雅黑", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.uiTextBox1.Location = new System.Drawing.Point(5, 1);
-            this.uiTextBox1.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            this.uiTextBox1.MinimumSize = new System.Drawing.Size(1, 16);
-            this.uiTextBox1.Name = "uiTextBox1";
-            this.uiTextBox1.Padding = new System.Windows.Forms.Padding(5);
-            this.uiTextBox1.Radius = 15;
-            this.uiTextBox1.RectColor = System.Drawing.Color.FromArgb(((int)(((byte)(224)))), ((int)(((byte)(224)))), ((int)(((byte)(224)))));
-            this.uiTextBox1.ScrollBarColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
-            this.uiTextBox1.ScrollBarStyleInherited = false;
-            this.uiTextBox1.ShowText = false;
-            this.uiTextBox1.Size = new System.Drawing.Size(678, 36);
-            this.uiTextBox1.TabIndex = 15;
-            this.uiTextBox1.TextAlignment = System.Drawing.ContentAlignment.MiddleLeft;
-            this.uiTextBox1.Watermark = "选择Payload or 输入Url";
-            this.uiTextBox1.WatermarkActiveColor = System.Drawing.Color.Silver;
-            this.uiTextBox1.WatermarkColor = System.Drawing.Color.Silver;
-            // 
-            // uiComboBox2
-            // 
-            this.uiComboBox2.DataSource = null;
-            this.uiComboBox2.DropDownWidth = 300;
-            this.uiComboBox2.FillColor = System.Drawing.Color.Empty;
-            this.uiComboBox2.FillColor2 = System.Drawing.Color.Transparent;
-            this.uiComboBox2.Font = new System.Drawing.Font("微软雅黑", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.uiComboBox2.ImeMode = System.Windows.Forms.ImeMode.NoControl;
-            this.uiComboBox2.ItemHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
-            this.uiComboBox2.ItemRectColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
-            this.uiComboBox2.Items.AddRange(new object[] {
-            "device",
-            "flashing unlock",
-            "oem unlock",
-            "oem unlock-go",
-            "flashing unlock_critical",
-            "flashing lock",
-            "oem lock",
-            "oem lock-go"});
-            this.uiComboBox2.ItemSelectBackColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
-            this.uiComboBox2.ItemSelectForeColor = System.Drawing.Color.White;
-            this.uiComboBox2.Location = new System.Drawing.Point(278, 585);
-            this.uiComboBox2.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            this.uiComboBox2.MinimumSize = new System.Drawing.Size(63, 0);
-            this.uiComboBox2.Name = "uiComboBox2";
-            this.uiComboBox2.Padding = new System.Windows.Forms.Padding(0, 0, 30, 2);
-            this.uiComboBox2.Radius = 14;
-            this.uiComboBox2.RectColor = System.Drawing.Color.FromArgb(((int)(((byte)(224)))), ((int)(((byte)(224)))), ((int)(((byte)(224)))));
-            this.uiComboBox2.Size = new System.Drawing.Size(410, 34);
-            this.uiComboBox2.StyleDropDown = Sunny.UI.UIStyle.Green;
-            this.uiComboBox2.SymbolSize = 24;
-            this.uiComboBox2.TabIndex = 33;
-            this.uiComboBox2.TextAlignment = System.Drawing.ContentAlignment.MiddleLeft;
-            this.uiComboBox2.Watermark = "执行快捷命令";
-            this.uiComboBox2.WatermarkActiveColor = System.Drawing.Color.Silver;
-            this.uiComboBox2.WatermarkColor = System.Drawing.Color.Silver;
-            // 
-            // checkbox22
-            // 
-            this.checkbox22.Location = new System.Drawing.Point(481, 559);
-            this.checkbox22.Name = "checkbox22";
-            this.checkbox22.Size = new System.Drawing.Size(91, 24);
-            this.checkbox22.TabIndex = 109;
-            this.checkbox22.Text = "清除数据";
-            // 
-            // checkbox21
-            // 
-            this.checkbox21.Location = new System.Drawing.Point(578, 559);
-            this.checkbox21.Name = "checkbox21";
-            this.checkbox21.Size = new System.Drawing.Size(91, 24);
-            this.checkbox21.TabIndex = 108;
-            this.checkbox21.Text = "锁定BL";
-            // 
-            // uiButton11
-            // 
-            this.uiButton11.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.uiButton11.FillColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
-            this.uiButton11.FillColor2 = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
-            this.uiButton11.FillHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
-            this.uiButton11.FillPressColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(128)))), ((int)(((byte)(255)))));
-            this.uiButton11.FillSelectedColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
-            this.uiButton11.Font = new System.Drawing.Font("微软雅黑", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.uiButton11.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(64)))), ((int)(((byte)(64)))));
-            this.uiButton11.Location = new System.Drawing.Point(4, 585);
-            this.uiButton11.MinimumSize = new System.Drawing.Size(1, 1);
-            this.uiButton11.Name = "uiButton11";
-            this.uiButton11.Radius = 10;
-            this.uiButton11.RectColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
-            this.uiButton11.RectHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
-            this.uiButton11.RectPressColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(128)))), ((int)(((byte)(255)))));
-            this.uiButton11.RectSelectedColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
-            this.uiButton11.Size = new System.Drawing.Size(133, 34);
-            this.uiButton11.TabIndex = 107;
-            this.uiButton11.Text = "读取信息";
-            this.uiButton11.TipsFont = new System.Drawing.Font("微软雅黑", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            // 
-            // select5
-            // 
-            this.select5.Items.AddRange(new object[] {
-            "boot",
-            "init_boot",
-            "super",
-            "system",
-            "vbmeta",
-            "recovery"});
-            this.select5.Location = new System.Drawing.Point(555, 623);
-            this.select5.MaxCount = 3;
-            this.select5.Name = "select5";
-            this.select5.PlaceholderText = "查找分区";
-            this.select5.PrefixSvg = "SearchOutlined";
-            this.select5.SelectionColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
-            this.select5.Size = new System.Drawing.Size(270, 34);
-            this.select5.TabIndex = 104;
-            this.select5.WaveSize = 0;
-            // 
-            // uiButton22
-            // 
-            this.uiButton22.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.uiButton22.FillColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
-            this.uiButton22.FillColor2 = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
-            this.uiButton22.FillHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
-            this.uiButton22.FillPressColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(128)))), ((int)(((byte)(255)))));
-            this.uiButton22.FillSelectedColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
-            this.uiButton22.Font = new System.Drawing.Font("微软雅黑", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.uiButton22.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(64)))), ((int)(((byte)(64)))));
-            this.uiButton22.Location = new System.Drawing.Point(140, 623);
-            this.uiButton22.MinimumSize = new System.Drawing.Size(1, 1);
-            this.uiButton22.Name = "uiButton22";
-            this.uiButton22.Radius = 10;
-            this.uiButton22.RectColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
-            this.uiButton22.RectHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
-            this.uiButton22.RectPressColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(128)))), ((int)(((byte)(255)))));
-            this.uiButton22.RectSelectedColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
-            this.uiButton22.Size = new System.Drawing.Size(133, 34);
-            this.uiButton22.TabIndex = 102;
-            this.uiButton22.Text = "修复FBD";
-            this.uiButton22.TipsColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(128)))), ((int)(((byte)(255)))));
-            this.uiButton22.TipsFont = new System.Drawing.Font("微软雅黑", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            // 
-            // checkbox43
-            // 
-            this.checkbox43.Location = new System.Drawing.Point(282, 559);
-            this.checkbox43.Name = "checkbox43";
-            this.checkbox43.Size = new System.Drawing.Size(104, 24);
-            this.checkbox43.TabIndex = 101;
-            this.checkbox43.Text = "擦除谷歌锁";
-            // 
-            // button9
-            // 
-            this.button9.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(223)))), ((int)(((byte)(200)))), ((int)(((byte)(239)))));
-            this.button9.Location = new System.Drawing.Point(686, 0);
-            this.button9.Name = "button9";
-            this.button9.Size = new System.Drawing.Size(139, 37);
-            this.button9.TabIndex = 100;
-            this.button9.Text = "浏览";
-            this.button9.WaveSize = 0;
-            // 
-            // checkbox41
-            // 
-            this.checkbox41.Location = new System.Drawing.Point(93, 559);
-            this.checkbox41.Name = "checkbox41";
-            this.checkbox41.Size = new System.Drawing.Size(95, 24);
-            this.checkbox41.TabIndex = 85;
-            this.checkbox41.Text = "切换A槽";
-            // 
-            // input1
-            // 
-            this.input1.Location = new System.Drawing.Point(4, 40);
-            this.input1.Name = "input1";
-            this.input1.PlaceholderText = "选择flash Bat or 输出路径";
-            this.input1.PrefixSvg = "FolderOpenOutlined";
-            this.input1.Size = new System.Drawing.Size(680, 35);
-            this.input1.TabIndex = 99;
-            this.input1.WaveSize = 0;
-            // 
-            // button8
-            // 
-            this.button8.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(223)))), ((int)(((byte)(200)))), ((int)(((byte)(239)))));
-            this.button8.Location = new System.Drawing.Point(687, 40);
-            this.button8.Name = "button8";
-            this.button8.Size = new System.Drawing.Size(138, 35);
-            this.button8.TabIndex = 98;
-            this.button8.Text = "浏览";
-            this.button8.WaveSize = 0;
-            // 
-            // uiGroupBox7
-            // 
-            this.uiGroupBox7.Controls.Add(this.checkbox42);
-            this.uiGroupBox7.Controls.Add(this.listView5);
-            this.uiGroupBox7.FillColor = System.Drawing.Color.Transparent;
-            this.uiGroupBox7.FillColor2 = System.Drawing.Color.Transparent;
-            this.uiGroupBox7.Font = new System.Drawing.Font("微软雅黑", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.uiGroupBox7.Location = new System.Drawing.Point(4, 68);
-            this.uiGroupBox7.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            this.uiGroupBox7.MinimumSize = new System.Drawing.Size(1, 1);
-            this.uiGroupBox7.Name = "uiGroupBox7";
-            this.uiGroupBox7.Padding = new System.Windows.Forms.Padding(0, 32, 0, 0);
-            this.uiGroupBox7.Radius = 14;
-            this.uiGroupBox7.RectColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(128)))), ((int)(((byte)(255)))));
-            this.uiGroupBox7.Size = new System.Drawing.Size(821, 489);
-            this.uiGroupBox7.TabIndex = 77;
-            this.uiGroupBox7.Text = "分区表";
-            this.uiGroupBox7.TextAlignment = System.Drawing.ContentAlignment.MiddleLeft;
-            // 
-            // checkbox42
-            // 
-            this.checkbox42.Font = new System.Drawing.Font("微软雅黑", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.checkbox42.Location = new System.Drawing.Point(6, 25);
-            this.checkbox42.Name = "checkbox42";
-            this.checkbox42.Size = new System.Drawing.Size(21, 21);
-            this.checkbox42.TabIndex = 14;
-            this.checkbox42.Text = "";
-            // 
-            // listView5
-            // 
-            this.listView5.BorderStyle = System.Windows.Forms.BorderStyle.None;
-            this.listView5.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
-            this.columnHeader37,
-            this.columnHeader38,
-            this.columnHeader39,
-            this.columnHeader40});
-            this.listView5.HideSelection = false;
-            this.listView5.Location = new System.Drawing.Point(4, 23);
-            this.listView5.Name = "listView5";
-            this.listView5.Size = new System.Drawing.Size(813, 463);
-            this.listView5.TabIndex = 3;
-            this.listView5.UseCompatibleStateImageBehavior = false;
-            this.listView5.View = System.Windows.Forms.View.Details;
-            // 
-            // columnHeader37
-            // 
-            this.columnHeader37.Text = "      分区";
-            this.columnHeader37.Width = 230;
-            // 
-            // columnHeader38
-            // 
-            this.columnHeader38.Text = "操作";
-            this.columnHeader38.Width = 120;
-            // 
-            // columnHeader39
-            // 
-            this.columnHeader39.Text = "大小";
-            this.columnHeader39.Width = 120;
-            // 
-            // columnHeader40
-            // 
-            this.columnHeader40.Text = "文件路径";
-            this.columnHeader40.Width = 500;
-            // 
-            // uiButton18
-            // 
-            this.uiButton18.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.uiButton18.FillColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
-            this.uiButton18.FillColor2 = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
-            this.uiButton18.FillHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
-            this.uiButton18.FillPressColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(128)))), ((int)(((byte)(255)))));
-            this.uiButton18.FillSelectedColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
-            this.uiButton18.Font = new System.Drawing.Font("微软雅黑", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.uiButton18.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(64)))), ((int)(((byte)(64)))));
-            this.uiButton18.Location = new System.Drawing.Point(4, 623);
-            this.uiButton18.MinimumSize = new System.Drawing.Size(1, 1);
-            this.uiButton18.Name = "uiButton18";
-            this.uiButton18.Radius = 10;
-            this.uiButton18.RectColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
-            this.uiButton18.RectHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
-            this.uiButton18.RectPressColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(128)))), ((int)(((byte)(255)))));
-            this.uiButton18.RectSelectedColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
-            this.uiButton18.Size = new System.Drawing.Size(133, 34);
-            this.uiButton18.TabIndex = 81;
-            this.uiButton18.Text = "读取分区表";
-            this.uiButton18.TipsFont = new System.Drawing.Font("微软雅黑", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            // 
-            // uiButton19
-            // 
-            this.uiButton19.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.uiButton19.FillColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(255)))), ((int)(((byte)(192)))));
-            this.uiButton19.FillColor2 = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(255)))), ((int)(((byte)(192)))));
-            this.uiButton19.FillHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(255)))), ((int)(((byte)(192)))));
-            this.uiButton19.FillPressColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(255)))), ((int)(((byte)(128)))));
-            this.uiButton19.FillSelectedColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(255)))), ((int)(((byte)(192)))));
-            this.uiButton19.Font = new System.Drawing.Font("微软雅黑", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.uiButton19.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(64)))), ((int)(((byte)(64)))));
-            this.uiButton19.Location = new System.Drawing.Point(142, 585);
-            this.uiButton19.MinimumSize = new System.Drawing.Size(1, 1);
-            this.uiButton19.Name = "uiButton19";
-            this.uiButton19.Radius = 10;
-            this.uiButton19.RectColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(255)))), ((int)(((byte)(192)))));
-            this.uiButton19.RectHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(255)))), ((int)(((byte)(192)))));
-            this.uiButton19.RectPressColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(255)))), ((int)(((byte)(128)))));
-            this.uiButton19.RectSelectedColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(255)))), ((int)(((byte)(192)))));
-            this.uiButton19.Size = new System.Drawing.Size(133, 34);
-            this.uiButton19.TabIndex = 80;
-            this.uiButton19.Text = "提取镜像";
-            this.uiButton19.TipsFont = new System.Drawing.Font("微软雅黑", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            // 
-            // uiButton20
-            // 
-            this.uiButton20.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.uiButton20.FillColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(224)))), ((int)(((byte)(192)))));
-            this.uiButton20.FillColor2 = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(224)))), ((int)(((byte)(192)))));
-            this.uiButton20.FillHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(224)))), ((int)(((byte)(192)))));
-            this.uiButton20.FillPressColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(128)))));
-            this.uiButton20.FillSelectedColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(224)))), ((int)(((byte)(192)))));
-            this.uiButton20.Font = new System.Drawing.Font("微软雅黑", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.uiButton20.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(64)))), ((int)(((byte)(64)))));
-            this.uiButton20.Location = new System.Drawing.Point(278, 623);
-            this.uiButton20.MinimumSize = new System.Drawing.Size(1, 1);
-            this.uiButton20.Name = "uiButton20";
-            this.uiButton20.Radius = 10;
-            this.uiButton20.RectColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(224)))), ((int)(((byte)(192)))));
-            this.uiButton20.RectHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(224)))), ((int)(((byte)(192)))));
-            this.uiButton20.RectPressColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(128)))));
-            this.uiButton20.RectSelectedColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(224)))), ((int)(((byte)(192)))));
-            this.uiButton20.Size = new System.Drawing.Size(133, 34);
-            this.uiButton20.TabIndex = 79;
-            this.uiButton20.Text = "写入分区";
-            this.uiButton20.TipsFont = new System.Drawing.Font("微软雅黑", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            // 
-            // uiButton21
-            // 
-            this.uiButton21.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.uiButton21.FillColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(192)))));
-            this.uiButton21.FillColor2 = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(192)))));
-            this.uiButton21.FillHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(192)))));
-            this.uiButton21.FillPressColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(128)))), ((int)(((byte)(128)))));
-            this.uiButton21.FillSelectedColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(192)))));
-            this.uiButton21.Font = new System.Drawing.Font("微软雅黑", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.uiButton21.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(64)))), ((int)(((byte)(64)))));
-            this.uiButton21.Location = new System.Drawing.Point(416, 623);
-            this.uiButton21.MinimumSize = new System.Drawing.Size(1, 1);
-            this.uiButton21.Name = "uiButton21";
-            this.uiButton21.Radius = 10;
-            this.uiButton21.RectColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(192)))));
-            this.uiButton21.RectHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(224)))), ((int)(((byte)(192)))));
-            this.uiButton21.RectPressColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(128)))), ((int)(((byte)(128)))));
-            this.uiButton21.RectSelectedColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(192)))));
-            this.uiButton21.Size = new System.Drawing.Size(133, 34);
-            this.uiButton21.TabIndex = 78;
-            this.uiButton21.Text = "擦除分区";
-            this.uiButton21.TipsFont = new System.Drawing.Font("微软雅黑", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            // 
-            // checkbox44
-            // 
-            this.checkbox44.Location = new System.Drawing.Point(4, 559);
-            this.checkbox44.Name = "checkbox44";
-            this.checkbox44.Size = new System.Drawing.Size(95, 24);
-            this.checkbox44.TabIndex = 83;
-            this.checkbox44.Text = "自动重启";
-            // 
-            // checkbox45
-            // 
-            this.checkbox45.Location = new System.Drawing.Point(187, 559);
-            this.checkbox45.Name = "checkbox45";
-            this.checkbox45.Size = new System.Drawing.Size(95, 24);
-            this.checkbox45.TabIndex = 84;
-            this.checkbox45.Text = "FBD刷写";
-            // 
-            // checkbox50
-            // 
-            this.checkbox50.Location = new System.Drawing.Point(389, 559);
-            this.checkbox50.Name = "checkbox50";
-            this.checkbox50.Size = new System.Drawing.Size(91, 24);
-            this.checkbox50.TabIndex = 87;
-            this.checkbox50.Text = "保留数据";
             // 
             // tabPage2
             // 
@@ -1725,6 +1079,169 @@ namespace LoveAlways
             this.select4.TabIndex = 117;
             this.select4.WaveSize = 0;
             // 
+            // tabPage6
+            // 
+            this.tabPage6.Controls.Add(this.button7);
+            this.tabPage6.Controls.Add(this.pictureBox1);
+            this.tabPage6.Controls.Add(this.uiComboBox4);
+            this.tabPage6.Controls.Add(this.label4);
+            this.tabPage6.Controls.Add(this.uiComboBox3);
+            this.tabPage6.Controls.Add(this.button3);
+            this.tabPage6.Controls.Add(this.button2);
+            this.tabPage6.Controls.Add(this.label3);
+            this.tabPage6.Controls.Add(this.label2);
+            this.tabPage6.Controls.Add(this.slider1);
+            this.tabPage6.Controls.Add(this.label1);
+            this.tabPage6.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.tabPage6.Location = new System.Drawing.Point(0, 33);
+            this.tabPage6.Name = "tabPage6";
+            this.tabPage6.Size = new System.Drawing.Size(829, 659);
+            this.tabPage6.TabIndex = 4;
+            this.tabPage6.Text = "设置";
+            // 
+            // button7
+            // 
+            this.button7.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(223)))), ((int)(((byte)(200)))), ((int)(((byte)(239)))));
+            this.button7.Location = new System.Drawing.Point(4, 61);
+            this.button7.Name = "button7";
+            this.button7.Size = new System.Drawing.Size(176, 34);
+            this.button7.TabIndex = 37;
+            this.button7.Text = "清理缓存日志";
+            this.button7.WaveSize = 0;
+            // 
+            // pictureBox1
+            // 
+            this.pictureBox1.BackColor = System.Drawing.Color.White;
+            this.pictureBox1.Location = new System.Drawing.Point(4, 256);
+            this.pictureBox1.Name = "pictureBox1";
+            this.pictureBox1.Size = new System.Drawing.Size(530, 285);
+            this.pictureBox1.TabIndex = 36;
+            this.pictureBox1.TabStop = false;
+            // 
+            // uiComboBox4
+            // 
+            this.uiComboBox4.DataSource = null;
+            this.uiComboBox4.DropDownStyle = Sunny.UI.UIDropDownStyle.DropDownList;
+            this.uiComboBox4.DropDownWidth = 215;
+            this.uiComboBox4.FillColor = System.Drawing.Color.Empty;
+            this.uiComboBox4.FillColor2 = System.Drawing.Color.Transparent;
+            this.uiComboBox4.Font = new System.Drawing.Font("微软雅黑", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.uiComboBox4.ImeMode = System.Windows.Forms.ImeMode.Disable;
+            this.uiComboBox4.ItemHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
+            this.uiComboBox4.ItemRectColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
+            this.uiComboBox4.Items.AddRange(new object[] {
+            "简体中文",
+            "English"});
+            this.uiComboBox4.ItemSelectBackColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
+            this.uiComboBox4.ItemSelectForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(235)))), ((int)(((byte)(243)))), ((int)(((byte)(255)))));
+            this.uiComboBox4.Location = new System.Drawing.Point(4, 569);
+            this.uiComboBox4.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
+            this.uiComboBox4.MinimumSize = new System.Drawing.Size(63, 0);
+            this.uiComboBox4.Name = "uiComboBox4";
+            this.uiComboBox4.Padding = new System.Windows.Forms.Padding(0, 0, 30, 2);
+            this.uiComboBox4.Radius = 14;
+            this.uiComboBox4.RectColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(128)))), ((int)(((byte)(255)))));
+            this.uiComboBox4.Size = new System.Drawing.Size(226, 30);
+            this.uiComboBox4.SymbolSize = 24;
+            this.uiComboBox4.TabIndex = 35;
+            this.uiComboBox4.Text = "简体中文";
+            this.uiComboBox4.TextAlignment = System.Drawing.ContentAlignment.MiddleLeft;
+            this.uiComboBox4.Watermark = "";
+            // 
+            // label4
+            // 
+            this.label4.Font = new System.Drawing.Font("微软雅黑", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.label4.Location = new System.Drawing.Point(7, 547);
+            this.label4.Name = "label4";
+            this.label4.Size = new System.Drawing.Size(160, 23);
+            this.label4.TabIndex = 34;
+            this.label4.Text = "语言";
+            // 
+            // uiComboBox3
+            // 
+            this.uiComboBox3.DataSource = null;
+            this.uiComboBox3.DropDownWidth = 300;
+            this.uiComboBox3.FillColor = System.Drawing.Color.Empty;
+            this.uiComboBox3.FillColor2 = System.Drawing.Color.Transparent;
+            this.uiComboBox3.Font = new System.Drawing.Font("微软雅黑", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.uiComboBox3.ImeMode = System.Windows.Forms.ImeMode.NoControl;
+            this.uiComboBox3.ItemHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
+            this.uiComboBox3.ItemRectColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
+            this.uiComboBox3.ItemSelectBackColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
+            this.uiComboBox3.ItemSelectForeColor = System.Drawing.Color.White;
+            this.uiComboBox3.Location = new System.Drawing.Point(4, 137);
+            this.uiComboBox3.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
+            this.uiComboBox3.MinimumSize = new System.Drawing.Size(63, 0);
+            this.uiComboBox3.Name = "uiComboBox3";
+            this.uiComboBox3.Padding = new System.Windows.Forms.Padding(0, 0, 30, 2);
+            this.uiComboBox3.Radius = 14;
+            this.uiComboBox3.RectColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
+            this.uiComboBox3.Size = new System.Drawing.Size(356, 34);
+            this.uiComboBox3.StyleDropDown = Sunny.UI.UIStyle.Green;
+            this.uiComboBox3.SymbolSize = 24;
+            this.uiComboBox3.TabIndex = 32;
+            this.uiComboBox3.TextAlignment = System.Drawing.ContentAlignment.MiddleLeft;
+            this.uiComboBox3.Watermark = "输入Url";
+            this.uiComboBox3.WatermarkActiveColor = System.Drawing.Color.Silver;
+            this.uiComboBox3.WatermarkColor = System.Drawing.Color.Silver;
+            // 
+            // button3
+            // 
+            this.button3.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(223)))), ((int)(((byte)(200)))), ((int)(((byte)(239)))));
+            this.button3.Location = new System.Drawing.Point(209, 176);
+            this.button3.Name = "button3";
+            this.button3.Size = new System.Drawing.Size(151, 34);
+            this.button3.TabIndex = 31;
+            this.button3.Text = "应用";
+            this.button3.WaveSize = 0;
+            // 
+            // button2
+            // 
+            this.button2.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(223)))), ((int)(((byte)(200)))), ((int)(((byte)(239)))));
+            this.button2.Location = new System.Drawing.Point(3, 176);
+            this.button2.Name = "button2";
+            this.button2.Size = new System.Drawing.Size(160, 34);
+            this.button2.TabIndex = 30;
+            this.button2.Text = "本地壁纸";
+            this.button2.WaveSize = 0;
+            // 
+            // label3
+            // 
+            this.label3.Font = new System.Drawing.Font("微软雅黑", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.label3.Location = new System.Drawing.Point(7, 227);
+            this.label3.Name = "label3";
+            this.label3.Size = new System.Drawing.Size(515, 23);
+            this.label3.TabIndex = 4;
+            this.label3.Text = "预览";
+            // 
+            // label2
+            // 
+            this.label2.Font = new System.Drawing.Font("微软雅黑", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.label2.Location = new System.Drawing.Point(8, 112);
+            this.label2.Name = "label2";
+            this.label2.Size = new System.Drawing.Size(276, 23);
+            this.label2.TabIndex = 3;
+            this.label2.Text = "壁纸";
+            // 
+            // slider1
+            // 
+            this.slider1.Font = new System.Drawing.Font("微软雅黑", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.slider1.Location = new System.Drawing.Point(0, 32);
+            this.slider1.Name = "slider1";
+            this.slider1.Size = new System.Drawing.Size(431, 23);
+            this.slider1.TabIndex = 2;
+            this.slider1.Text = "slider1";
+            this.slider1.Value = 100;
+            // 
+            // label1
+            // 
+            this.label1.Font = new System.Drawing.Font("微软雅黑", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.label1.Location = new System.Drawing.Point(8, 3);
+            this.label1.Name = "label1";
+            this.label1.Size = new System.Drawing.Size(242, 23);
+            this.label1.TabIndex = 1;
+            this.label1.Text = "背景模糊度";
+            // 
             // tabPage1
             // 
             this.tabPage1.Controls.Add(this.labelDevRoot);
@@ -1734,6 +1251,490 @@ namespace LoveAlways
             this.tabPage1.Size = new System.Drawing.Size(829, 659);
             this.tabPage1.TabIndex = 6;
             this.tabPage1.Text = "自动root";
+            // 
+            // labelDevRoot
+            // 
+            this.labelDevRoot.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.labelDevRoot.Font = new System.Drawing.Font("微软雅黑", 24F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.labelDevRoot.ForeColor = System.Drawing.Color.Silver;
+            this.labelDevRoot.Location = new System.Drawing.Point(0, 0);
+            this.labelDevRoot.Name = "labelDevRoot";
+            this.labelDevRoot.Size = new System.Drawing.Size(829, 659);
+            this.labelDevRoot.TabIndex = 0;
+            this.labelDevRoot.Text = "开发中...";
+            this.labelDevRoot.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
+            // tabPage3
+            // 
+            this.tabPage3.Controls.Add(this.checkbox7);
+            this.tabPage3.Controls.Add(this.uiButton10);
+            this.tabPage3.Controls.Add(this.uiTextBox1);
+            this.tabPage3.Controls.Add(this.uiComboBox2);
+            this.tabPage3.Controls.Add(this.checkbox22);
+            this.tabPage3.Controls.Add(this.checkbox21);
+            this.tabPage3.Controls.Add(this.uiButton11);
+            this.tabPage3.Controls.Add(this.select5);
+            this.tabPage3.Controls.Add(this.uiButton22);
+            this.tabPage3.Controls.Add(this.checkbox43);
+            this.tabPage3.Controls.Add(this.button9);
+            this.tabPage3.Controls.Add(this.checkbox41);
+            this.tabPage3.Controls.Add(this.input1);
+            this.tabPage3.Controls.Add(this.button8);
+            this.tabPage3.Controls.Add(this.uiGroupBox7);
+            this.tabPage3.Controls.Add(this.uiButton18);
+            this.tabPage3.Controls.Add(this.uiButton19);
+            this.tabPage3.Controls.Add(this.uiButton20);
+            this.tabPage3.Controls.Add(this.uiButton21);
+            this.tabPage3.Controls.Add(this.checkbox44);
+            this.tabPage3.Controls.Add(this.checkbox45);
+            this.tabPage3.Controls.Add(this.checkbox50);
+            this.tabPage3.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.tabPage3.Location = new System.Drawing.Point(0, 33);
+            this.tabPage3.Name = "tabPage3";
+            this.tabPage3.Size = new System.Drawing.Size(829, 659);
+            this.tabPage3.TabIndex = 5;
+            this.tabPage3.Text = "引导模式";
+            // 
+            // uiButton10
+            // 
+            this.uiButton10.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.uiButton10.FillColor = System.Drawing.Color.Silver;
+            this.uiButton10.FillColor2 = System.Drawing.Color.Silver;
+            this.uiButton10.FillHoverColor = System.Drawing.Color.Silver;
+            this.uiButton10.FillPressColor = System.Drawing.Color.Gray;
+            this.uiButton10.FillSelectedColor = System.Drawing.Color.FromArgb(((int)(((byte)(224)))), ((int)(((byte)(224)))), ((int)(((byte)(224)))));
+            this.uiButton10.Font = new System.Drawing.Font("微软雅黑", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.uiButton10.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(64)))), ((int)(((byte)(64)))));
+            this.uiButton10.Location = new System.Drawing.Point(692, 585);
+            this.uiButton10.MinimumSize = new System.Drawing.Size(1, 1);
+            this.uiButton10.Name = "uiButton10";
+            this.uiButton10.Radius = 10;
+            this.uiButton10.RectColor = System.Drawing.Color.FromArgb(((int)(((byte)(224)))), ((int)(((byte)(224)))), ((int)(((byte)(224)))));
+            this.uiButton10.RectHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(224)))), ((int)(((byte)(224)))), ((int)(((byte)(224)))));
+            this.uiButton10.RectPressColor = System.Drawing.Color.Silver;
+            this.uiButton10.RectSelectedColor = System.Drawing.Color.FromArgb(((int)(((byte)(224)))), ((int)(((byte)(224)))), ((int)(((byte)(224)))));
+            this.uiButton10.Size = new System.Drawing.Size(133, 34);
+            this.uiButton10.TabIndex = 153;
+            this.uiButton10.Text = "执行";
+            this.uiButton10.TipsFont = new System.Drawing.Font("微软雅黑", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            // 
+            // uiTextBox1
+            // 
+            this.uiTextBox1.ButtonFillColor = System.Drawing.Color.FromArgb(((int)(((byte)(224)))), ((int)(((byte)(224)))), ((int)(((byte)(224)))));
+            this.uiTextBox1.ButtonFillHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(224)))), ((int)(((byte)(224)))), ((int)(((byte)(224)))));
+            this.uiTextBox1.ButtonFillPressColor = System.Drawing.Color.Silver;
+            this.uiTextBox1.ButtonRectColor = System.Drawing.Color.Silver;
+            this.uiTextBox1.ButtonRectHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(224)))), ((int)(((byte)(224)))), ((int)(((byte)(224)))));
+            this.uiTextBox1.ButtonRectPressColor = System.Drawing.Color.Silver;
+            this.uiTextBox1.ButtonStyleInherited = false;
+            this.uiTextBox1.Cursor = System.Windows.Forms.Cursors.Default;
+            this.uiTextBox1.Font = new System.Drawing.Font("微软雅黑", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.uiTextBox1.Location = new System.Drawing.Point(5, 1);
+            this.uiTextBox1.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
+            this.uiTextBox1.MinimumSize = new System.Drawing.Size(1, 16);
+            this.uiTextBox1.Name = "uiTextBox1";
+            this.uiTextBox1.Padding = new System.Windows.Forms.Padding(5);
+            this.uiTextBox1.Radius = 15;
+            this.uiTextBox1.RectColor = System.Drawing.Color.FromArgb(((int)(((byte)(224)))), ((int)(((byte)(224)))), ((int)(((byte)(224)))));
+            this.uiTextBox1.ScrollBarColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
+            this.uiTextBox1.ScrollBarStyleInherited = false;
+            this.uiTextBox1.ShowText = false;
+            this.uiTextBox1.Size = new System.Drawing.Size(678, 36);
+            this.uiTextBox1.TabIndex = 15;
+            this.uiTextBox1.TextAlignment = System.Drawing.ContentAlignment.MiddleLeft;
+            this.uiTextBox1.Watermark = "选择Payload or 输入Url";
+            this.uiTextBox1.WatermarkActiveColor = System.Drawing.Color.Silver;
+            this.uiTextBox1.WatermarkColor = System.Drawing.Color.Silver;
+            // 
+            // uiComboBox2
+            // 
+            this.uiComboBox2.DataSource = null;
+            this.uiComboBox2.DropDownWidth = 300;
+            this.uiComboBox2.FillColor = System.Drawing.Color.Empty;
+            this.uiComboBox2.FillColor2 = System.Drawing.Color.Transparent;
+            this.uiComboBox2.Font = new System.Drawing.Font("微软雅黑", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.uiComboBox2.ImeMode = System.Windows.Forms.ImeMode.NoControl;
+            this.uiComboBox2.ItemHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
+            this.uiComboBox2.ItemRectColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
+            this.uiComboBox2.Items.AddRange(new object[] {
+            "device",
+            "flashing unlock",
+            "oem unlock",
+            "oem unlock-go",
+            "flashing unlock_critical",
+            "flashing lock",
+            "oem lock",
+            "oem lock-go"});
+            this.uiComboBox2.ItemSelectBackColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
+            this.uiComboBox2.ItemSelectForeColor = System.Drawing.Color.White;
+            this.uiComboBox2.Location = new System.Drawing.Point(278, 585);
+            this.uiComboBox2.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
+            this.uiComboBox2.MinimumSize = new System.Drawing.Size(63, 0);
+            this.uiComboBox2.Name = "uiComboBox2";
+            this.uiComboBox2.Padding = new System.Windows.Forms.Padding(0, 0, 30, 2);
+            this.uiComboBox2.Radius = 14;
+            this.uiComboBox2.RectColor = System.Drawing.Color.FromArgb(((int)(((byte)(224)))), ((int)(((byte)(224)))), ((int)(((byte)(224)))));
+            this.uiComboBox2.Size = new System.Drawing.Size(410, 34);
+            this.uiComboBox2.StyleDropDown = Sunny.UI.UIStyle.Green;
+            this.uiComboBox2.SymbolSize = 24;
+            this.uiComboBox2.TabIndex = 33;
+            this.uiComboBox2.TextAlignment = System.Drawing.ContentAlignment.MiddleLeft;
+            this.uiComboBox2.Watermark = "执行快捷命令";
+            this.uiComboBox2.WatermarkActiveColor = System.Drawing.Color.Silver;
+            this.uiComboBox2.WatermarkColor = System.Drawing.Color.Silver;
+            // 
+            // checkbox22
+            // 
+            this.checkbox22.Location = new System.Drawing.Point(498, 560);
+            this.checkbox22.Name = "checkbox22";
+            this.checkbox22.Size = new System.Drawing.Size(91, 24);
+            this.checkbox22.TabIndex = 109;
+            this.checkbox22.Text = "清除数据";
+            this.checkbox22.CheckedChanged += new AntdUI.BoolEventHandler(this.checkbox22_CheckedChanged);
+            // 
+            // checkbox21
+            // 
+            this.checkbox21.Location = new System.Drawing.Point(611, 559);
+            this.checkbox21.Name = "checkbox21";
+            this.checkbox21.Size = new System.Drawing.Size(91, 24);
+            this.checkbox21.TabIndex = 108;
+            this.checkbox21.Text = "锁定BL";
+            // 
+            // uiButton11
+            // 
+            this.uiButton11.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.uiButton11.FillColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
+            this.uiButton11.FillColor2 = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
+            this.uiButton11.FillHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
+            this.uiButton11.FillPressColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(128)))), ((int)(((byte)(255)))));
+            this.uiButton11.FillSelectedColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
+            this.uiButton11.Font = new System.Drawing.Font("微软雅黑", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.uiButton11.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(64)))), ((int)(((byte)(64)))));
+            this.uiButton11.Location = new System.Drawing.Point(4, 585);
+            this.uiButton11.MinimumSize = new System.Drawing.Size(1, 1);
+            this.uiButton11.Name = "uiButton11";
+            this.uiButton11.Radius = 10;
+            this.uiButton11.RectColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
+            this.uiButton11.RectHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
+            this.uiButton11.RectPressColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(128)))), ((int)(((byte)(255)))));
+            this.uiButton11.RectSelectedColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
+            this.uiButton11.Size = new System.Drawing.Size(133, 34);
+            this.uiButton11.TabIndex = 107;
+            this.uiButton11.Text = "读取信息";
+            this.uiButton11.TipsFont = new System.Drawing.Font("微软雅黑", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            // 
+            // select5
+            // 
+            this.select5.Items.AddRange(new object[] {
+            "boot",
+            "init_boot",
+            "super",
+            "system",
+            "vbmeta",
+            "recovery"});
+            this.select5.Location = new System.Drawing.Point(555, 623);
+            this.select5.MaxCount = 3;
+            this.select5.Name = "select5";
+            this.select5.PlaceholderText = "查找分区";
+            this.select5.PrefixSvg = "SearchOutlined";
+            this.select5.SelectionColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
+            this.select5.Size = new System.Drawing.Size(270, 34);
+            this.select5.TabIndex = 104;
+            this.select5.WaveSize = 0;
+            // 
+            // uiButton22
+            // 
+            this.uiButton22.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.uiButton22.FillColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
+            this.uiButton22.FillColor2 = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
+            this.uiButton22.FillHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
+            this.uiButton22.FillPressColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(128)))), ((int)(((byte)(255)))));
+            this.uiButton22.FillSelectedColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
+            this.uiButton22.Font = new System.Drawing.Font("微软雅黑", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.uiButton22.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(64)))), ((int)(((byte)(64)))));
+            this.uiButton22.Location = new System.Drawing.Point(140, 623);
+            this.uiButton22.MinimumSize = new System.Drawing.Size(1, 1);
+            this.uiButton22.Name = "uiButton22";
+            this.uiButton22.Radius = 10;
+            this.uiButton22.RectColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
+            this.uiButton22.RectHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
+            this.uiButton22.RectPressColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(128)))), ((int)(((byte)(255)))));
+            this.uiButton22.RectSelectedColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
+            this.uiButton22.Size = new System.Drawing.Size(133, 34);
+            this.uiButton22.TabIndex = 102;
+            this.uiButton22.Text = "修复FBD";
+            this.uiButton22.TipsColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(128)))), ((int)(((byte)(255)))));
+            this.uiButton22.TipsFont = new System.Drawing.Font("微软雅黑", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            // 
+            // checkbox43
+            // 
+            this.checkbox43.Location = new System.Drawing.Point(708, 559);
+            this.checkbox43.Name = "checkbox43";
+            this.checkbox43.Size = new System.Drawing.Size(104, 24);
+            this.checkbox43.TabIndex = 101;
+            this.checkbox43.Text = "擦除谷歌锁";
+            // 
+            // button9
+            // 
+            this.button9.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(223)))), ((int)(((byte)(200)))), ((int)(((byte)(239)))));
+            this.button9.Location = new System.Drawing.Point(686, 0);
+            this.button9.Name = "button9";
+            this.button9.Size = new System.Drawing.Size(139, 37);
+            this.button9.TabIndex = 100;
+            this.button9.Text = "浏览";
+            this.button9.WaveSize = 0;
+            // 
+            // checkbox41
+            // 
+            this.checkbox41.Location = new System.Drawing.Point(93, 559);
+            this.checkbox41.Name = "checkbox41";
+            this.checkbox41.Size = new System.Drawing.Size(95, 24);
+            this.checkbox41.TabIndex = 85;
+            this.checkbox41.Text = "切换A槽";
+            // 
+            // input1
+            // 
+            this.input1.Location = new System.Drawing.Point(4, 40);
+            this.input1.Name = "input1";
+            this.input1.PlaceholderText = "选择flash Bat or 输出路径";
+            this.input1.PrefixSvg = "FolderOpenOutlined";
+            this.input1.Size = new System.Drawing.Size(680, 35);
+            this.input1.TabIndex = 99;
+            this.input1.WaveSize = 0;
+            // 
+            // button8
+            // 
+            this.button8.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(223)))), ((int)(((byte)(200)))), ((int)(((byte)(239)))));
+            this.button8.Location = new System.Drawing.Point(687, 40);
+            this.button8.Name = "button8";
+            this.button8.Size = new System.Drawing.Size(138, 35);
+            this.button8.TabIndex = 98;
+            this.button8.Text = "浏览";
+            this.button8.WaveSize = 0;
+            // 
+            // uiGroupBox7
+            // 
+            this.uiGroupBox7.Controls.Add(this.checkbox42);
+            this.uiGroupBox7.Controls.Add(this.listView5);
+            this.uiGroupBox7.FillColor = System.Drawing.Color.Transparent;
+            this.uiGroupBox7.FillColor2 = System.Drawing.Color.Transparent;
+            this.uiGroupBox7.Font = new System.Drawing.Font("微软雅黑", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.uiGroupBox7.Location = new System.Drawing.Point(4, 68);
+            this.uiGroupBox7.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
+            this.uiGroupBox7.MinimumSize = new System.Drawing.Size(1, 1);
+            this.uiGroupBox7.Name = "uiGroupBox7";
+            this.uiGroupBox7.Padding = new System.Windows.Forms.Padding(0, 32, 0, 0);
+            this.uiGroupBox7.Radius = 14;
+            this.uiGroupBox7.RectColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(128)))), ((int)(((byte)(255)))));
+            this.uiGroupBox7.Size = new System.Drawing.Size(821, 489);
+            this.uiGroupBox7.TabIndex = 77;
+            this.uiGroupBox7.Text = "分区表";
+            this.uiGroupBox7.TextAlignment = System.Drawing.ContentAlignment.MiddleLeft;
+            // 
+            // checkbox42
+            // 
+            this.checkbox42.Font = new System.Drawing.Font("微软雅黑", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.checkbox42.Location = new System.Drawing.Point(6, 25);
+            this.checkbox42.Name = "checkbox42";
+            this.checkbox42.Size = new System.Drawing.Size(21, 21);
+            this.checkbox42.TabIndex = 14;
+            this.checkbox42.Text = "";
+            // 
+            // listView5
+            // 
+            this.listView5.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            this.listView5.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
+            this.columnHeader37,
+            this.columnHeader38,
+            this.columnHeader39,
+            this.columnHeader40});
+            this.listView5.HideSelection = false;
+            this.listView5.Location = new System.Drawing.Point(4, 23);
+            this.listView5.Name = "listView5";
+            this.listView5.Size = new System.Drawing.Size(813, 463);
+            this.listView5.TabIndex = 3;
+            this.listView5.UseCompatibleStateImageBehavior = false;
+            this.listView5.View = System.Windows.Forms.View.Details;
+            // 
+            // columnHeader37
+            // 
+            this.columnHeader37.Text = "      分区";
+            this.columnHeader37.Width = 230;
+            // 
+            // columnHeader38
+            // 
+            this.columnHeader38.Text = "操作";
+            this.columnHeader38.Width = 120;
+            // 
+            // columnHeader39
+            // 
+            this.columnHeader39.Text = "大小";
+            this.columnHeader39.Width = 120;
+            // 
+            // columnHeader40
+            // 
+            this.columnHeader40.Text = "文件路径";
+            this.columnHeader40.Width = 500;
+            // 
+            // uiButton18
+            // 
+            this.uiButton18.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.uiButton18.FillColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
+            this.uiButton18.FillColor2 = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
+            this.uiButton18.FillHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
+            this.uiButton18.FillPressColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(128)))), ((int)(((byte)(255)))));
+            this.uiButton18.FillSelectedColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
+            this.uiButton18.Font = new System.Drawing.Font("微软雅黑", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.uiButton18.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(64)))), ((int)(((byte)(64)))));
+            this.uiButton18.Location = new System.Drawing.Point(4, 623);
+            this.uiButton18.MinimumSize = new System.Drawing.Size(1, 1);
+            this.uiButton18.Name = "uiButton18";
+            this.uiButton18.Radius = 10;
+            this.uiButton18.RectColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
+            this.uiButton18.RectHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
+            this.uiButton18.RectPressColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(128)))), ((int)(((byte)(255)))));
+            this.uiButton18.RectSelectedColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
+            this.uiButton18.Size = new System.Drawing.Size(133, 34);
+            this.uiButton18.TabIndex = 81;
+            this.uiButton18.Text = "读取分区表";
+            this.uiButton18.TipsFont = new System.Drawing.Font("微软雅黑", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            // 
+            // uiButton19
+            // 
+            this.uiButton19.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.uiButton19.FillColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(255)))), ((int)(((byte)(192)))));
+            this.uiButton19.FillColor2 = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(255)))), ((int)(((byte)(192)))));
+            this.uiButton19.FillHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(255)))), ((int)(((byte)(192)))));
+            this.uiButton19.FillPressColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(255)))), ((int)(((byte)(128)))));
+            this.uiButton19.FillSelectedColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(255)))), ((int)(((byte)(192)))));
+            this.uiButton19.Font = new System.Drawing.Font("微软雅黑", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.uiButton19.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(64)))), ((int)(((byte)(64)))));
+            this.uiButton19.Location = new System.Drawing.Point(142, 585);
+            this.uiButton19.MinimumSize = new System.Drawing.Size(1, 1);
+            this.uiButton19.Name = "uiButton19";
+            this.uiButton19.Radius = 10;
+            this.uiButton19.RectColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(255)))), ((int)(((byte)(192)))));
+            this.uiButton19.RectHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(255)))), ((int)(((byte)(192)))));
+            this.uiButton19.RectPressColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(255)))), ((int)(((byte)(128)))));
+            this.uiButton19.RectSelectedColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(255)))), ((int)(((byte)(192)))));
+            this.uiButton19.Size = new System.Drawing.Size(133, 34);
+            this.uiButton19.TabIndex = 80;
+            this.uiButton19.Text = "提取镜像";
+            this.uiButton19.TipsFont = new System.Drawing.Font("微软雅黑", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            // 
+            // uiButton20
+            // 
+            this.uiButton20.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.uiButton20.FillColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(224)))), ((int)(((byte)(192)))));
+            this.uiButton20.FillColor2 = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(224)))), ((int)(((byte)(192)))));
+            this.uiButton20.FillHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(224)))), ((int)(((byte)(192)))));
+            this.uiButton20.FillPressColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(128)))));
+            this.uiButton20.FillSelectedColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(224)))), ((int)(((byte)(192)))));
+            this.uiButton20.Font = new System.Drawing.Font("微软雅黑", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.uiButton20.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(64)))), ((int)(((byte)(64)))));
+            this.uiButton20.Location = new System.Drawing.Point(278, 623);
+            this.uiButton20.MinimumSize = new System.Drawing.Size(1, 1);
+            this.uiButton20.Name = "uiButton20";
+            this.uiButton20.Radius = 10;
+            this.uiButton20.RectColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(224)))), ((int)(((byte)(192)))));
+            this.uiButton20.RectHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(224)))), ((int)(((byte)(192)))));
+            this.uiButton20.RectPressColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(128)))));
+            this.uiButton20.RectSelectedColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(224)))), ((int)(((byte)(192)))));
+            this.uiButton20.Size = new System.Drawing.Size(133, 34);
+            this.uiButton20.TabIndex = 79;
+            this.uiButton20.Text = "写入分区";
+            this.uiButton20.TipsFont = new System.Drawing.Font("微软雅黑", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            // 
+            // uiButton21
+            // 
+            this.uiButton21.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.uiButton21.FillColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(192)))));
+            this.uiButton21.FillColor2 = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(192)))));
+            this.uiButton21.FillHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(192)))));
+            this.uiButton21.FillPressColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(128)))), ((int)(((byte)(128)))));
+            this.uiButton21.FillSelectedColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(192)))));
+            this.uiButton21.Font = new System.Drawing.Font("微软雅黑", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.uiButton21.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(64)))), ((int)(((byte)(64)))));
+            this.uiButton21.Location = new System.Drawing.Point(416, 623);
+            this.uiButton21.MinimumSize = new System.Drawing.Size(1, 1);
+            this.uiButton21.Name = "uiButton21";
+            this.uiButton21.Radius = 10;
+            this.uiButton21.RectColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(192)))));
+            this.uiButton21.RectHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(224)))), ((int)(((byte)(192)))));
+            this.uiButton21.RectPressColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(128)))), ((int)(((byte)(128)))));
+            this.uiButton21.RectSelectedColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(192)))));
+            this.uiButton21.Size = new System.Drawing.Size(133, 34);
+            this.uiButton21.TabIndex = 78;
+            this.uiButton21.Text = "擦除分区";
+            this.uiButton21.TipsFont = new System.Drawing.Font("微软雅黑", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            // 
+            // checkbox44
+            // 
+            this.checkbox44.Location = new System.Drawing.Point(4, 559);
+            this.checkbox44.Name = "checkbox44";
+            this.checkbox44.Size = new System.Drawing.Size(95, 24);
+            this.checkbox44.TabIndex = 83;
+            this.checkbox44.Text = "自动重启";
+            // 
+            // checkbox45
+            // 
+            this.checkbox45.Location = new System.Drawing.Point(187, 559);
+            this.checkbox45.Name = "checkbox45";
+            this.checkbox45.Size = new System.Drawing.Size(95, 24);
+            this.checkbox45.TabIndex = 84;
+            this.checkbox45.Text = "FBD刷写";
+            // 
+            // checkbox50
+            // 
+            this.checkbox50.Location = new System.Drawing.Point(396, 559);
+            this.checkbox50.Name = "checkbox50";
+            this.checkbox50.Size = new System.Drawing.Size(91, 24);
+            this.checkbox50.TabIndex = 87;
+            this.checkbox50.Text = "保留数据";
+            // 
+            // tabPage4
+            // 
+            this.tabPage4.Controls.Add(this.labelDevMTK);
+            this.tabPage4.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.tabPage4.Location = new System.Drawing.Point(0, 33);
+            this.tabPage4.Name = "tabPage4";
+            this.tabPage4.Size = new System.Drawing.Size(829, 659);
+            this.tabPage4.TabIndex = 2;
+            this.tabPage4.Text = "MTK平台";
+            // 
+            // labelDevMTK
+            // 
+            this.labelDevMTK.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.labelDevMTK.Font = new System.Drawing.Font("微软雅黑", 24F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.labelDevMTK.ForeColor = System.Drawing.Color.Silver;
+            this.labelDevMTK.Location = new System.Drawing.Point(0, 0);
+            this.labelDevMTK.Name = "labelDevMTK";
+            this.labelDevMTK.Size = new System.Drawing.Size(829, 659);
+            this.labelDevMTK.TabIndex = 0;
+            this.labelDevMTK.Text = "开发中...";
+            this.labelDevMTK.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
+            // tabPage5
+            // 
+            this.tabPage5.Controls.Add(this.labelDevSpreadtrum);
+            this.tabPage5.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.tabPage5.Location = new System.Drawing.Point(0, 33);
+            this.tabPage5.Name = "tabPage5";
+            this.tabPage5.Size = new System.Drawing.Size(829, 659);
+            this.tabPage5.TabIndex = 3;
+            this.tabPage5.Text = "展讯平台";
+            // 
+            // labelDevSpreadtrum
+            // 
+            this.labelDevSpreadtrum.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.labelDevSpreadtrum.Font = new System.Drawing.Font("微软雅黑", 24F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.labelDevSpreadtrum.ForeColor = System.Drawing.Color.Silver;
+            this.labelDevSpreadtrum.Location = new System.Drawing.Point(0, 0);
+            this.labelDevSpreadtrum.Name = "labelDevSpreadtrum";
+            this.labelDevSpreadtrum.Size = new System.Drawing.Size(829, 659);
+            this.labelDevSpreadtrum.TabIndex = 0;
+            this.labelDevSpreadtrum.Text = "开发中...";
+            this.labelDevSpreadtrum.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
             // uiComboBox5
             // 
@@ -2220,7 +2221,7 @@ namespace LoveAlways
             this.tabs2.Pages.Add(this.tabPage7);
             this.tabs2.Pages.Add(this.tabPage8);
             this.tabs2.Size = new System.Drawing.Size(827, 466);
-            this.tabs2.Style = styleLine1;
+            this.tabs2.Style = styleLine2;
             this.tabs2.TabIndex = 134;
             this.tabs2.Text = "tabs2";
             // 
@@ -2228,9 +2229,9 @@ namespace LoveAlways
             // 
             this.tabPage7.Controls.Add(this.uiGroupBox2);
             this.tabPage7.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.tabPage7.Location = new System.Drawing.Point(0, 33);
+            this.tabPage7.Location = new System.Drawing.Point(0, 28);
             this.tabPage7.Name = "tabPage7";
-            this.tabPage7.Size = new System.Drawing.Size(827, 433);
+            this.tabPage7.Size = new System.Drawing.Size(827, 438);
             this.tabPage7.TabIndex = 0;
             this.tabPage7.Text = "分区管理";
             // 
@@ -2301,9 +2302,9 @@ namespace LoveAlways
             // tabPage8
             // 
             this.tabPage8.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.tabPage8.Location = new System.Drawing.Point(0, 33);
+            this.tabPage8.Location = new System.Drawing.Point(0, 28);
             this.tabPage8.Name = "tabPage8";
-            this.tabPage8.Size = new System.Drawing.Size(827, 433);
+            this.tabPage8.Size = new System.Drawing.Size(827, 438);
             this.tabPage8.TabIndex = 1;
             this.tabPage8.Text = "文件管理";
             // 
@@ -2403,6 +2404,14 @@ namespace LoveAlways
             this.uiLabel10.TabIndex = 22;
             this.uiLabel10.Text = "芯片序列号：等待连接";
             // 
+            // checkbox7
+            // 
+            this.checkbox7.Location = new System.Drawing.Point(288, 559);
+            this.checkbox7.Name = "checkbox7";
+            this.checkbox7.Size = new System.Drawing.Size(91, 24);
+            this.checkbox7.TabIndex = 154;
+            this.checkbox7.Text = "欧加刷写";
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
@@ -2434,13 +2443,15 @@ namespace LoveAlways
             this.menuStrip1.ResumeLayout(false);
             this.menuStrip1.PerformLayout();
             this.tabs1.ResumeLayout(false);
-            this.tabPage6.ResumeLayout(false);
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
-            this.tabPage3.ResumeLayout(false);
-            this.uiGroupBox7.ResumeLayout(false);
             this.tabPage2.ResumeLayout(false);
             this.uiGroupBox4.ResumeLayout(false);
+            this.tabPage6.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
             this.tabPage1.ResumeLayout(false);
+            this.tabPage3.ResumeLayout(false);
+            this.uiGroupBox7.ResumeLayout(false);
+            this.tabPage4.ResumeLayout(false);
+            this.tabPage5.ResumeLayout(false);
             this.tabs2.ResumeLayout(false);
             this.tabPage7.ResumeLayout(false);
             this.uiGroupBox2.ResumeLayout(false);
@@ -2621,6 +2632,7 @@ namespace LoveAlways
         private Sunny.UI.UILabel labelDevRoot;
         private Sunny.UI.UILabel labelDevMTK;
         private Sunny.UI.UILabel labelDevSpreadtrum;
+        private AntdUI.Checkbox checkbox7;
     }
 }
 

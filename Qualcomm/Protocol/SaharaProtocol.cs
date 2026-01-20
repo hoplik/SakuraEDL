@@ -818,10 +818,10 @@ namespace LoveAlways.Qualcomm.Protocol
             ChipInfo.HwIdHex = "0x" + ChipHwId.ToUpperInvariant();
 
             // V1/V2 HWID 格式:
-            // Bits 0-23:  MSM_ID (芯片ID)
+            // Bits 0-31:  MSM_ID (芯片ID，完整 32 位)
             // Bits 32-47: OEM_ID (厂商ID)
             // Bits 48-63: MODEL_ID (型号ID)
-            uint msmId = (uint)(hwid & 0xFFFFFF);
+            uint msmId = (uint)(hwid & 0xFFFFFFFF);  // 完整 32 位
             ushort oemId = (ushort)((hwid >> 32) & 0xFFFF);
             ushort modelId = (ushort)((hwid >> 48) & 0xFFFF);
 
@@ -867,7 +867,7 @@ namespace LoveAlways.Qualcomm.Protocol
                 ushort rawOem = BitConverter.ToUInt16(extInfo, 40);
                 ushort rawModel = BitConverter.ToUInt16(extInfo, 42);
 
-                uint msmId = rawMsm & 0x00FFFFFF;
+                uint msmId = rawMsm;  // 使用完整 32 位 MSM ID
 
                 // 检查备用 OEM_ID 位置 (偏移44)
                 if (rawOem == 0 && extInfo.Length >= 46)

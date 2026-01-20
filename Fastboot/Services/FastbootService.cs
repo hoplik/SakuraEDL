@@ -738,6 +738,392 @@ namespace LoveAlways.Fastboot.Services
 
         #endregion
 
+        #region OnePlus/OPPO 动态分区操作
+
+        /// <summary>
+        /// OnePlus/OPPO 逻辑分区列表
+        /// </summary>
+        public static readonly HashSet<string> LogicalPartitions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "system", "odm", "vendor", "product", "system_ext", "system_dlkm", "vendor_dlkm", "odm_dlkm",
+            "my_bigball", "my_carrier", "my_company", "my_engineering", "my_heytap", "my_manifest",
+            "my_preload", "my_product", "my_region", "my_stock"
+        };
+
+        /// <summary>
+        /// 检测是否处于 FastbootD 模式
+        /// </summary>
+        public async Task<bool> IsFastbootdModeAsync(CancellationToken ct = default)
+        {
+            if (_nativeService == null || !_nativeService.IsConnected)
+                return false;
+
+            try
+            {
+                // 检查 is-userspace 变量或 super-partition-name
+                string isUserspace = await _nativeService.GetVariableAsync("is-userspace", ct);
+                if (!string.IsNullOrEmpty(isUserspace) && isUserspace.ToLower() == "yes")
+                    return true;
+
+                string superPartition = await _nativeService.GetVariableAsync("super-partition-name", ct);
+                return !string.IsNullOrEmpty(superPartition);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 检测设备平台类型
+        /// 高通设备: bootloader 包含 "abl"
+        /// 联发科设备: bootloader 包含 "lk"
+        /// </summary>
+        public enum DevicePlatform
+        {
+            Unknown,
+            Qualcomm,   // 高通 (abl)
+            MediaTek    // 联发科 (lk)
+        }
+
+        /// <summary>
+        /// 获取设备平台类型
+        /// </summary>
+        public async Task<DevicePlatform> GetDevicePlatformAsync(CancellationToken ct = default)
+        {
+            if (_nativeService == null || !_nativeService.IsConnected)
+                return DevicePlatform.Unknown;
+
+            try
+            {
+                // 获取 bootloader 版本信息
+                string bootloader = await _nativeService.GetVariableAsync("version-bootloader", ct);
+                if (string.IsNullOrEmpty(bootloader))
+                {
+                    bootloader = await _nativeService.GetVariableAsync("bootloader-version", ct);
+                }
+
+                if (!string.IsNullOrEmpty(bootloader))
+                {
+                    string bl = bootloader.ToLower();
+                    // 高通设备使用 ABL (Android Boot Loader)
+                    if (bl.Contains("abl"))
+                        return DevicePlatform.Qualcomm;
+                    // 联发科设备使用 LK (Little Kernel)
+                    if (bl.Contains("lk"))
+                        return DevicePlatform.MediaTek;
+                }
+
+                // 备用检测：通过 product 或 hardware 信息
+                string hardware = await _nativeService.GetVariableAsync("hw-revision", ct);
+                string product = DeviceInfo?.Product ?? await _nativeService.GetVariableAsync("product", ct);
+                
+                if (!string.IsNullOrEmpty(product))
+                {
+                    string p = product.ToLower();
+                    // 高通芯片常见前缀
+                    if (p.Contains("sdm") || p.Contains("sm") || p.Contains("msm") || p.Contains("qcom") || p.Contains("snapdragon"))
+                        return DevicePlatform.Qualcomm;
+                    // 联发科芯片常见前缀
+                    if (p.Contains("mt") || p.Contains("mtk") || p.Contains("mediatek") || p.Contains("helio") || p.Contains("dimensity"))
+                        return DevicePlatform.MediaTek;
+                }
+
+                return DevicePlatform.Unknown;
+            }
+            catch
+            {
+                return DevicePlatform.Unknown;
+            }
+        }
+
+        /// <summary>
+        /// 检测是否为高通设备
+        /// </summary>
+        public async Task<bool> IsQualcommDeviceAsync(CancellationToken ct = default)
+        {
+            var platform = await GetDevicePlatformAsync(ct);
+            return platform == DevicePlatform.Qualcomm;
+        }
+
+        /// <summary>
+        /// 检测是否为联发科设备
+        /// </summary>
+        public async Task<bool> IsMediaTekDeviceAsync(CancellationToken ct = default)
+        {
+            var platform = await GetDevicePlatformAsync(ct);
+            return platform == DevicePlatform.MediaTek;
+        }
+
+        /// <summary>
+        /// 删除逻辑分区
+        /// </summary>
+        public async Task<bool> DeleteLogicalPartitionAsync(string partitionName, CancellationToken ct = default)
+        {
+            if (_nativeService == null || !_nativeService.IsConnected)
+            {
+                _log("[Fastboot] 未连接设备");
+                return false;
+            }
+
+            try
+            {
+                _log($"[Fastboot] 删除逻辑分区: {partitionName}");
+                string response = await _nativeService.ExecuteOemCommandAsync($"delete-logical-partition {partitionName}", ct);
+                bool success = response == null || !response.ToLower().Contains("fail");
+                return success;
+            }
+            catch (Exception ex)
+            {
+                _logDetail($"[Fastboot] 删除逻辑分区失败: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 创建逻辑分区
+        /// </summary>
+        public async Task<bool> CreateLogicalPartitionAsync(string partitionName, long size = 0, CancellationToken ct = default)
+        {
+            if (_nativeService == null || !_nativeService.IsConnected)
+            {
+                _log("[Fastboot] 未连接设备");
+                return false;
+            }
+
+            try
+            {
+                _log($"[Fastboot] 创建逻辑分区: {partitionName} (大小: {size})");
+                string response = await _nativeService.ExecuteOemCommandAsync($"create-logical-partition {partitionName} {size}", ct);
+                bool success = response == null || !response.ToLower().Contains("fail");
+                return success;
+            }
+            catch (Exception ex)
+            {
+                _logDetail($"[Fastboot] 创建逻辑分区失败: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 删除 COW 快照分区 (用于 OTA 更新恢复)
+        /// </summary>
+        public async Task<bool> DeleteCowPartitionsAsync(CancellationToken ct = default)
+        {
+            if (_nativeService == null || !_nativeService.IsConnected)
+            {
+                _log("[Fastboot] 未连接设备");
+                return false;
+            }
+
+            try
+            {
+                _log("[Fastboot] 正在删除 COW 快照分区...");
+                
+                // COW 分区命名规则: 分区名_cow, 分区名_cow-img
+                var cowSuffixes = new[] { "_cow", "_cow-img" };
+                int deletedCount = 0;
+
+                foreach (var basePart in LogicalPartitions)
+                {
+                    foreach (var suffix in new[] { "_a", "_b" })
+                    {
+                        foreach (var cowSuffix in cowSuffixes)
+                        {
+                            string cowPartName = $"{basePart}{suffix}{cowSuffix}";
+                            try
+                            {
+                                string response = await _nativeService.ExecuteOemCommandAsync($"delete-logical-partition {cowPartName}", ct);
+                                if (response == null || !response.ToLower().Contains("fail"))
+                                {
+                                    deletedCount++;
+                                    _logDetail($"[Fastboot] 已删除 COW 分区: {cowPartName}");
+                                }
+                            }
+                            catch
+                            {
+                                // 忽略不存在的分区
+                            }
+                        }
+                    }
+                }
+
+                _log($"[Fastboot] COW 快照分区清理完成，删除 {deletedCount} 个");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _log($"[Fastboot] 删除 COW 分区失败: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 刷写分区到指定槽位
+        /// </summary>
+        public async Task<bool> FlashPartitionToSlotAsync(string partitionName, string imagePath, string slot,
+            Action<long, long> progressCallback = null, CancellationToken ct = default)
+        {
+            if (_nativeService == null || !_nativeService.IsConnected)
+            {
+                _log("[Fastboot] 未连接设备");
+                return false;
+            }
+
+            if (!File.Exists(imagePath))
+            {
+                _log($"[Fastboot] 镜像文件不存在: {imagePath}");
+                return false;
+            }
+
+            try
+            {
+                // 构建带槽位的分区名
+                string targetPartition = $"{partitionName}_{slot}";
+                
+                var fileInfo = new FileInfo(imagePath);
+                _log($"[Fastboot] 刷写 {Path.GetFileName(imagePath)} -> {targetPartition} ({FormatSize(fileInfo.Length)})");
+
+                // 订阅进度事件
+                EventHandler<FastbootNativeProgressEventArgs> handler = null;
+                if (progressCallback != null)
+                {
+                    handler = (s, e) => progressCallback(e.BytesSent, e.TotalBytes);
+                    _nativeService.ProgressChanged += handler;
+                }
+
+                try
+                {
+                    bool result = await _nativeService.FlashPartitionAsync(targetPartition, imagePath, false, ct);
+                    
+                    if (result)
+                    {
+                        _logDetail($"[Fastboot] {targetPartition} 刷写成功");
+                    }
+                    else
+                    {
+                        _log($"[Fastboot] {targetPartition} 刷写失败");
+                    }
+                    
+                    return result;
+                }
+                finally
+                {
+                    if (handler != null)
+                    {
+                        _nativeService.ProgressChanged -= handler;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _log($"[Fastboot] 刷写异常: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 重建逻辑分区结构 (用于 AB 通刷)
+        /// </summary>
+        public async Task<bool> RebuildLogicalPartitionsAsync(string targetSlot, CancellationToken ct = default)
+        {
+            if (_nativeService == null || !_nativeService.IsConnected)
+            {
+                _log("[Fastboot] 未连接设备");
+                return false;
+            }
+
+            try
+            {
+                _log($"[Fastboot] 重建逻辑分区结构 (目标槽位: {targetSlot})...");
+
+                // 删除所有 A/B 逻辑分区
+                foreach (var name in LogicalPartitions)
+                {
+                    await DeleteLogicalPartitionAsync($"{name}_a", ct);
+                    await DeleteLogicalPartitionAsync($"{name}_b", ct);
+                }
+
+                // 只创建目标槽位的逻辑分区 (大小为 0，刷写时会自动调整)
+                foreach (var name in LogicalPartitions)
+                {
+                    string targetName = $"{name}_{targetSlot}";
+                    await CreateLogicalPartitionAsync(targetName, 0, ct);
+                }
+
+                _log("[Fastboot] 逻辑分区结构重建完成");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _log($"[Fastboot] 重建逻辑分区失败: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 清除用户数据 (userdata + metadata + -w)
+        /// </summary>
+        public async Task<bool> WipeDataAsync(CancellationToken ct = default)
+        {
+            if (_nativeService == null || !_nativeService.IsConnected)
+            {
+                _log("[Fastboot] 未连接设备");
+                return false;
+            }
+
+            try
+            {
+                _log("[Fastboot] 正在清除用户数据...");
+
+                // 1. erase userdata
+                bool eraseUserdata = await _nativeService.ErasePartitionAsync("userdata", ct);
+                _logDetail($"[Fastboot] 擦除 userdata: {(eraseUserdata ? "成功" : "失败")}");
+
+                // 2. erase metadata
+                bool eraseMetadata = await _nativeService.ErasePartitionAsync("metadata", ct);
+                _logDetail($"[Fastboot] 擦除 metadata: {(eraseMetadata ? "成功" : "失败")}");
+
+                // 3. 格式化 userdata (fastboot -w 等效)
+                // 注意：原生协议可能不支持 -w，需要通过 format 命令实现
+                
+                bool success = eraseUserdata || eraseMetadata;
+                _log(success ? "[Fastboot] 用户数据清除完成" : "[Fastboot] 用户数据清除失败");
+                
+                return success;
+            }
+            catch (Exception ex)
+            {
+                _log($"[Fastboot] 清除数据失败: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 判断分区是否为逻辑分区
+        /// </summary>
+        public static bool IsLogicalPartition(string partitionName)
+        {
+            // 移除槽位后缀
+            string baseName = partitionName;
+            if (baseName.EndsWith("_a") || baseName.EndsWith("_b"))
+            {
+                baseName = baseName.Substring(0, baseName.Length - 2);
+            }
+            return LogicalPartitions.Contains(baseName);
+        }
+
+        /// <summary>
+        /// 判断是否为 Modem 分区 (高通设备特殊处理)
+        /// </summary>
+        public static bool IsModemPartition(string partitionName)
+        {
+            string name = partitionName.ToLower();
+            return name.Contains("modem") || name == "radio";
+        }
+
+        #endregion
+
         #region IDisposable
 
         public void Dispose()

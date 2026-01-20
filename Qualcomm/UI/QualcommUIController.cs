@@ -58,6 +58,10 @@ namespace LoveAlways.Qualcomm.UI
         private DateTime _lastSpeedUpdate;
         private double _currentSpeed; // 当前速度 (bytes/s)
         
+        // 端口状态监控定时器
+        private System.Windows.Forms.Timer _portMonitorTimer;
+        private string _connectedPortName; // 当前连接的端口名称
+        
         // 总进度追踪
         private int _totalSteps;
         private int _currentStep;
@@ -97,17 +101,51 @@ namespace LoveAlways.Qualcomm.UI
                 return;
             }
             
+            // 停止端口监控
+            StopPortMonitor();
+            
             Log("设备已断开连接，需要重新完整配置", Color.Red);
             
-            // 注意：不自动取消勾选"跳过引导"，让用户手动控制
-            // 用户可能想要在设备重新进入 EDL 后继续使用跳过引导功能
+            // 取消正在进行的操作
+            CancelOperation();
+            
+            // 断开服务连接并释放资源
+            if (_service != null)
+            {
+                try
+                {
+                    _service.PortDisconnected -= OnServicePortDisconnected;
+                    _service.Disconnect();
+                    _service.Dispose();
+                }
+                catch { }
+                _service = null;
+            }
+            
+            // 清空分区列表
+            Partitions?.Clear();
+            if (_partitionListView != null)
+            {
+                _partitionListView.BeginUpdate();
+                _partitionListView.Items.Clear();
+                _partitionListView.EndUpdate();
+            }
+            
+            // 重置进度条
+            UpdateProgressBarDirect(_progressBar, 0);
+            UpdateProgressBarDirect(_subProgressBar, 0);
+            
+            // 自动取消勾选"跳过引导"，设备断开后需要重新完整配置
+            SetSkipSaharaChecked(false);
             
             // 更新 UI 状态
             ConnectionStateChanged?.Invoke(this, false);
             ClearDeviceInfoLabels();
             
-            // 刷新端口列表
+            // 刷新端口列表，等待设备重新连接
             RefreshPorts();
+            
+            Log("请等待设备重新进入 EDL 模式后重新连接", Color.Orange);
         }
         
         /// <summary>
@@ -124,7 +162,8 @@ namespace LoveAlways.Qualcomm.UI
             if (!_service.ValidateConnection())
             {
                 Log("设备连接已失效，需要重新完整配置", Color.Red);
-                // 注意：不在这里取消勾选"跳过引导"，让用户手动控制
+                // 取消勾选"跳过引导"，需要重新完整配置
+                SetSkipSaharaChecked(false);
                 ConnectionStateChanged?.Invoke(this, false);
                 ClearDeviceInfoLabels();
                 RefreshPorts();
@@ -184,6 +223,64 @@ namespace LoveAlways.Qualcomm.UI
             _storageLabel = storageLabel;
             _unlockLabel = unlockLabel;
             _otaVersionLabel = otaVersionLabel;
+            
+            // 初始化端口状态监控定时器 (每 2 秒检查一次)
+            _portMonitorTimer = new System.Windows.Forms.Timer();
+            _portMonitorTimer.Interval = 2000;
+            _portMonitorTimer.Tick += OnPortMonitorTick;
+        }
+        
+        /// <summary>
+        /// 端口状态监控定时器回调
+        /// </summary>
+        private void OnPortMonitorTick(object sender, EventArgs e)
+        {
+            // 如果没有连接，不需要检查
+            if (string.IsNullOrEmpty(_connectedPortName) || _service == null)
+                return;
+            
+            // 检查端口是否还存在于设备管理器中
+            var availablePorts = System.IO.Ports.SerialPort.GetPortNames();
+            bool portExists = Array.Exists(availablePorts, p => 
+                p.Equals(_connectedPortName, StringComparison.OrdinalIgnoreCase));
+            
+            if (!portExists)
+            {
+                // 端口已从设备管理器中消失
+                _logDetail(string.Format("[端口监控] 端口 {0} 已断开", _connectedPortName));
+                
+                // 停止定时器
+                _portMonitorTimer.Stop();
+                
+                // 触发断开处理
+                OnServicePortDisconnected(this, EventArgs.Empty);
+            }
+        }
+        
+        /// <summary>
+        /// 启动端口监控
+        /// </summary>
+        private void StartPortMonitor(string portName)
+        {
+            _connectedPortName = portName;
+            if (_portMonitorTimer != null && !_portMonitorTimer.Enabled)
+            {
+                _portMonitorTimer.Start();
+                _logDetail(string.Format("[端口监控] 开始监控端口: {0}", portName));
+            }
+        }
+        
+        /// <summary>
+        /// 停止端口监控
+        /// </summary>
+        private void StopPortMonitor()
+        {
+            if (_portMonitorTimer != null && _portMonitorTimer.Enabled)
+            {
+                _portMonitorTimer.Stop();
+                _logDetail("[端口监控] 停止监控");
+            }
+            _connectedPortName = null;
         }
 
         /// <summary>
@@ -349,6 +446,9 @@ namespace LoveAlways.Qualcomm.UI
                     // 注册端口断开事件 (设备自己断开时会触发)
                     _service.PortDisconnected += OnServicePortDisconnected;
                     
+                    // 启动端口监控 (检测设备管理器中的端口状态)
+                    StartPortMonitor(portName);
+                    
                     ConnectionStateChanged?.Invoke(this, true);
                 }
                 else
@@ -372,25 +472,29 @@ namespace LoveAlways.Qualcomm.UI
         }
 
         /// <summary>
-        /// 使用完整内嵌 VIP 数据连接设备 (Loader + Digest + Signature)
+        /// 使用完整 VIP 数据连接设备 (Loader + Digest + Signature 文件路径)
         /// </summary>
         /// <param name="storageType">存储类型 (ufs/emmc)</param>
         /// <param name="platform">平台名称 (如 SM8550)</param>
-        /// <param name="loaderData">内嵌的 Loader (Firehose) 数据</param>
-        /// <param name="digestData">内嵌的 Digest 数据</param>
-        /// <param name="signatureData">内嵌的 Signature 数据</param>
-        public async Task<bool> ConnectWithVipDataAsync(string storageType, string platform, byte[] loaderData, byte[] digestData, byte[] signatureData)
+        /// <param name="loaderData">Loader (Firehose) 数据</param>
+        /// <param name="digestPath">Digest 文件路径</param>
+        /// <param name="signaturePath">Signature 文件路径</param>
+        public async Task<bool> ConnectWithVipDataAsync(string storageType, string platform, byte[] loaderData, string digestPath, string signaturePath)
         {
             if (IsBusy) { Log("操作进行中", Color.Orange); return false; }
 
             string portName = GetSelectedPortName();
             if (string.IsNullOrEmpty(portName)) { Log("请选择端口", Color.Red); return false; }
 
-            if (loaderData == null || digestData == null || signatureData == null)
+            if (loaderData == null)
             {
-                Log("VIP 数据无效", Color.Red);
+                Log("Loader 数据无效", Color.Red);
                 return false;
             }
+
+            // 检查认证文件
+            bool hasAuth = !string.IsNullOrEmpty(digestPath) && !string.IsNullOrEmpty(signaturePath) &&
+                          File.Exists(digestPath) && File.Exists(signaturePath);
 
             try
             {
@@ -403,9 +507,19 @@ namespace LoveAlways.Qualcomm.UI
                 UpdateProgressBarDirect(_subProgressBar, 0);
 
                 Log(string.Format("[VIP] 平台: {0}", platform), Color.Blue);
-                Log(string.Format("[VIP] Loader: {0} KB (内嵌)", loaderData.Length / 1024), Color.Gray);
-                Log(string.Format("[VIP] Digest: {0} KB (内嵌)", digestData.Length / 1024), Color.Gray);
-                Log(string.Format("[VIP] Signature: {0} 字节 (内嵌)", signatureData.Length), Color.Gray);
+                Log(string.Format("[VIP] Loader: {0} KB (资源包)", loaderData.Length / 1024), Color.Gray);
+                
+                if (hasAuth)
+                {
+                    var digestInfo = new FileInfo(digestPath);
+                    var sigInfo = new FileInfo(signaturePath);
+                    Log(string.Format("[VIP] Digest: {0} KB (资源包)", digestInfo.Length / 1024), Color.Gray);
+                    Log(string.Format("[VIP] Signature: {0} 字节 (资源包)", sigInfo.Length), Color.Gray);
+                }
+                else
+                {
+                    Log("[VIP] 无认证文件，将使用普通模式", Color.Orange);
+                }
 
                 _service = new QualcommService(
                     msg => Log(msg, null),
@@ -421,32 +535,27 @@ namespace LoveAlways.Qualcomm.UI
                     _logDetail
                 );
 
-                // Step 1: 通过 Sahara 上传内嵌的 Loader
+                // 一步完成：上传 Loader + VIP 认证 + Firehose 配置
+                // 重要：VIP 认证必须在 Firehose 配置之前执行
                 UpdateProgressBarDirect(_progressBar, 5);
-                Log("[VIP] Step 1: 上传 Loader (Sahara)...", Color.Blue);
+                Log("[VIP] 开始连接 (Loader + 认证 + 配置)...", Color.Blue);
                 
-                bool saharaOk = await _service.ConnectWithLoaderDataAsync(portName, loaderData, storageType, _cts.Token);
-                if (!saharaOk)
-                {
-                    Log("[VIP] Sahara 握手/Loader 上传失败", Color.Red);
-                    return false;
-                }
-                UpdateProgressBarDirect(_progressBar, 50);
-                Log("[VIP] Loader 上传成功，已进入 Firehose 模式", Color.Green);
-
-                // Step 2: 执行 VIP 认证 (Digest + Signature)
-                Log("[VIP] Step 2: 执行签名认证...", Color.Blue);
-                bool authOk = await _service.PerformVipAuthAsync(digestData, signatureData, _cts.Token);
+                // 使用文件路径方式进行 VIP 认证
+                bool connectOk = await _service.ConnectWithVipAuthAsync(portName, loaderData, digestPath ?? "", signaturePath ?? "", storageType, _cts.Token);
                 UpdateProgressBarDirect(_progressBar, 85);
 
-                if (authOk)
+                if (connectOk)
                 {
-                    Log("[VIP] 认证成功！高权限模式已激活", Color.Green);
+                    Log("[VIP] 连接成功！高权限模式已激活", Color.Green);
                     UpdateProgressBarDirect(_progressBar, 100);
                     UpdateProgressBarDirect(_subProgressBar, 100);
                     UpdateDeviceInfoLabels();
                     
                     _service.PortDisconnected += OnServicePortDisconnected;
+                    
+                    // 启动端口监控 (检测设备管理器中的端口状态)
+                    StartPortMonitor(portName);
+                    
                     ConnectionStateChanged?.Invoke(this, true);
                     
                     // 自动勾选跳过 Sahara (下次可以直接连接)
@@ -456,7 +565,7 @@ namespace LoveAlways.Qualcomm.UI
                 }
                 else
                 {
-                    Log("[VIP] 认证失败，签名可能不匹配", Color.Red);
+                    Log("[VIP] 连接失败，请检查 Loader/签名是否匹配", Color.Red);
                     UpdateProgressBarDirect(_progressBar, 0);
                     UpdateProgressBarDirect(_subProgressBar, 0);
                     return false;
@@ -592,6 +701,10 @@ namespace LoveAlways.Qualcomm.UI
                 UpdateDeviceInfoLabels();
                 
                 _service.PortDisconnected += OnServicePortDisconnected;
+                
+                // 启动端口监控 (检测设备管理器中的端口状态)
+                StartPortMonitor(portName);
+                
                 ConnectionStateChanged?.Invoke(this, true);
                 
                 // 自动勾选跳过 Sahara
@@ -2525,7 +2638,8 @@ namespace LoveAlways.Qualcomm.UI
             if (!_service.ValidateConnection())
             {
                 Log("设备连接已失效，需要重新完整配置", Color.Red);
-                // 注意：不在这里取消勾选"跳过引导"，让用户手动控制
+                // 取消勾选"跳过引导"，需要重新完整配置
+                SetSkipSaharaChecked(false);
                 ConnectionStateChanged?.Invoke(this, false);
                 ClearDeviceInfoLabels();
                 RefreshPorts();
@@ -2894,6 +3008,14 @@ namespace LoveAlways.Qualcomm.UI
         {
             if (!_disposed)
             {
+                // 停止端口监控定时器
+                StopPortMonitor();
+                if (_portMonitorTimer != null)
+                {
+                    _portMonitorTimer.Dispose();
+                    _portMonitorTimer = null;
+                }
+                
                 CancelOperation();
                 Disconnect();
                 _disposed = true;

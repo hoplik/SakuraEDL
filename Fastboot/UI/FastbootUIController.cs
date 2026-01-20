@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,6 +12,7 @@ using LoveAlways.Fastboot.Common;
 using LoveAlways.Fastboot.Models;
 using LoveAlways.Fastboot.Payload;
 using LoveAlways.Fastboot.Services;
+using LoveAlways.Qualcomm.Common;
 
 namespace LoveAlways.Fastboot.UI
 {
@@ -1061,6 +1063,815 @@ namespace LoveAlways.Fastboot.UI
                     item.Checked = true;
                     Log($"已选择镜像: {Path.GetFileName(ofd.FileName)} -> {item.SubItems[0].Text}", Color.Blue);
                 }
+            }
+        }
+
+        /// <summary>
+        /// 加载已提取的文件夹 (包含 .img 文件)
+        /// 自动识别分区名并添加到列表，解析设备信息
+        /// </summary>
+        public void LoadExtractedFolder(string folderPath)
+        {
+            if (string.IsNullOrEmpty(folderPath) || !Directory.Exists(folderPath))
+            {
+                Log("文件夹不存在", Color.Red);
+                return;
+            }
+
+            if (_partitionListView == null)
+            {
+                Log("分区列表未初始化", Color.Red);
+                return;
+            }
+
+            // 扫描文件夹中的所有 .img 文件
+            var imgFiles = Directory.GetFiles(folderPath, "*.img", SearchOption.TopDirectoryOnly)
+                .OrderBy(f => Path.GetFileNameWithoutExtension(f))
+                .ToList();
+
+            if (imgFiles.Count == 0)
+            {
+                Log($"文件夹中没有找到 .img 文件: {folderPath}", Color.Orange);
+                return;
+            }
+
+            Log($"扫描到 {imgFiles.Count} 个镜像文件", Color.Blue);
+
+            // 清空现有列表
+            _partitionListView.Items.Clear();
+
+            int addedCount = 0;
+            long totalSize = 0;
+
+            foreach (var imgPath in imgFiles)
+            {
+                string fileName = Path.GetFileNameWithoutExtension(imgPath);
+                var fileInfo = new FileInfo(imgPath);
+                
+                // 判断分区类型
+                bool isLogical = FastbootService.IsLogicalPartition(fileName);
+                bool isModem = FastbootService.IsModemPartition(fileName);
+                string partType = isLogical ? "逻辑" : (isModem ? "Modem" : "物理");
+
+                // 创建列表项 (列顺序: 分区名、操作、大小、类型、文件路径)
+                var item = new ListViewItem(new[]
+                {
+                    fileName,                           // 分区名
+                    "flash",                            // 操作
+                    FormatSize(fileInfo.Length),       // 大小
+                    partType,                           // 类型
+                    imgPath                             // 文件路径
+                });
+
+                // 存储文件信息到 Tag
+                item.Tag = new ExtractedImageInfo
+                {
+                    PartitionName = fileName,
+                    FilePath = imgPath,
+                    FileSize = fileInfo.Length,
+                    IsLogical = isLogical,
+                    IsModem = isModem
+                };
+
+                item.Checked = true;  // 默认全选
+                _partitionListView.Items.Add(item);
+                addedCount++;
+                totalSize += fileInfo.Length;
+            }
+
+            Log($"已加载 {addedCount} 个分区，总大小: {FormatSize(totalSize)}", Color.Green);
+            Log($"来源文件夹: {folderPath}", Color.Blue);
+
+            // 异步解析固件信息
+            int partitionCount = addedCount;
+            long size = totalSize;
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    Log("正在解析固件信息...", Color.Blue);
+                    CurrentFirmwareInfo = await ParseFirmwareInfoAsync(folderPath);
+                    CurrentFirmwareInfo.TotalPartitions = partitionCount;
+                    CurrentFirmwareInfo.TotalSize = size;
+
+                    // 在 UI 线程显示解析结果
+                    if (_partitionListView?.InvokeRequired == true)
+                    {
+                        _partitionListView.Invoke(new Action(() => DisplayFirmwareInfo()));
+                    }
+                    else
+                    {
+                        DisplayFirmwareInfo();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log($"固件信息解析失败: {ex.Message}", Color.Red);
+                    _logDetail($"固件信息解析异常: {ex}");
+                }
+            });
+        }
+
+        /// <summary>
+        /// 显示固件信息
+        /// </summary>
+        private void DisplayFirmwareInfo()
+        {
+            if (CurrentFirmwareInfo == null)
+            {
+                Log("固件信息: 未找到 metadata 文件，无法识别设备信息", Color.Orange);
+                return;
+            }
+
+            var info = CurrentFirmwareInfo;
+            var sb = new System.Text.StringBuilder();
+            sb.Append("固件信息: ");
+            bool hasInfo = false;
+
+            // 显示型号
+            if (!string.IsNullOrEmpty(info.DeviceModel))
+            {
+                sb.Append($"型号={info.DeviceModel} ");
+                hasInfo = true;
+            }
+
+            // 显示设备代号
+            if (!string.IsNullOrEmpty(info.DeviceName))
+            {
+                sb.Append($"代号={info.DeviceName} ");
+                hasInfo = true;
+            }
+
+            // Android 版本
+            if (!string.IsNullOrEmpty(info.AndroidVersion))
+            {
+                sb.Append($"Android={info.AndroidVersion} ");
+                hasInfo = true;
+            }
+
+            // OS 版本
+            if (!string.IsNullOrEmpty(info.OsVersion))
+            {
+                sb.Append($"OS={info.OsVersion} ");
+                hasInfo = true;
+            }
+
+            // 安全补丁
+            if (!string.IsNullOrEmpty(info.SecurityPatch))
+            {
+                sb.Append($"安全补丁={info.SecurityPatch} ");
+                hasInfo = true;
+            }
+
+            // OTA 类型
+            if (!string.IsNullOrEmpty(info.OtaType))
+            {
+                sb.Append($"类型={info.OtaType} ");
+                hasInfo = true;
+            }
+
+            if (hasInfo)
+            {
+                Log(sb.ToString().Trim(), Color.Cyan);
+                
+                // 如果有版本名，单独显示一行
+                if (!string.IsNullOrEmpty(info.BuildNumber))
+                {
+                    Log($"版本: {info.BuildNumber}", Color.Gray);
+                }
+            }
+            else
+            {
+                Log("固件信息: 未找到 metadata 文件", Color.Orange);
+            }
+        }
+
+        /// <summary>
+        /// 验证所有分区文件的哈希值
+        /// </summary>
+        public async Task<bool> VerifyPartitionHashesAsync(CancellationToken ct = default)
+        {
+            if (_partitionListView == null || _partitionListView.Items.Count == 0)
+            {
+                Log("没有分区可验证", Color.Orange);
+                return false;
+            }
+
+            Log("开始验证分区完整性...", Color.Blue);
+            UpdateLabelSafe(_operationLabel, "当前操作：验证文件");
+
+            int total = _partitionListView.CheckedItems.Count;
+            int current = 0;
+            int verified = 0;
+            int failed = 0;
+
+            foreach (ListViewItem item in _partitionListView.CheckedItems)
+            {
+                ct.ThrowIfCancellationRequested();
+
+                if (item.Tag is ExtractedImageInfo info && !string.IsNullOrEmpty(info.FilePath))
+                {
+                    current++;
+                    UpdateProgressBar(current * 100.0 / total);
+                    UpdateLabelSafe(_operationLabel, $"验证: {info.PartitionName} ({current}/{total})");
+
+                    // 检查文件是否存在
+                    if (!File.Exists(info.FilePath))
+                    {
+                        Log($"  ✗ {info.PartitionName}: 文件不存在", Color.Red);
+                        failed++;
+                        continue;
+                    }
+
+                    // 检查文件大小
+                    var fileInfo = new FileInfo(info.FilePath);
+                    if (fileInfo.Length != info.FileSize)
+                    {
+                        Log($"  ✗ {info.PartitionName}: 大小不匹配 (期望={FormatSize(info.FileSize)}, 实际={FormatSize(fileInfo.Length)})", Color.Red);
+                        failed++;
+                        continue;
+                    }
+
+                    // 计算 MD5 哈希
+                    string hash = await Task.Run(() => CalculateMd5(info.FilePath), ct);
+                    if (!string.IsNullOrEmpty(hash))
+                    {
+                        info.Md5Hash = hash;
+                        info.HashVerified = true;
+                        verified++;
+                        _logDetail($"  ✓ {info.PartitionName}: MD5={hash}");
+                    }
+                    else
+                    {
+                        failed++;
+                        Log($"  ✗ {info.PartitionName}: 哈希计算失败", Color.Red);
+                    }
+                }
+            }
+
+            UpdateProgressBar(100);
+            UpdateLabelSafe(_operationLabel, "当前操作：空闲");
+
+            if (failed == 0)
+            {
+                Log($"✓ 验证完成: {verified} 个分区全部通过", Color.Green);
+                return true;
+            }
+            else
+            {
+                Log($"⚠ 验证完成: {verified} 通过, {failed} 失败", Color.Orange);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 已提取镜像文件信息
+        /// </summary>
+        public class ExtractedImageInfo
+        {
+            public string PartitionName { get; set; }
+            public string FilePath { get; set; }
+            public long FileSize { get; set; }
+            public bool IsLogical { get; set; }
+            public bool IsModem { get; set; }
+            public string Md5Hash { get; set; }
+            public string Sha256Hash { get; set; }
+            public bool HashVerified { get; set; }
+        }
+
+        /// <summary>
+        /// 固件包信息 (从 metadata 解析)
+        /// </summary>
+        public class FirmwareInfo
+        {
+            public string DeviceModel { get; set; }       // 设备型号 (如 PJD110)
+            public string DeviceName { get; set; }        // 设备代号 (如 OP5929L1)
+            public string AndroidVersion { get; set; }    // Android 版本
+            public string OsVersion { get; set; }         // OS 版本 (ColorOS/OxygenOS)
+            public string BuildNumber { get; set; }       // 构建号/版本名
+            public string SecurityPatch { get; set; }     // 安全补丁日期
+            public string Fingerprint { get; set; }       // 完整指纹
+            public string BasebandVersion { get; set; }   // 基带版本
+            public string OtaType { get; set; }           // OTA 类型 (AB/非AB)
+            public string FolderPath { get; set; }        // 来源文件夹
+            public int TotalPartitions { get; set; }      // 分区总数
+            public long TotalSize { get; set; }           // 总大小
+        }
+
+        /// <summary>
+        /// 当前加载的固件信息
+        /// </summary>
+        public FirmwareInfo CurrentFirmwareInfo { get; private set; }
+
+        /// <summary>
+        /// 计算文件的 MD5 哈希值
+        /// </summary>
+        private string CalculateMd5(string filePath)
+        {
+            try
+            {
+                using (var md5 = System.Security.Cryptography.MD5.Create())
+                using (var stream = File.OpenRead(filePath))
+                {
+                    var hash = md5.ComputeHash(stream);
+                    return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+                }
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// 计算文件的 SHA256 哈希值
+        /// </summary>
+        private string CalculateSha256(string filePath)
+        {
+            try
+            {
+                using (var sha256 = System.Security.Cryptography.SHA256.Create())
+                using (var stream = File.OpenRead(filePath))
+                {
+                    var hash = sha256.ComputeHash(stream);
+                    return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+                }
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// 异步计算所有分区的哈希值
+        /// </summary>
+        public async Task CalculatePartitionHashesAsync(CancellationToken ct = default)
+        {
+            if (_partitionListView == null) return;
+
+            Log("开始计算分区哈希值...", Color.Blue);
+            UpdateLabelSafe(_operationLabel, "当前操作：计算哈希");
+            int total = _partitionListView.Items.Count;
+            int current = 0;
+
+            foreach (ListViewItem item in _partitionListView.Items)
+            {
+                ct.ThrowIfCancellationRequested();
+                
+                if (item.Tag is ExtractedImageInfo info && !string.IsNullOrEmpty(info.FilePath))
+                {
+                    current++;
+                    UpdateProgressBar(current * 100.0 / total);
+                    UpdateLabelSafe(_operationLabel, $"计算哈希: {info.PartitionName} ({current}/{total})");
+
+                    // 在后台线程计算哈希
+                    info.Md5Hash = await Task.Run(() => CalculateMd5(info.FilePath), ct);
+                    info.HashVerified = !string.IsNullOrEmpty(info.Md5Hash);
+                }
+            }
+
+            UpdateProgressBar(100);
+            UpdateLabelSafe(_operationLabel, "当前操作：空闲");
+            Log($"哈希计算完成，共 {total} 个分区", Color.Green);
+        }
+
+        /// <summary>
+        /// 从固件文件夹解析设备信息
+        /// 优先从 META-INF/com/android/metadata 读取
+        /// </summary>
+        private async Task<FirmwareInfo> ParseFirmwareInfoAsync(string folderPath)
+        {
+            var info = new FirmwareInfo { FolderPath = folderPath };
+
+            try
+            {
+                // 获取父目录（固件包根目录）
+                string parentDir = Directory.GetParent(folderPath)?.FullName ?? folderPath;
+
+                // 1. 优先从 META-INF/com/android/metadata 读取 (标准 OTA 包格式)
+                string[] metadataPaths = {
+                    Path.Combine(parentDir, "META-INF", "com", "android", "metadata"),
+                    Path.Combine(folderPath, "META-INF", "com", "android", "metadata"),
+                    Path.Combine(parentDir, "metadata"),
+                    Path.Combine(folderPath, "metadata")
+                };
+
+                foreach (var metaPath in metadataPaths)
+                {
+                    if (File.Exists(metaPath))
+                    {
+                        _logDetail($"从 metadata 文件解析: {metaPath}");
+                        await ParseMetadataFileAsync(metaPath, info);
+                        if (!string.IsNullOrEmpty(info.DeviceName) || !string.IsNullOrEmpty(info.OsVersion))
+                            break;
+                    }
+                }
+
+                // 2. 从 payload_properties.txt 读取补充信息
+                string[] propPaths = {
+                    Path.Combine(parentDir, "payload_properties.txt"),
+                    Path.Combine(folderPath, "payload_properties.txt")
+                };
+
+                foreach (var propPath in propPaths)
+                {
+                    if (File.Exists(propPath))
+                    {
+                        _logDetail($"从 payload_properties.txt 解析: {propPath}");
+                        await ParsePayloadPropertiesAsync(propPath, info);
+                        break;
+                    }
+                }
+
+                // 3. 尝试从 META 文件夹读取信息 (OPLUS 固件)
+                string metaDir = Path.Combine(folderPath, "META");
+                if (!Directory.Exists(metaDir))
+                    metaDir = Path.Combine(parentDir, "META");
+
+                if (Directory.Exists(metaDir))
+                {
+                    string miscInfo = Path.Combine(metaDir, "misc_info.txt");
+                    if (File.Exists(miscInfo))
+                    {
+                        var lines = await Task.Run(() => File.ReadAllLines(miscInfo));
+                        foreach (var line in lines)
+                        {
+                            if (line.StartsWith("build_fingerprint="))
+                                info.Fingerprint = info.Fingerprint ?? line.Substring(18);
+                        }
+                    }
+                }
+
+                // 4. 尝试读取 build.prop (如果存在解压后的文件)
+                string[] buildPropPaths = {
+                    Path.Combine(folderPath, "build.prop"),
+                    Path.Combine(folderPath, "system_build.prop"),
+                    Path.Combine(folderPath, "vendor_build.prop")
+                };
+
+                foreach (var propPath in buildPropPaths)
+                {
+                    if (File.Exists(propPath))
+                    {
+                        await ParseBuildPropAsync(propPath, info);
+                        break;
+                    }
+                }
+
+                // 5. 从 modem.img 推断基带信息
+                string modemPath = Path.Combine(folderPath, "modem.img");
+                if (File.Exists(modemPath))
+                {
+                    var modemInfo = new FileInfo(modemPath);
+                    info.BasebandVersion = $"Modem ({FormatSize(modemInfo.Length)})";
+                }
+            }
+            catch (Exception ex)
+            {
+                _logDetail($"解析固件信息失败: {ex.Message}");
+            }
+
+            return info;
+        }
+
+        /// <summary>
+        /// 解析 META-INF/com/android/metadata 文件
+        /// </summary>
+        private async Task ParseMetadataFileAsync(string metadataPath, FirmwareInfo info)
+        {
+            try
+            {
+                var lines = await Task.Run(() => File.ReadAllLines(metadataPath));
+                var props = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+                foreach (var line in lines)
+                {
+                    if (string.IsNullOrWhiteSpace(line) || !line.Contains("="))
+                        continue;
+
+                    int eqIndex = line.IndexOf('=');
+                    if (eqIndex > 0)
+                    {
+                        string key = line.Substring(0, eqIndex).Trim();
+                        string value = line.Substring(eqIndex + 1).Trim();
+                        props[key] = value;
+                    }
+                }
+
+                // 解析关键属性
+                if (props.TryGetValue("product_name", out string product))
+                    info.DeviceModel = product;
+
+                if (props.TryGetValue("pre-device", out string device))
+                    info.DeviceName = device;
+
+                if (props.TryGetValue("android_version", out string android))
+                    info.AndroidVersion = android;
+
+                if (props.TryGetValue("os_version", out string os))
+                    info.OsVersion = os;
+                else if (props.TryGetValue("display_os_version", out os))
+                    info.OsVersion = os;
+
+                if (props.TryGetValue("version_name", out string version))
+                    info.BuildNumber = version;
+                else if (props.TryGetValue("version_name_show", out version))
+                    info.BuildNumber = version;
+
+                if (props.TryGetValue("security_patch", out string patch))
+                    info.SecurityPatch = patch;
+                else if (props.TryGetValue("post-security-patch-level", out patch))
+                    info.SecurityPatch = patch;
+
+                if (props.TryGetValue("post-build", out string fingerprint))
+                    info.Fingerprint = fingerprint;
+
+                if (props.TryGetValue("ota-type", out string otaType))
+                    info.OtaType = otaType;
+
+                _logDetail($"从 metadata 解析到 {props.Count} 个属性");
+            }
+            catch (Exception ex)
+            {
+                _logDetail($"解析 metadata 失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 解析 payload_properties.txt 文件
+        /// </summary>
+        private async Task ParsePayloadPropertiesAsync(string propsPath, FirmwareInfo info)
+        {
+            try
+            {
+                var lines = await Task.Run(() => File.ReadAllLines(propsPath));
+
+                foreach (var line in lines)
+                {
+                    if (string.IsNullOrWhiteSpace(line) || !line.Contains("="))
+                        continue;
+
+                    int eqIndex = line.IndexOf('=');
+                    if (eqIndex > 0)
+                    {
+                        string key = line.Substring(0, eqIndex).Trim();
+                        string value = line.Substring(eqIndex + 1).Trim();
+
+                        switch (key.ToLower())
+                        {
+                            case "android_version":
+                                info.AndroidVersion = info.AndroidVersion ?? value;
+                                break;
+                            case "oplus_rom_version":
+                                info.OsVersion = info.OsVersion ?? value;
+                                break;
+                            case "security_patch":
+                                info.SecurityPatch = info.SecurityPatch ?? value;
+                                break;
+                            case "ota_target_version":
+                                info.BuildNumber = info.BuildNumber ?? value;
+                                break;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logDetail($"解析 payload_properties.txt 失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 从 Payload 文件 (ZIP 或同目录) 解析固件信息
+        /// </summary>
+        private async Task ParseFirmwareInfoFromPayloadAsync(string payloadPath)
+        {
+            try
+            {
+                var info = new FirmwareInfo { FolderPath = Path.GetDirectoryName(payloadPath) };
+                string ext = Path.GetExtension(payloadPath).ToLowerInvariant();
+                string parentDir = Path.GetDirectoryName(payloadPath);
+
+                // 如果是 ZIP 文件，尝试从内部读取 metadata
+                if (ext == ".zip")
+                {
+                    await Task.Run(() => ParseFirmwareInfoFromZip(payloadPath, info));
+                }
+
+                // 如果 ZIP 内没找到，尝试从同目录下的文件读取
+                if (string.IsNullOrEmpty(info.DeviceModel) && string.IsNullOrEmpty(info.DeviceName))
+                {
+                    // 查找同目录下的 metadata 文件
+                    string[] metadataPaths = {
+                        Path.Combine(parentDir, "META-INF", "com", "android", "metadata"),
+                        Path.Combine(parentDir, "metadata")
+                    };
+
+                    foreach (var metaPath in metadataPaths)
+                    {
+                        if (File.Exists(metaPath))
+                        {
+                            await ParseMetadataFileAsync(metaPath, info);
+                            break;
+                        }
+                    }
+
+                    // 查找 payload_properties.txt
+                    string propsPath = Path.Combine(parentDir, "payload_properties.txt");
+                    if (File.Exists(propsPath))
+                    {
+                        await ParsePayloadPropertiesAsync(propsPath, info);
+                    }
+                }
+
+                // 如果解析到了信息，显示
+                if (!string.IsNullOrEmpty(info.DeviceModel) || !string.IsNullOrEmpty(info.DeviceName) ||
+                    !string.IsNullOrEmpty(info.AndroidVersion) || !string.IsNullOrEmpty(info.OsVersion))
+                {
+                    CurrentFirmwareInfo = info;
+                    DisplayFirmwareInfo();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logDetail($"从 Payload 解析固件信息失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 从 ZIP 文件内部读取固件信息
+        /// </summary>
+        private void ParseFirmwareInfoFromZip(string zipPath, FirmwareInfo info)
+        {
+            try
+            {
+                using (var archive = System.IO.Compression.ZipFile.OpenRead(zipPath))
+                {
+                    // 查找 META-INF/com/android/metadata
+                    var metadataEntry = archive.GetEntry("META-INF/com/android/metadata");
+                    if (metadataEntry != null)
+                    {
+                        using (var stream = metadataEntry.Open())
+                        using (var reader = new StreamReader(stream))
+                        {
+                            ParseMetadataContent(reader.ReadToEnd(), info);
+                        }
+                        _logDetail($"从 ZIP 内 metadata 解析成功");
+                    }
+
+                    // 查找 payload_properties.txt
+                    var propsEntry = archive.GetEntry("payload_properties.txt");
+                    if (propsEntry != null)
+                    {
+                        using (var stream = propsEntry.Open())
+                        using (var reader = new StreamReader(stream))
+                        {
+                            ParsePayloadPropertiesContent(reader.ReadToEnd(), info);
+                        }
+                        _logDetail($"从 ZIP 内 payload_properties.txt 解析成功");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logDetail($"读取 ZIP 内固件信息失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 解析 metadata 内容字符串
+        /// </summary>
+        private void ParseMetadataContent(string content, FirmwareInfo info)
+        {
+            var props = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var line in content.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                if (!line.Contains("=")) continue;
+
+                int eqIndex = line.IndexOf('=');
+                if (eqIndex > 0)
+                {
+                    string key = line.Substring(0, eqIndex).Trim();
+                    string value = line.Substring(eqIndex + 1).Trim();
+                    props[key] = value;
+                }
+            }
+
+            if (props.TryGetValue("product_name", out string product))
+                info.DeviceModel = product;
+            if (props.TryGetValue("pre-device", out string device))
+                info.DeviceName = device;
+            if (props.TryGetValue("android_version", out string android))
+                info.AndroidVersion = android;
+            if (props.TryGetValue("os_version", out string os))
+                info.OsVersion = os;
+            else if (props.TryGetValue("display_os_version", out os))
+                info.OsVersion = os;
+            if (props.TryGetValue("version_name", out string version))
+                info.BuildNumber = version;
+            else if (props.TryGetValue("version_name_show", out version))
+                info.BuildNumber = version;
+            if (props.TryGetValue("security_patch", out string patch))
+                info.SecurityPatch = patch;
+            else if (props.TryGetValue("post-security-patch-level", out patch))
+                info.SecurityPatch = patch;
+            if (props.TryGetValue("post-build", out string fingerprint))
+                info.Fingerprint = fingerprint;
+            if (props.TryGetValue("ota-type", out string otaType))
+                info.OtaType = otaType;
+        }
+
+        /// <summary>
+        /// 解析 payload_properties.txt 内容字符串
+        /// </summary>
+        private void ParsePayloadPropertiesContent(string content, FirmwareInfo info)
+        {
+            foreach (var line in content.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                if (!line.Contains("=")) continue;
+
+                int eqIndex = line.IndexOf('=');
+                if (eqIndex > 0)
+                {
+                    string key = line.Substring(0, eqIndex).Trim();
+                    string value = line.Substring(eqIndex + 1).Trim();
+
+                    switch (key.ToLower())
+                    {
+                        case "android_version":
+                            info.AndroidVersion = info.AndroidVersion ?? value;
+                            break;
+                        case "oplus_rom_version":
+                            info.OsVersion = info.OsVersion ?? value;
+                            break;
+                        case "security_patch":
+                            info.SecurityPatch = info.SecurityPatch ?? value;
+                            break;
+                        case "ota_target_version":
+                            info.BuildNumber = info.BuildNumber ?? value;
+                            break;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// 解析 build.prop 文件
+        /// </summary>
+        private async Task ParseBuildPropAsync(string propPath, FirmwareInfo info)
+        {
+            try
+            {
+                var lines = await Task.Run(() => File.ReadAllLines(propPath));
+                foreach (var line in lines)
+                {
+                    if (string.IsNullOrWhiteSpace(line) || line.StartsWith("#"))
+                        continue;
+
+                    var parts = line.Split(new[] { '=' }, 2);
+                    if (parts.Length != 2) continue;
+
+                    string key = parts[0].Trim();
+                    string value = parts[1].Trim();
+
+                    switch (key)
+                    {
+                        case "ro.product.model":
+                        case "ro.product.system.model":
+                            if (string.IsNullOrEmpty(info.DeviceName))
+                                info.DeviceName = value;
+                            break;
+                        case "ro.product.device":
+                        case "ro.product.system.device":
+                            if (string.IsNullOrEmpty(info.DeviceModel))
+                                info.DeviceModel = value;
+                            break;
+                        case "ro.build.version.release":
+                            info.AndroidVersion = value;
+                            break;
+                        case "ro.build.display.id":
+                        case "ro.system.build.version.incremental":
+                            if (string.IsNullOrEmpty(info.BuildNumber))
+                                info.BuildNumber = value;
+                            break;
+                        case "ro.build.version.security_patch":
+                            info.SecurityPatch = value;
+                            break;
+                        case "ro.build.fingerprint":
+                            info.Fingerprint = value;
+                            break;
+                        case "ro.oplus.version":
+                        case "ro.build.version.ota":
+                            info.OsVersion = value;
+                            break;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logDetail($"解析 build.prop 失败: {ex.Message}");
             }
         }
 
@@ -2389,6 +3200,9 @@ namespace LoveAlways.Fastboot.UI
                     // 更新分区列表显示
                     UpdatePartitionListFromPayload();
 
+                    // 尝试从 ZIP 或同目录下解析固件信息
+                    await ParseFirmwareInfoFromPayloadAsync(filePath);
+
                     UpdateProgressBar(100);
                     PayloadLoaded?.Invoke(this, summary);
                 }
@@ -2910,6 +3724,641 @@ namespace LoveAlways.Fastboot.UI
         {
             _payloadService?.Close();
             Log("Payload 已关闭", Color.Gray);
+        }
+
+        #endregion
+
+        #region OnePlus/OPPO 刷写流程
+
+        /// <summary>
+        /// 刷写配置选项
+        /// </summary>
+        public class OnePlusFlashOptions
+        {
+            /// <summary>是否启用 AB 通刷模式 (同时刷写 A/B 两个槽位)</summary>
+            public bool ABFlashMode { get; set; } = false;
+            
+            /// <summary>是否启用强力线刷模式 (额外处理 Super 分区)</summary>
+            public bool PowerFlashMode { get; set; } = false;
+            
+            /// <summary>是否启用纯 FBD 模式 (全部在 FastbootD 下刷写)</summary>
+            public bool PureFBDMode { get; set; } = false;
+            
+            /// <summary>是否清除数据</summary>
+            public bool ClearData { get; set; } = false;
+            
+            /// <summary>是否擦除 FRP (谷歌锁)</summary>
+            public bool EraseFrp { get; set; } = true;
+            
+            /// <summary>是否自动重启</summary>
+            public bool AutoReboot { get; set; } = false;
+            
+            /// <summary>目标槽位 (AB 通刷时使用，a 或 b)</summary>
+            public string TargetSlot { get; set; } = "a";
+        }
+
+        /// <summary>
+        /// 刷写分区信息
+        /// </summary>
+        public class OnePlusFlashPartition
+        {
+            public string PartitionName { get; set; }
+            public string FilePath { get; set; }
+            public long FileSize { get; set; }
+            public bool IsLogical { get; set; }
+            public bool IsModem { get; set; }
+            
+            /// <summary>是否来自 Payload.bin (需要先提取)</summary>
+            public bool IsPayloadPartition { get; set; }
+            /// <summary>Payload 分区信息 (用于提取)</summary>
+            public PayloadPartition PayloadInfo { get; set; }
+            /// <summary>远程 Payload 分区信息</summary>
+            public RemotePayloadPartition RemotePayloadInfo { get; set; }
+            
+            public string FileSizeFormatted
+            {
+                get
+                {
+                    if (FileSize >= 1024L * 1024 * 1024)
+                        return $"{FileSize / (1024.0 * 1024 * 1024):F2} GB";
+                    if (FileSize >= 1024 * 1024)
+                        return $"{FileSize / (1024.0 * 1024):F2} MB";
+                    if (FileSize >= 1024)
+                        return $"{FileSize / 1024.0:F2} KB";
+                    return $"{FileSize} B";
+                }
+            }
+        }
+
+        /// <summary>
+        /// 执行 OnePlus/OPPO 刷写流程
+        /// </summary>
+        public async Task<bool> ExecuteOnePlusFlashAsync(
+            List<OnePlusFlashPartition> partitions,
+            OnePlusFlashOptions options,
+            CancellationToken ct = default)
+        {
+            if (partitions == null || partitions.Count == 0)
+            {
+                Log("错误：未选择任何分区进行刷写", Color.Red);
+                return false;
+            }
+
+            if (IsBusy)
+            {
+                Log("操作进行中", Color.Orange);
+                return false;
+            }
+
+            if (!await EnsureConnectedAsync())
+                return false;
+
+            // 临时提取目录 (用于 Payload 分区提取)
+            string extractDir = null;
+
+            try
+            {
+                IsBusy = true;
+                _cts = new CancellationTokenSource();
+                var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token, ct);
+                ct = linkedCts.Token;
+
+                StartOperationTimer("OnePlus 刷写");
+                UpdateProgressBar(0);
+                UpdateSubProgressBar(0);
+
+                // 计算总刷写字节数
+                long totalFlashBytes = partitions.Sum(p => p.FileSize);
+                long currentFlashedBytes = 0;
+                string totalSizeStr = FormatSize(totalFlashBytes);
+
+                Log($"开始 OnePlus 刷写流程，共 {partitions.Count} 个分区...", Color.Blue);
+
+                // 步骤 1: 检测设备状态
+                Log("正在检测设备连接状态...", Color.Blue);
+                UpdateLabelSafe(_operationLabel, "当前操作：检测设备");
+
+                bool isFastbootd = await _service.IsFastbootdModeAsync(ct);
+                Log($"设备模式: {(isFastbootd ? "FastbootD" : "Fastboot")}", Color.Green);
+
+                // 步骤 2: 如果不在 FastbootD 模式，需要切换
+                if (!isFastbootd)
+                {
+                    Log("正在重启到 FastbootD 模式...", Color.Blue);
+                    UpdateLabelSafe(_operationLabel, "当前操作：重启到 FastbootD");
+
+                    if (!await _service.RebootFastbootdAsync(ct))
+                    {
+                        Log("无法重启到 FastbootD 模式", Color.Red);
+                        return false;
+                    }
+
+                    // 等待设备重新连接
+                    Log("等待设备重新连接...", Color.Blue);
+                    bool reconnected = await WaitForDeviceReconnectAsync(60, ct);
+                    if (!reconnected)
+                    {
+                        Log("设备在 60 秒内未能重新连接", Color.Red);
+                        return false;
+                    }
+
+                    Log("FastbootD 设备已连接", Color.Green);
+                }
+
+                // 步骤 3: 删除 COW 快照分区
+                Log("正在解析 COW 快照分区...", Color.Blue);
+                UpdateLabelSafe(_operationLabel, "当前操作：清理 COW 分区");
+                await _service.DeleteCowPartitionsAsync(ct);
+                Log("COW 分区清理完成", Color.Green);
+
+                // 步骤 4: 获取当前槽位
+                string currentSlot = await _service.GetCurrentSlotAsync(ct);
+                if (string.IsNullOrEmpty(currentSlot)) currentSlot = "a";
+                Log($"当前槽位: {currentSlot.ToUpper()}", Color.Blue);
+
+                // 步骤 5: AB 通刷模式预处理
+                if (options.ABFlashMode)
+                {
+                    Log($"AB 通刷模式：目标槽位 {options.TargetSlot.ToUpper()}", Color.Blue);
+
+                    // 如果当前槽位与目标不同，需要切换并重建分区
+                    if (!string.Equals(currentSlot, options.TargetSlot, StringComparison.OrdinalIgnoreCase))
+                    {
+                        Log($"切换槽位到 {options.TargetSlot.ToUpper()}...", Color.Blue);
+                        await _service.SetActiveSlotAsync(options.TargetSlot, ct);
+
+                        Log("重建逻辑分区结构...", Color.Blue);
+                        await _service.RebuildLogicalPartitionsAsync(options.TargetSlot, ct);
+                    }
+                }
+
+                await Task.Delay(2000, ct);  // 等待设备状态稳定
+
+                // 步骤 6: 对分区排序 (按大小从小到大)
+                var sortedPartitions = partitions
+                    .Where(p => !string.IsNullOrEmpty(p.FilePath) && File.Exists(p.FilePath))
+                    .OrderBy(p => p.FileSize)
+                    .ToList();
+
+                // 纯 FBD 模式：所有分区在 FastbootD 下刷写
+                // 普通欧加模式：Modem 分区在 Fastboot 下刷写，其他在 FastbootD 下刷写
+                List<OnePlusFlashPartition> fbdPartitions;
+                List<OnePlusFlashPartition> modemPartitions;
+
+                if (options.PureFBDMode)
+                {
+                    // 纯 FBD 模式：所有分区都在 FastbootD 下刷写
+                    fbdPartitions = sortedPartitions;
+                    modemPartitions = new List<OnePlusFlashPartition>();
+                    Log("纯 FBD 模式：所有分区在 FastbootD 下刷写", Color.Blue);
+                }
+                else
+                {
+                    // 普通欧加模式：分离 Modem 分区
+                    fbdPartitions = sortedPartitions.Where(p => !p.IsModem).ToList();
+                    modemPartitions = sortedPartitions.Where(p => p.IsModem).ToList();
+                    if (modemPartitions.Count > 0)
+                    {
+                        Log($"欧加模式：{fbdPartitions.Count} 个分区在 FastbootD，{modemPartitions.Count} 个 Modem 分区在 Fastboot", Color.Blue);
+                    }
+                }
+
+                int totalPartitions = options.ABFlashMode 
+                    ? fbdPartitions.Sum(p => p.IsLogical ? 1 : 2) + modemPartitions.Count * 2
+                    : sortedPartitions.Count;
+                int currentPartitionIndex = 0;
+
+                // 步骤 6.5: 检查并提取 Payload 分区
+                var payloadPartitions = sortedPartitions.Where(p => p.IsPayloadPartition).ToList();
+                if (payloadPartitions.Count > 0)
+                {
+                    Log($"检测到 {payloadPartitions.Count} 个 Payload 分区，正在提取...", Color.Blue);
+                    UpdateLabelSafe(_operationLabel, "当前操作：提取 Payload 分区");
+
+                    // 创建临时提取目录
+                    extractDir = Path.Combine(Path.GetTempPath(), $"payload_extract_{DateTime.Now:yyyyMMdd_HHmmss}");
+                    Directory.CreateDirectory(extractDir);
+
+                    foreach (var pp in payloadPartitions)
+                    {
+                        ct.ThrowIfCancellationRequested();
+
+                        string extractedPath = Path.Combine(extractDir, $"{pp.PartitionName}.img");
+
+                        if (pp.PayloadInfo != null && _payloadService != null)
+                        {
+                            // 本地 Payload 提取 (通过分区名)
+                            Log($"  提取 {pp.PartitionName}...", null);
+                            bool extracted = await _payloadService.ExtractPartitionAsync(
+                                pp.PartitionName, extractedPath, ct);
+
+                            if (extracted && File.Exists(extractedPath))
+                            {
+                                pp.FilePath = extractedPath;
+                                Log($"  ✓ {pp.PartitionName} 提取完成", Color.Green);
+                            }
+                            else
+                            {
+                                Log($"  ✗ {pp.PartitionName} 提取失败", Color.Red);
+                            }
+                        }
+                        else if (pp.RemotePayloadInfo != null && _remotePayloadService != null)
+                        {
+                            // 远程 Payload 提取 (通过分区名)
+                            Log($"  下载并提取 {pp.PartitionName}...", null);
+                            bool extracted = await _remotePayloadService.ExtractPartitionAsync(
+                                pp.PartitionName, extractedPath, ct);
+
+                            if (extracted && File.Exists(extractedPath))
+                            {
+                                pp.FilePath = extractedPath;
+                                Log($"  ✓ {pp.PartitionName} 下载并提取完成", Color.Green);
+                            }
+                            else
+                            {
+                                Log($"  ✗ {pp.PartitionName} 下载或提取失败", Color.Red);
+                            }
+                        }
+                    }
+
+                    // 更新文件大小 (提取后的实际大小)
+                    foreach (var pp in payloadPartitions)
+                    {
+                        if (!string.IsNullOrEmpty(pp.FilePath) && File.Exists(pp.FilePath))
+                        {
+                            pp.FileSize = new FileInfo(pp.FilePath).Length;
+                        }
+                    }
+
+                    // 重新计算总字节数
+                    totalFlashBytes = sortedPartitions
+                        .Where(p => !string.IsNullOrEmpty(p.FilePath) && File.Exists(p.FilePath))
+                        .Sum(p => p.FileSize);
+                    totalSizeStr = FormatSize(totalFlashBytes);
+                }
+
+                Log($"开始刷写 {sortedPartitions.Count} 个分区 (总大小: {totalSizeStr})...", Color.Blue);
+
+                // 步骤 7: 在 FastbootD 模式下刷写分区
+                foreach (var partition in fbdPartitions)
+                {
+                    ct.ThrowIfCancellationRequested();
+
+                    // 跳过没有文件的分区
+                    if (string.IsNullOrEmpty(partition.FilePath) || !File.Exists(partition.FilePath))
+                    {
+                        Log($"  ⚠ {partition.PartitionName} 无有效文件，跳过", Color.Orange);
+                        continue;
+                    }
+
+                    string fileName = Path.GetFileName(partition.FilePath);
+                    string targetSlot = options.ABFlashMode ? options.TargetSlot : currentSlot;
+
+                    if (options.ABFlashMode && !partition.IsLogical)
+                    {
+                        // 非逻辑分区在 AB 通刷模式下需要刷写两个槽位
+                        foreach (var slot in new[] { "a", "b" })
+                        {
+                            string targetName = $"{partition.PartitionName}_{slot}";
+                            UpdateLabelSafe(_operationLabel, $"当前操作：刷写 {targetName}");
+                            Log($"[写入镜像] {fileName} -> {targetName}", null);
+
+                            long bytesBeforeThis = currentFlashedBytes;
+                            Action<long, long> progressCallback = (sent, total) =>
+                            {
+                                long globalBytes = bytesBeforeThis + sent;
+                                double percent = totalFlashBytes > 0 ? globalBytes * 100.0 / totalFlashBytes : 0;
+                                UpdateProgressBar(percent);
+                                UpdateSubProgressBar(total > 0 ? sent * 100.0 / total : 0);
+                                UpdateSpeedLabel(FormatSpeed(_currentSpeed));
+                            };
+
+                            bool ok = await _service.FlashPartitionToSlotAsync(
+                                partition.PartitionName, partition.FilePath, slot, progressCallback, ct);
+
+                            if (ok)
+                            {
+                                Log($"  ✓ {targetName} 成功", Color.Green);
+                            }
+                            else
+                            {
+                                Log($"  ✗ {targetName} 失败", Color.Red);
+                            }
+
+                            currentFlashedBytes += partition.FileSize / 2;  // AB 模式下每个槽位算一半
+                            currentPartitionIndex++;
+                        }
+                    }
+                    else
+                    {
+                        // 逻辑分区或普通模式只刷一个槽位
+                        string targetName = $"{partition.PartitionName}_{targetSlot}";
+                        UpdateLabelSafe(_operationLabel, $"当前操作：刷写 {targetName}");
+                        Log($"[写入镜像] {fileName} -> {targetName}", null);
+
+                        long bytesBeforeThis = currentFlashedBytes;
+                        Action<long, long> progressCallback = (sent, total) =>
+                        {
+                            long globalBytes = bytesBeforeThis + sent;
+                            double percent = totalFlashBytes > 0 ? globalBytes * 100.0 / totalFlashBytes : 0;
+                            UpdateProgressBar(percent);
+                            UpdateSubProgressBar(total > 0 ? sent * 100.0 / total : 0);
+                        };
+
+                        bool ok = await _service.FlashPartitionToSlotAsync(
+                            partition.PartitionName, partition.FilePath, targetSlot, progressCallback, ct);
+
+                        if (ok)
+                        {
+                            Log($"  ✓ {targetName} 成功", Color.Green);
+                        }
+                        else
+                        {
+                            Log($"  ✗ {targetName} 失败", Color.Red);
+                        }
+
+                        currentFlashedBytes += partition.FileSize;
+                        currentPartitionIndex++;
+                    }
+                }
+
+                // 步骤 8: 如果有 Modem 分区（普通欧加模式），重启到 Bootloader 刷写
+                if (modemPartitions.Count > 0 && !options.PureFBDMode)
+                {
+                    Log("Modem 分区需要在 Fastboot 模式下刷写...", Color.Blue);
+                    UpdateLabelSafe(_operationLabel, "当前操作：重启到 Fastboot");
+
+                    if (!await _service.RebootBootloaderAsync(ct))
+                    {
+                        Log("无法重启到 Fastboot 模式", Color.Red);
+                    }
+                    else
+                    {
+                        // 等待设备重新连接
+                        bool reconnected = await WaitForDeviceReconnectAsync(60, ct);
+                        if (reconnected)
+                        {
+                            foreach (var modem in modemPartitions)
+                            {
+                                ct.ThrowIfCancellationRequested();
+
+                                // 跳过没有文件的分区
+                                if (string.IsNullOrEmpty(modem.FilePath) || !File.Exists(modem.FilePath))
+                                {
+                                    Log($"  ⚠ {modem.PartitionName} 无有效文件，跳过", Color.Orange);
+                                    continue;
+                                }
+
+                                string fileName = Path.GetFileName(modem.FilePath);
+
+                                // Modem 分区在 AB 通刷模式下也刷两个槽位
+                                foreach (var slot in options.ABFlashMode ? new[] { "a", "b" } : new[] { currentSlot })
+                                {
+                                    string targetName = $"{modem.PartitionName}_{slot}";
+                                    UpdateLabelSafe(_operationLabel, $"当前操作：刷写 {targetName}");
+                                    Log($"[写入镜像] {fileName} -> {targetName}", null);
+
+                                    bool ok = await _service.FlashPartitionToSlotAsync(
+                                        modem.PartitionName, modem.FilePath, slot, null, ct);
+
+                                    Log(ok ? $"  ✓ {targetName} 成功" : $"  ✗ {targetName} 失败",
+                                        ok ? Color.Green : Color.Red);
+                                }
+                            }
+
+                            // 刷完 Modem 后如果需要清数据，需要回到 FastbootD
+                            if (options.ClearData || options.EraseFrp)
+                            {
+                                Log("重启到 FastbootD 继续后续操作...", Color.Blue);
+                                await _service.RebootFastbootdAsync(ct);
+                                await WaitForDeviceReconnectAsync(60, ct);
+                            }
+                        }
+                    }
+                }
+
+                // 步骤 9: 擦除 FRP (谷歌锁) - 所有设备都可自动执行
+                if (options.EraseFrp)
+                {
+                    Log("正在擦除 FRP...", Color.Blue);
+                    UpdateLabelSafe(_operationLabel, "当前操作：擦除 FRP");
+                    bool frpOk = await _service.EraseFrpAsync(ct);
+                    Log(frpOk ? "FRP 擦除成功" : "FRP 擦除失败", frpOk ? Color.Green : Color.Orange);
+                }
+
+                // 步骤 10: 清除数据 - 仅高通设备自动执行，联发科需手动
+                if (options.ClearData)
+                {
+                    // 检测设备平台：高通 (abl) vs 联发科 (lk)
+                    var devicePlatform = await _service.GetDevicePlatformAsync(ct);
+                    bool isQualcommDevice = devicePlatform == FastbootService.DevicePlatform.Qualcomm;
+                    
+                    if (isQualcommDevice)
+                    {
+                        Log("正在清除用户数据...", Color.Blue);
+                        UpdateLabelSafe(_operationLabel, "当前操作：清除数据");
+                        bool wipeOk = await _service.WipeDataAsync(ct);
+                        Log(wipeOk ? "数据清除成功" : "数据清除失败", wipeOk ? Color.Green : Color.Orange);
+                    }
+                    else
+                    {
+                        // 联发科设备 (lk) 需要用户手动在 Recovery 清除数据
+                        Log("⚠ 联发科设备请手动清除数据 (进入 Recovery -> Wipe data/factory reset)", Color.Orange);
+                    }
+                }
+
+                // 步骤 11: 自动重启
+                if (options.AutoReboot)
+                {
+                    Log("正在重启设备...", Color.Blue);
+                    UpdateLabelSafe(_operationLabel, "当前操作：重启");
+                    await _service.RebootAsync(ct);
+                }
+
+                UpdateProgressBar(100);
+                UpdateSubProgressBar(100);
+                StopOperationTimer();
+
+                Log("✓ OnePlus 刷写流程完成", Color.Green);
+                return true;
+            }
+            catch (OperationCanceledException)
+            {
+                Log("刷写操作已取消", Color.Orange);
+                UpdateProgressBar(0);
+                UpdateSubProgressBar(0);
+                StopOperationTimer();
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Log($"刷写过程中发生错误: {ex.Message}", Color.Red);
+                _logDetail($"OnePlus 刷写异常: {ex}");
+                UpdateProgressBar(0);
+                UpdateSubProgressBar(0);
+                StopOperationTimer();
+                return false;
+            }
+            finally
+            {
+                IsBusy = false;
+                UpdateLabelSafe(_operationLabel, "当前操作：空闲");
+
+                // 清理临时提取目录
+                if (!string.IsNullOrEmpty(extractDir) && Directory.Exists(extractDir))
+                {
+                    try
+                    {
+                        Directory.Delete(extractDir, true);
+                        _logDetail($"已清理临时目录: {extractDir}");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logDetail($"清理临时目录失败: {ex.Message}");
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// 等待设备重新连接
+        /// </summary>
+        private async Task<bool> WaitForDeviceReconnectAsync(int timeoutSeconds, CancellationToken ct)
+        {
+            int attempts = timeoutSeconds / 5;
+            for (int i = 0; i < attempts; i++)
+            {
+                await Task.Delay(5000, ct);
+                
+                // 刷新设备列表
+                await RefreshDeviceListAsync();
+                
+                if (_cachedDevices != null && _cachedDevices.Count > 0)
+                {
+                    // 尝试自动连接第一个设备
+                    var device = _cachedDevices[0];
+                    _service = new FastbootService(
+                        msg => Log(msg, null),
+                        (current, total) => UpdateProgressWithSpeed(current, total),
+                        _logDetail
+                    );
+                    _service.FlashProgressChanged += OnFlashProgressChanged;
+                    
+                    if (await _service.SelectDeviceAsync(device.Serial, ct))
+                    {
+                        return true;
+                    }
+                }
+                
+                Log($"等待设备... ({(i + 1) * 5}/{timeoutSeconds}s)", null);
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// 从当前选中的分区构建 OnePlus 刷写分区列表
+        /// 支持: Payload 分区、解包文件夹、脚本任务、普通镜像
+        /// </summary>
+        public List<OnePlusFlashPartition> BuildOnePlusFlashPartitions()
+        {
+            var result = new List<OnePlusFlashPartition>();
+
+            if (_partitionListView == null) return result;
+
+            try
+            {
+                foreach (ListViewItem item in _partitionListView.CheckedItems)
+                {
+                    string partName = item.SubItems[0].Text;
+                    string filePath = item.SubItems.Count > 3 ? item.SubItems[3].Text : "";
+
+                    // 本地 Payload 分区 (需要先提取)
+                    if (item.Tag is PayloadPartition payloadPart)
+                    {
+                        result.Add(new OnePlusFlashPartition
+                        {
+                            PartitionName = payloadPart.Name,
+                            FilePath = null,  // 稍后提取时设置
+                            FileSize = (long)payloadPart.Size,  // 解压后大小
+                            IsLogical = FastbootService.IsLogicalPartition(payloadPart.Name),
+                            IsModem = FastbootService.IsModemPartition(payloadPart.Name),
+                            IsPayloadPartition = true,
+                            PayloadInfo = payloadPart
+                        });
+                        continue;
+                    }
+
+                    // 远程 Payload 分区 (云端边下边刷)
+                    if (item.Tag is RemotePayloadPartition remotePart)
+                    {
+                        result.Add(new OnePlusFlashPartition
+                        {
+                            PartitionName = remotePart.Name,
+                            FilePath = null,
+                            FileSize = (long)remotePart.Size,  // 解压后大小
+                            IsLogical = FastbootService.IsLogicalPartition(remotePart.Name),
+                            IsModem = FastbootService.IsModemPartition(remotePart.Name),
+                            IsPayloadPartition = true,
+                            RemotePayloadInfo = remotePart
+                        });
+                        continue;
+                    }
+
+                    // 已提取文件夹中的镜像
+                    if (item.Tag is ExtractedImageInfo extractedInfo)
+                    {
+                        result.Add(new OnePlusFlashPartition
+                        {
+                            PartitionName = extractedInfo.PartitionName,
+                            FilePath = extractedInfo.FilePath,
+                            FileSize = extractedInfo.FileSize,
+                            IsLogical = extractedInfo.IsLogical,
+                            IsModem = extractedInfo.IsModem,
+                            IsPayloadPartition = false
+                        });
+                        continue;
+                    }
+
+                    // 脚本任务 (flash_all.bat 解析)
+                    if (item.Tag is BatScriptParser.FlashTask task)
+                    {
+                        if (task.Operation == "flash" && task.ImageExists)
+                        {
+                            result.Add(new OnePlusFlashPartition
+                            {
+                                PartitionName = task.PartitionName,
+                                FilePath = task.ImagePath,
+                                FileSize = task.FileSize,
+                                IsLogical = FastbootService.IsLogicalPartition(task.PartitionName),
+                                IsModem = FastbootService.IsModemPartition(task.PartitionName),
+                                IsPayloadPartition = false
+                            });
+                        }
+                        continue;
+                    }
+
+                    // 普通分区 (已有镜像文件)
+                    if (!string.IsNullOrEmpty(filePath) && File.Exists(filePath))
+                    {
+                        var fileInfo = new FileInfo(filePath);
+                        result.Add(new OnePlusFlashPartition
+                        {
+                            PartitionName = partName,
+                            FilePath = filePath,
+                            FileSize = fileInfo.Length,
+                            IsLogical = FastbootService.IsLogicalPartition(partName),
+                            IsModem = FastbootService.IsModemPartition(partName),
+                            IsPayloadPartition = false
+                        });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logDetail($"构建刷写分区列表失败: {ex.Message}");
+            }
+
+            return result;
         }
 
         #endregion
