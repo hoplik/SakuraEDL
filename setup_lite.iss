@@ -34,7 +34,6 @@ LZMAUseSeparateProcess=yes
 LZMANumBlockThreads=4
 
 PrivilegesRequired=admin
-PrivilegesRequiredOverridesAllowed=dialog
 WizardStyle=modern
 DisableWelcomePage=no
 

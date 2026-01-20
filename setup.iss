@@ -36,7 +36,6 @@ LZMAUseSeparateProcess=yes
 
 ; 权限设置
 PrivilegesRequired=admin
-PrivilegesRequiredOverridesAllowed=dialog
 
 ; 界面设置
 WizardStyle=modern
