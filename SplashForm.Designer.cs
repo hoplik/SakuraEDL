@@ -70,7 +70,7 @@ namespace LoveAlways
             this.uiLedLabel1.Name = "uiLedLabel1";
             this.uiLedLabel1.Size = new System.Drawing.Size(522, 298);
             this.uiLedLabel1.TabIndex = 2;
-            this.uiLedLabel1.Text = "LoveAlways";
+            this.uiLedLabel1.Text = "MultiFlash";
             // 
             // SplashForm
             // 

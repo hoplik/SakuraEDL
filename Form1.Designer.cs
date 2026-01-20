@@ -410,7 +410,7 @@ namespace LoveAlways
             this.pageHeader2.ShowButton = true;
             this.pageHeader2.Size = new System.Drawing.Size(1313, 36);
             this.pageHeader2.TabIndex = 1;
-            this.pageHeader2.Text = "pageHeader1";
+            this.pageHeader2.Text = "MultiFlash TOOL v2.2.0";
             this.pageHeader2.UseSystemStyleColor = true;
             // 
             // uiComboBox1
