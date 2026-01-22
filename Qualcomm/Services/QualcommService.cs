@@ -62,6 +62,11 @@ namespace LoveAlways.Qualcomm.Services
 
         // 分区缓存
         private Dictionary<int, List<PartitionInfo>> _partitionCache;
+        
+        // 端口管理标志位 (用于操作完成后释放端口)
+        private bool _portClosed = false;          // 端口是否已关闭
+        private bool _keepPortOpen = false;        // 是否保持端口打开 (用于连续操作)
+        private QualcommChipInfo _cachedChipInfo;  // 缓存的芯片信息 (端口关闭后保留)
 
         /// <summary>
         /// 状态变化事件
@@ -72,6 +77,12 @@ namespace LoveAlways.Qualcomm.Services
         /// 端口断开事件 (设备自己断开时触发)
         /// </summary>
         public event EventHandler PortDisconnected;
+        
+        /// <summary>
+        /// 小米授权令牌事件 (内置签名失败时触发，需要弹窗显示令牌)
+        /// Token 格式: VQ 开头的 Base64 字符串
+        /// </summary>
+        public event Action<string> XiaomiAuthTokenRequired;
         
         /// <summary>
         /// 检查是否真正连接 (会验证端口状态)
@@ -277,6 +288,7 @@ namespace LoveAlways.Qualcomm.Services
                 {
                     _log("[高通] 检测到小米设备 (SecBoot)，自动执行 MiAuth 认证...");
                     var xiaomi = new XiaomiAuthStrategy(_log);
+                    xiaomi.OnAuthTokenRequired += token => XiaomiAuthTokenRequired?.Invoke(token);
                     bool authOk = await xiaomi.AuthenticateAsync(_firehose, programmerPath, ct);
                     if (authOk)
                         _log("[高通] 小米认证成功");
@@ -305,6 +317,7 @@ namespace LoveAlways.Qualcomm.Services
                     else if (authModeLower == "xiaomi")
                     {
                         var xiaomi = new XiaomiAuthStrategy(_log);
+                        xiaomi.OnAuthTokenRequired += token => XiaomiAuthTokenRequired?.Invoke(token);
                         authOk = await xiaomi.AuthenticateAsync(_firehose, programmerPath, ct);
                     }
                     
@@ -621,9 +634,144 @@ namespace LoveAlways.Qualcomm.Services
 
             _partitionCache.Clear();
             IsVipDevice = false;
+            _portClosed = false;
+            _cachedChipInfo = null;
 
             SetState(QualcommConnectionState.Disconnected);
         }
+        
+        /// <summary>
+        /// 释放端口 (操作完成后调用，保留设备对象和状态信息)
+        /// </summary>
+        /// <remarks>
+        /// 根据EDL工具最佳实践：操作完成后应释放端口，让其他程序可以连接设备。
+        /// 调用此方法后：
+        /// - 端口关闭，串口资源释放
+        /// - 设备对象保留 (ChipInfo, 分区缓存等)
+        /// - 下次操作前会自动重新打开端口
+        /// </remarks>
+        public void ReleasePort()
+        {
+            // 如果设置了保持端口打开，则跳过释放
+            if (_keepPortOpen)
+            {
+                _logDetail("[高通] 端口保持打开 (连续操作模式)");
+                return;
+            }
+            
+            if (_portManager == null || !_portManager.IsOpen)
+                return;
+                
+            try
+            {
+                // 缓存芯片信息 (端口关闭后仍可访问)
+                if (_sahara != null && _sahara.ChipInfo != null)
+                {
+                    _cachedChipInfo = _sahara.ChipInfo;
+                }
+                
+                // 关闭端口但不销毁设备对象
+                _portManager.Close();
+                _portClosed = true;
+                
+                _logDetail("[高通] 端口已释放 (设备信息保留)");
+            }
+            catch (Exception ex)
+            {
+                _logDetail("[高通] 释放端口异常: " + ex.Message);
+            }
+        }
+        
+        /// <summary>
+        /// 确保端口已打开 (操作前调用)
+        /// </summary>
+        /// <param name="ct">取消令牌</param>
+        /// <returns>端口是否可用</returns>
+        public async Task<bool> EnsurePortOpenAsync(CancellationToken ct = default(CancellationToken))
+        {
+            // 如果端口已打开且可用，直接返回
+            if (_portManager != null && _portManager.IsOpen && !_portClosed)
+                return true;
+                
+            // 如果没有记录端口名，无法重新打开
+            if (string.IsNullOrEmpty(LastPortName))
+            {
+                _log("[高通] 无法重新打开端口: 未记录端口名");
+                return false;
+            }
+            
+            // 检查端口是否在系统中可用
+            if (_portManager != null && !_portManager.IsPortAvailable())
+            {
+                _log("[高通] 端口已从系统中移除，设备可能已断开");
+                HandlePortDisconnected();
+                return false;
+            }
+            
+            // 重新打开端口
+            try
+            {
+                _logDetail(string.Format("[高通] 重新打开端口: {0}", LastPortName));
+                
+                if (_portManager == null)
+                {
+                    _portManager = new SerialPortManager();
+                }
+                
+                bool opened = await _portManager.OpenAsync(LastPortName, 3, true, ct);
+                if (!opened)
+                {
+                    _log("[高通] 无法重新打开端口");
+                    return false;
+                }
+                
+                _portClosed = false;
+                
+                // 注意: Firehose 客户端保留，不需要重新创建
+                // 如果 _firehose 为 null，说明连接本身有问题，需要重新完整连接
+                if (_firehose == null)
+                {
+                    _log("[高通] Firehose 客户端丢失，需要重新完整连接");
+                    return false;
+                }
+                
+                _logDetail("[高通] 端口重新打开成功");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _log("[高通] 重新打开端口失败: " + ex.Message);
+                return false;
+            }
+        }
+        
+        /// <summary>
+        /// 设置是否保持端口打开 (用于连续操作，如批量刷写)
+        /// </summary>
+        /// <param name="keepOpen">是否保持打开</param>
+        public void SetKeepPortOpen(bool keepOpen)
+        {
+            _keepPortOpen = keepOpen;
+            if (keepOpen)
+                _logDetail("[高通] 设置: 保持端口打开");
+            else
+                _logDetail("[高通] 设置: 允许释放端口");
+        }
+        
+        /// <summary>
+        /// 获取芯片信息 (即使端口关闭也可访问缓存)
+        /// </summary>
+        public QualcommChipInfo GetChipInfo()
+        {
+            if (_sahara != null && _sahara.ChipInfo != null)
+                return _sahara.ChipInfo;
+            return _cachedChipInfo;
+        }
+        
+        /// <summary>
+        /// 端口是否已释放
+        /// </summary>
+        public bool IsPortReleased { get { return _portClosed; } }
         
         /// <summary>
         /// 重置卡住的 Sahara 状态
@@ -659,8 +807,29 @@ namespace LoveAlways.Qualcomm.Services
                 
                 if (success)
                 {
-                    _log("[高通] ✓ Sahara 状态已重置，设备已准备好重新连接");
-                    SetState(QualcommConnectionState.SaharaMode);
+                    _log("[高通] ✓ Sahara 状态已重置");
+                    _log("[高通] 设备已准备好，请点击[连接]按钮重新连接");
+                    
+                    // 重置成功后断开连接，让用户可以正常重新连接
+                    // 保留端口名以便后续连接
+                    string savedPortName = portName;
+                    
+                    // 关闭当前连接（释放端口资源）
+                    if (_portManager != null)
+                    {
+                        _portManager.Close();
+                        _portManager.Dispose();
+                        _portManager = null;
+                    }
+                    if (_sahara != null)
+                    {
+                        _sahara.Dispose();
+                        _sahara = null;
+                    }
+                    
+                    // 设置为断开状态，等待用户重新连接
+                    SetState(QualcommConnectionState.Disconnected);
+                    LastPortName = savedPortName;  // 保留端口名
                 }
                 else
                 {
@@ -764,7 +933,8 @@ namespace LoveAlways.Qualcomm.Services
 
                     case "xiaomi":
                         _log("[高通] 执行小米认证...");
-                        var xiaomiAuth = new Authentication.XiaomiAuthStrategy();
+                        var xiaomiAuth = new Authentication.XiaomiAuthStrategy(_log);
+                        xiaomiAuth.OnAuthTokenRequired += token => XiaomiAuthTokenRequired?.Invoke(token);
                         return await xiaomiAuth.AuthenticateAsync(_firehose, "", ct);
 
                     default:
@@ -823,6 +993,7 @@ namespace LoveAlways.Qualcomm.Services
             {
                 _log("[高通] 执行小米认证...");
                 var xiaomiAuth = new Authentication.XiaomiAuthStrategy(_log);
+                xiaomiAuth.OnAuthTokenRequired += token => XiaomiAuthTokenRequired?.Invoke(token);
                 bool ok = await xiaomiAuth.AuthenticateAsync(_firehose, "", ct);
                 if (ok)
                     _log("[高通] 小米认证成功");
@@ -866,6 +1037,7 @@ namespace LoveAlways.Qualcomm.Services
                 try
                 {
                     var xiaomi = new XiaomiAuthStrategy(_log);
+                    xiaomi.OnAuthTokenRequired += token => XiaomiAuthTokenRequired?.Invoke(token);
                     bool result = await xiaomi.AuthenticateAsync(_firehose, programmerPath, ct);
                     if (result)
                     {

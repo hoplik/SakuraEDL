@@ -7,6 +7,7 @@
 // ============================================================================
 
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.IO.Ports;
 using System.Threading;
@@ -23,18 +24,25 @@ namespace LoveAlways.Qualcomm.Common
         private readonly object _lock = new object();
         private bool _disposed;
         private string _currentPortName = "";
+        private readonly Action<string> _log;
 
         // 串口配置 (9008 EDL 模式用 USB CDC 模拟串口)
+        // 注意：缓冲区过大会增加内存拷贝开销，反而降低速度
         public int BaudRate { get; set; } = 921600;
         public int ReadTimeout { get; set; } = 30000;
         public int WriteTimeout { get; set; } = 30000;
-        public int ReadBufferSize { get; set; } = 16 * 1024 * 1024;
-        public int WriteBufferSize { get; set; } = 16 * 1024 * 1024;
+        public int ReadBufferSize { get; set; } = 2 * 1024 * 1024;   // 2MB 读缓冲
+        public int WriteBufferSize { get; set; } = 4 * 1024 * 1024;  // 4MB 写缓冲
 
         /// <summary>
         /// 端口断开事件
         /// </summary>
         public event EventHandler PortDisconnected;
+
+        public SerialPortManager(Action<string> log = null)
+        {
+            _log = log ?? delegate { };
+        }
 
         public bool IsOpen
         {
@@ -133,8 +141,11 @@ namespace LoveAlways.Qualcomm.Common
                             Parity = Parity.None,
                             StopBits = StopBits.One,
                             Handshake = Handshake.None,
-                            ReadTimeout = 5000,
-                            WriteTimeout = 5000,
+                            // 优化超时设置以提高传输速度
+                            // ReadTimeout: 单次读取超时，设置较短以支持非阻塞轮询
+                            // WriteTimeout: 写入超时，保持较长以支持大数据块
+                            ReadTimeout = 1000,   // 1秒读取超时 (配合异步读取)
+                            WriteTimeout = 30000, // 30秒写入超时 (大文件需要)
                             ReadBufferSize = ReadBufferSize,
                             WriteBufferSize = WriteBufferSize
                         };
@@ -191,23 +202,33 @@ namespace LoveAlways.Qualcomm.Common
                 {
                     if (_port.IsOpen)
                     {
-                        try { _port.DiscardInBuffer(); _port.DiscardOutBuffer(); } catch { }
-                        try { _port.DtrEnable = false; _port.RtsEnable = false; } catch { }
+                        // 清空缓冲区 (忽略异常，端口可能已断开)
+                        try { _port.DiscardInBuffer(); _port.DiscardOutBuffer(); }
+                        catch (Exception ex) { _log(string.Format("[SerialPort] 清空缓冲区异常: {0}", ex.Message)); }
+                        
+                        // 禁用控制信号 (忽略异常)
+                        try { _port.DtrEnable = false; _port.RtsEnable = false; }
+                        catch (Exception ex) { _log(string.Format("[SerialPort] 禁用控制信号异常: {0}", ex.Message)); }
+                        
                         Thread.Sleep(50);
                         _port.Close();
                     }
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    _log(string.Format("[SerialPort] 关闭端口异常: {0}", ex.Message));
+                }
                 finally
                 {
-                    try { _port.Dispose(); } catch { }
+                    try { _port.Dispose(); }
+                    catch (Exception ex) { _log(string.Format("[SerialPort] 释放端口异常: {0}", ex.Message)); }
                     _port = null;
                     _currentPortName = "";
                 }
             }
         }
 
-        private static void ForceReleasePort(string portName)
+        private void ForceReleasePort(string portName)
         {
             try
             {
@@ -217,7 +238,11 @@ namespace LoveAlways.Qualcomm.Common
                     tempPort.Close();
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                // 端口可能被占用或不存在，这是预期的情况
+                _log(string.Format("[SerialPort] 强制释放端口 {0} 失败: {1}", portName, ex.Message));
+            }
         }
 
         public void Write(byte[] data, int offset, int count)
@@ -242,7 +267,11 @@ namespace LoveAlways.Qualcomm.Common
                 await _port.BaseStream.WriteAsync(buffer, offset, count, ct);
                 return true;
             }
-            catch { return false; }
+            catch (Exception ex)
+            {
+                _log(string.Format("[SerialPort] 异步写入异常: {0}", ex.Message));
+                return false;
+            }
         }
 
         public int Read(byte[] buffer, int offset, int count)
@@ -271,14 +300,14 @@ namespace LoveAlways.Qualcomm.Common
                 {
                     var buffer = new byte[length];
                     int totalRead = 0;
-                    int startTime = Environment.TickCount;
+                    var stopwatch = Stopwatch.StartNew(); // 使用 Stopwatch 避免 TickCount 溢出
                     int originalTimeout = _port.ReadTimeout;
 
                     _port.ReadTimeout = Math.Max(100, timeout / 10);
 
                     try
                     {
-                        while (totalRead < length && (Environment.TickCount - startTime) < timeout)
+                        while (totalRead < length && stopwatch.ElapsedMilliseconds < timeout)
                         {
                             if (ct.IsCancellationRequested)
                                 return null;
@@ -294,7 +323,10 @@ namespace LoveAlways.Qualcomm.Common
                                     if (read > 0)
                                         totalRead += read;
                                 }
-                                catch (TimeoutException) { }
+                                catch (TimeoutException)
+                                {
+                                    // 读取超时，继续重试
+                                }
                             }
                             else
                             {
@@ -306,7 +338,7 @@ namespace LoveAlways.Qualcomm.Common
                                 }
                                 catch (TimeoutException)
                                 {
-                                    if (totalRead == 0 && (Environment.TickCount - startTime) > timeout / 2)
+                                    if (totalRead == 0 && stopwatch.ElapsedMilliseconds > timeout / 2)
                                         break;
                                     Thread.Sleep(10);
                                 }
@@ -315,12 +347,17 @@ namespace LoveAlways.Qualcomm.Common
                     }
                     finally
                     {
-                        try { _port.ReadTimeout = originalTimeout; } catch { }
+                        try { _port.ReadTimeout = originalTimeout; }
+                        catch (Exception ex) { _log(string.Format("[SerialPort] 恢复超时设置异常: {0}", ex.Message)); }
                     }
 
                     return totalRead == length ? buffer : null;
                 }
-                catch { return null; }
+                catch (Exception ex)
+                {
+                    _log(string.Format("[SerialPort] 读取数据异常: {0}", ex.Message));
+                    return null;
+                }
             }, ct);
         }
 

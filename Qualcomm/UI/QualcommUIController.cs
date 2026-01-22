@@ -74,6 +74,12 @@ namespace LoveAlways.Qualcomm.UI
         /// 快速检查连接状态（不触发端口验证，避免意外断开）
         /// </summary>
         public bool IsConnected { get { return _service != null && _service.IsConnectedFast; } }
+        
+        /// <summary>
+        /// 检查是否可以快速重连（端口已释放但 Firehose 仍可用）
+        /// </summary>
+        public bool CanQuickReconnect { get { return _service != null && _service.IsPortReleased && _service.State == QualcommConnectionState.Ready; } }
+        
         public bool IsBusy { get; private set; }
         public List<PartitionInfo> Partitions { get; private set; }
 
@@ -88,6 +94,24 @@ namespace LoveAlways.Qualcomm.UI
 
         public event EventHandler<bool> ConnectionStateChanged;
         public event EventHandler<List<PartitionInfo>> PartitionsLoaded;
+        
+        /// <summary>
+        /// 小米授权令牌事件 (内置签名失败时触发，需要弹窗显示令牌)
+        /// Token 格式: VQ 开头的 Base64 字符串
+        /// </summary>
+        public event Action<string> XiaomiAuthTokenRequired;
+        
+        /// <summary>
+        /// 小米授权令牌事件处理 (内置签名失败时触发)
+        /// </summary>
+        private void OnXiaomiAuthTokenRequired(string token)
+        {
+            Log("[小米授权] 内置签名无效，需要在线授权", Color.Orange);
+            Log(string.Format("[小米授权] 令牌: {0}", token), Color.Cyan);
+            
+            // 触发公开事件，让 Form1 弹窗显示
+            XiaomiAuthTokenRequired?.Invoke(token);
+        }
         
         /// <summary>
         /// 端口断开事件处理 (设备自己断开时触发)
@@ -246,8 +270,8 @@ namespace LoveAlways.Qualcomm.UI
             
             if (!portExists)
             {
-                // 端口已从设备管理器中消失
-                _logDetail(string.Format("[端口监控] 端口 {0} 已断开", _connectedPortName));
+                // 端口已从设备管理器中消失 - 显示在主日志中
+                Log(string.Format("检测到端口 {0} 已断开", _connectedPortName), Color.Orange);
                 
                 // 停止定时器
                 _portMonitorTimer.Stop();
@@ -446,6 +470,9 @@ namespace LoveAlways.Qualcomm.UI
                     // 注册端口断开事件 (设备自己断开时会触发)
                     _service.PortDisconnected += OnServicePortDisconnected;
                     
+                    // 注册小米授权令牌事件
+                    _service.XiaomiAuthTokenRequired += OnXiaomiAuthTokenRequired;
+                    
                     // 启动端口监控 (检测设备管理器中的端口状态)
                     StartPortMonitor(portName);
                     
@@ -552,6 +579,7 @@ namespace LoveAlways.Qualcomm.UI
                     UpdateDeviceInfoLabels();
                     
                     _service.PortDisconnected += OnServicePortDisconnected;
+                    _service.XiaomiAuthTokenRequired += OnXiaomiAuthTokenRequired;
                     
                     // 启动端口监控 (检测设备管理器中的端口状态)
                     StartPortMonitor(portName);
@@ -701,6 +729,7 @@ namespace LoveAlways.Qualcomm.UI
                 UpdateDeviceInfoLabels();
                 
                 _service.PortDisconnected += OnServicePortDisconnected;
+                _service.XiaomiAuthTokenRequired += OnXiaomiAuthTokenRequired;
                 
                 // 启动端口监控 (检测设备管理器中的端口状态)
                 StartPortMonitor(portName);
@@ -777,15 +806,29 @@ namespace LoveAlways.Qualcomm.UI
                 
                 if (success)
                 {
-                    Log("Sahara 状态已重置，可以重新连接", Color.Green);
+                    Log("------------------------------------------------", Color.Gray);
+                    Log("✓ Sahara 状态重置成功！", Color.Green);
+                    Log("请点击[连接]按钮重新连接设备", Color.Blue);
+                    Log("------------------------------------------------", Color.Gray);
+                    
                     // 取消勾选"跳过引导"，因为需要重新完整握手
                     SetSkipSaharaChecked(false);
                     // 刷新端口
                     RefreshPorts();
+                    // 清除设备信息显示
+                    ClearDeviceInfoLabels();
+                    // 通知连接状态变化
+                    ConnectionStateChanged?.Invoke(this, false);
                 }
                 else
                 {
-                    Log("无法重置 Sahara，请尝试断电重启设备", Color.Red);
+                    Log("------------------------------------------------", Color.Gray);
+                    Log("❌ 无法重置 Sahara 状态", Color.Red);
+                    Log("请尝试以下步骤：", Color.Orange);
+                    Log("  1. 断开 USB 连接", Color.Orange);
+                    Log("  2. 断电重启设备（拔电池或长按电源键）", Color.Orange);
+                    Log("  3. 重新连接 USB", Color.Orange);
+                    Log("------------------------------------------------", Color.Gray);
                 }
                 
                 return success;
@@ -1070,39 +1113,79 @@ namespace LoveAlways.Qualcomm.UI
             var info = _currentDeviceInfo;
 
             Log("------------------------------------------------", Color.Gray);
-            Log("正在进行设备深度扫描 [Deep Scan] : 成功", Color.Green);
+            Log("读取设备信息 : 成功", Color.Green);
 
-            // 1. 核心身份 (始终显示)
+            // 1. 核心身份信息
             string marketName = !string.IsNullOrEmpty(info.MarketName) ? info.MarketName : 
                                (!string.IsNullOrEmpty(info.Brand) && !string.IsNullOrEmpty(info.Model) ? info.Brand + " " + info.Model : "未知");
             Log(string.Format("- 市场名称 : {0}", marketName), Color.Blue);
+            
+            // 产品名称 (Name)
+            if (!string.IsNullOrEmpty(info.MarketNameEn) && info.MarketNameEn != marketName)
+                Log(string.Format("- 产品名称 : {0}", info.MarketNameEn), Color.Blue);
+            else if (!string.IsNullOrEmpty(info.DeviceCodename))
+                Log(string.Format("- 产品名称 : {0}", info.DeviceCodename), Color.Blue);
+            
+            // 型号
             if (!string.IsNullOrEmpty(info.Model))
                 Log(string.Format("- 设备型号 : {0}", info.Model), Color.Blue);
+            
+            // 生产厂商
             if (!string.IsNullOrEmpty(info.Brand))
                 Log(string.Format("- 生产厂家 : {0}", info.Brand), Color.Blue);
-            if (!string.IsNullOrEmpty(info.DeviceCodename))
-                Log(string.Format("- 内部代号 : {0}", info.DeviceCodename), Color.Blue);
             
-            // 2. 系统版本 (只在有值时显示)
+            // 2. 系统版本信息
             if (!string.IsNullOrEmpty(info.AndroidVersion))
                 Log(string.Format("- 安卓版本 : {0}{1}", info.AndroidVersion, 
                     !string.IsNullOrEmpty(info.SdkVersion) ? " [SDK:" + info.SdkVersion + "]" : ""), Color.Blue);
+            
             if (!string.IsNullOrEmpty(info.SecurityPatch))
                 Log(string.Format("- 安全补丁 : {0}", info.SecurityPatch), Color.Blue);
-            if (!string.IsNullOrEmpty(info.OtaVersion))
-                Log(string.Format("- OTA 版本 : {0}", info.OtaVersion), Color.Green);
-            if (!string.IsNullOrEmpty(info.OtaVersionFull))
-                Log(string.Format("- 完整 OTA : {0}", info.OtaVersionFull), Color.Green);
             
-            // 3. 构建细节 (只在有值时显示)
+            // 3. 设备/产品信息
+            if (!string.IsNullOrEmpty(info.DevProduct))
+                Log(string.Format("- 芯片平台 : {0}", info.DevProduct), Color.Blue);
+            
+            if (!string.IsNullOrEmpty(info.Product))
+                Log(string.Format("- 产品代号 : {0}", info.Product), Color.Blue);
+            
+            // 市场区域
+            if (!string.IsNullOrEmpty(info.MarketRegion))
+                Log(string.Format("- 市场区域 : {0}", info.MarketRegion), Color.Blue);
+            
+            // 区域代码
+            if (!string.IsNullOrEmpty(info.Region))
+                Log(string.Format("- 区域代码 : {0}", info.Region), Color.Blue);
+            
+            // 4. 构建信息
             if (!string.IsNullOrEmpty(info.BuildId))
                 Log(string.Format("- 构建 ID : {0}", info.BuildId), Color.Blue);
+            
             if (!string.IsNullOrEmpty(info.DisplayId))
                 Log(string.Format("- 展示 ID : {0}", info.DisplayId), Color.Blue);
-            if (!string.IsNullOrEmpty(info.Fingerprint))
-                Log(string.Format("- 构建指纹 : {0}", info.Fingerprint), Color.Blue);
+            
             if (!string.IsNullOrEmpty(info.BuiltDate))
                 Log(string.Format("- 编译日期 : {0}", info.BuiltDate), Color.Blue);
+            
+            if (!string.IsNullOrEmpty(info.BuildTimestamp))
+                Log(string.Format("- 时间戳 : {0}", info.BuildTimestamp), Color.Blue);
+            
+            // 5. OTA 版本信息 (高亮显示)
+            if (!string.IsNullOrEmpty(info.OtaVersion))
+                Log(string.Format("- OTA 版本 : {0}", info.OtaVersion), Color.Green);
+            
+            if (!string.IsNullOrEmpty(info.OtaVersionFull) && info.OtaVersionFull != info.OtaVersion)
+                Log(string.Format("- 完整 OTA : {0}", info.OtaVersionFull), Color.Green);
+            
+            // 6. 完整构建指纹
+            if (!string.IsNullOrEmpty(info.Fingerprint))
+                Log(string.Format("- 构建指纹 : {0}", info.Fingerprint), Color.Blue);
+            
+            // 7. 厂商特有信息 (OPLUS)
+            if (!string.IsNullOrEmpty(info.OplusProject))
+                Log(string.Format("- OPLUS 项目 : {0}", info.OplusProject), Color.Blue);
+            if (!string.IsNullOrEmpty(info.OplusNvId))
+                Log(string.Format("- OPLUS NV ID : {0}", info.OplusNvId), Color.Blue);
             
             Log("------------------------------------------------", Color.Gray);
         }
@@ -1201,10 +1284,11 @@ namespace LoveAlways.Qualcomm.UI
                 }
 
                 // 创建带超时的分区读取委托 (使用传入的取消令牌)
+                // 增加超时时间到 30 秒，因为 VIP 模式下读取较慢
                 Func<string, long, int, Task<byte[]>> readPartition = async (partName, offset, size) =>
                 {
                     // 检查取消
-                    ct.ThrowIfCancellationRequested();
+                    if (ct.IsCancellationRequested) return null;
                     
                     // 检查分区是否存在
                     if (Partitions == null || !Partitions.Exists(p => p.Name == partName || p.Name.StartsWith(partName + "_")))
@@ -1214,8 +1298,8 @@ namespace LoveAlways.Qualcomm.UI
                     
                     try
                     {
-                        // 添加 10 秒超时保护 (与外部取消令牌联动)
-                        using (var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(10)))
+                        // 增加到 30 秒超时保护 (VIP 模式下需要更长时间)
+                        using (var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(30)))
                         using (var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token))
                         {
                             return await _service.ReadPartitionDataAsync(partName, offset, size, linkedCts.Token);
@@ -1223,14 +1307,15 @@ namespace LoveAlways.Qualcomm.UI
                     }
                     catch (OperationCanceledException)
                     {
-                        // 如果是外部取消，重新抛出
-                        ct.ThrowIfCancellationRequested();
-                        // 否则是超时
-                        Log(string.Format("读取 {0} 超时", partName), Color.Orange);
+                        // 如果是外部取消，返回 null 而不是抛出异常
+                        if (ct.IsCancellationRequested) return null;
+                        // 否则是超时，静默返回 null
+                        _logDetail(string.Format("读取 {0} 超时", partName));
                         return null;
                     }
-                    catch
+                    catch (Exception ex)
                     {
+                        _logDetail(string.Format("读取 {0} 异常: {1}", partName, ex.Message));
                         return null;
                     }
                 };
@@ -1326,73 +1411,126 @@ namespace LoveAlways.Qualcomm.UI
 
         /// <summary>
         /// 自动检测设备厂商 (综合 Sahara 芯片信息 + 分区特征)
+        /// 注意：OEM ID 和 PK Hash 可能不准确，优先使用分区特征
         /// </summary>
         private string DetectDeviceVendor()
         {
             var chipInfo = _service?.ChipInfo;
+            string detectedSource = "";
+            string detectedVendor = "Unknown";
 
-            // 1. 首先从设备信息获取
+            // 1. 首先从设备信息获取 (如果已经有的话)
             if (_currentDeviceInfo != null && !string.IsNullOrEmpty(_currentDeviceInfo.Vendor) && 
                 _currentDeviceInfo.Vendor != "Unknown" && !_currentDeviceInfo.Vendor.Contains("Unknown"))
             {
-                return NormalizeVendorName(_currentDeviceInfo.Vendor);
+                detectedVendor = NormalizeVendorName(_currentDeviceInfo.Vendor);
+                detectedSource = "设备信息";
+                _logDetail(string.Format("厂商检测 [{0}]: {1}", detectedSource, detectedVendor));
+                return detectedVendor;
             }
 
-            // 2. 从芯片 OEM ID 识别 (Sahara 阶段获取) - 最可靠的来源
-            if (chipInfo != null && chipInfo.OemId > 0)
-            {
-                // 直接查询 OEM ID 数据库
-                string vendorFromOem = QualcommDatabase.GetVendorName(chipInfo.OemId);
-                if (!string.IsNullOrEmpty(vendorFromOem) && !vendorFromOem.Contains("Unknown"))
-                {
-                    return NormalizeVendorName(vendorFromOem);
-                }
-            }
-
-            // 3. 从芯片 Vendor 字段
-            if (chipInfo != null && !string.IsNullOrEmpty(chipInfo.Vendor) && 
-                chipInfo.Vendor != "Unknown" && !chipInfo.Vendor.Contains("Unknown"))
-            {
-                return NormalizeVendorName(chipInfo.Vendor);
-            }
-
-            // 4. 从 PK Hash 识别
-            if (chipInfo != null && !string.IsNullOrEmpty(chipInfo.PkHash))
-            {
-                string vendor = QualcommDatabase.GetVendorByPkHash(chipInfo.PkHash);
-                if (!string.IsNullOrEmpty(vendor) && vendor != "Unknown")
-                    return NormalizeVendorName(vendor);
-            }
-
-            // 5. 从分区特征识别 (按优先级排序，避免误判)
+            // 2. 优先从分区特征识别 (最可靠的来源，因为 OEM ID 和 PK Hash 可能不准确)
             if (Partitions != null && Partitions.Count > 0)
             {
-                // 联想系特有分区 (优先检测，因为联想也有 cust/persist 分区)
-                // 联想特征: proinfo, lenovocust, 或明确包含 lenovo 的分区
+                // 收集所有分区名称用于调试
+                var partNames = new List<string>();
+                foreach (var p in Partitions) partNames.Add(p.Name);
+                _logDetail(string.Format("检测到 {0} 个分区，开始特征分析...", Partitions.Count));
+
+                // 联想系特有分区 (优先检测)
                 bool hasLenovoMarker = Partitions.Exists(p => 
                     p.Name == "proinfo" || 
                     p.Name == "lenovocust" || 
                     p.Name.Contains("lenovo"));
                 if (hasLenovoMarker)
+                {
+                    _logDetail("检测到联想特征分区 (proinfo/lenovocust)");
                     return "Lenovo";
+                }
 
-                // OPLUS 系 (OPPO/Realme/OnePlus) - my_ 前缀是 OPLUS 特有
-                if (Partitions.Exists(p => p.Name.StartsWith("my_") || p.Name.Contains("oplus") || p.Name.Contains("oppo")))
+                // OPLUS 系 - 严格检测：必须有明确的 oplus/oppo 标记，或至少 2 个 OPLUS 特有分区
+                bool hasOplusExplicit = Partitions.Exists(p => 
+                    p.Name.Contains("oplus") || p.Name.Contains("oppo") || p.Name.Contains("realme"));
+                int oplusSpecificCount = 0;
+                foreach (var p in Partitions)
+                {
+                    // OPLUS 特有分区（小米设备不会有这些）
+                    if (p.Name == "my_engineering" || p.Name == "my_carrier" || 
+                        p.Name == "my_stock" || p.Name == "my_region" || 
+                        p.Name == "my_custom" || p.Name == "my_bigball" ||
+                        p.Name == "my_preload" || p.Name == "my_company" ||
+                        p.Name == "reserve1" || p.Name == "reserve2" ||
+                        p.Name.StartsWith("my_engineering") ||
+                        p.Name.StartsWith("my_carrier") ||
+                        p.Name.StartsWith("my_stock"))
+                    {
+                        oplusSpecificCount++;
+                    }
+                }
+                // 需要明确标记或至少 2 个特有分区才能确定是 OPLUS
+                if (hasOplusExplicit || oplusSpecificCount >= 2)
+                {
+                    _logDetail(string.Format("检测到 OPLUS 特征: 明确标记={0}, 特有分区数={1}", hasOplusExplicit, oplusSpecificCount));
                     return "OPLUS";
+                }
+
+                // 小米系检测（在 OPLUS 严格检测后）
+                bool hasXiaomiMarker = Partitions.Exists(p => 
+                    p.Name.Contains("xiaomi") || p.Name.Contains("miui") || p.Name.Contains("redmi"));
+                bool hasCust = Partitions.Exists(p => p.Name == "cust");
+                bool hasPersist = Partitions.Exists(p => p.Name == "persist");
+                bool hasSpunvm = Partitions.Exists(p => p.Name == "spunvm"); // 小米常用基带分区
+                
+                // 小米特征: 有明确标记，或有 cust+persist 组合（且不是联想/OPLUS）
+                if (hasXiaomiMarker || (hasCust && hasPersist))
+                {
+                    _logDetail(string.Format("检测到小米特征: 明确标记={0}, cust={1}, persist={2}", 
+                        hasXiaomiMarker, hasCust, hasPersist));
+                    return "Xiaomi";
+                }
 
                 // 中兴系 (ZTE/nubia/红魔)
                 if (Partitions.Exists(p => p.Name.Contains("zte") || p.Name.Contains("nubia")))
+                {
+                    _logDetail("检测到中兴特征分区");
                     return "ZTE";
-
-                // 小米系 (Xiaomi/Redmi/POCO) - 需要额外条件避免误判
-                // xiaomi 明确标识，或者同时有 cust 和 persist 但没有 proinfo
-                bool hasXiaomiMarker = Partitions.Exists(p => p.Name.Contains("xiaomi"));
-                bool hasCustPersist = Partitions.Exists(p => p.Name == "cust") && 
-                                      Partitions.Exists(p => p.Name == "persist");
-                if (hasXiaomiMarker || (hasCustPersist && !hasLenovoMarker))
-                    return "Xiaomi";
+                }
             }
 
+            // 3. 从芯片 OEM ID 识别 (Sahara 阶段获取) - 作为备用
+            if (chipInfo != null && chipInfo.OemId > 0)
+            {
+                string vendorFromOem = QualcommDatabase.GetVendorName(chipInfo.OemId);
+                if (!string.IsNullOrEmpty(vendorFromOem) && !vendorFromOem.Contains("Unknown"))
+                {
+                    detectedVendor = NormalizeVendorName(vendorFromOem);
+                    _logDetail(string.Format("厂商检测 [OEM ID 0x{0:X4}]: {1}", chipInfo.OemId, detectedVendor));
+                    return detectedVendor;
+                }
+            }
+
+            // 4. 从芯片 Vendor 字段
+            if (chipInfo != null && !string.IsNullOrEmpty(chipInfo.Vendor) && 
+                chipInfo.Vendor != "Unknown" && !chipInfo.Vendor.Contains("Unknown"))
+            {
+                detectedVendor = NormalizeVendorName(chipInfo.Vendor);
+                _logDetail(string.Format("厂商检测 [芯片Vendor]: {0}", detectedVendor));
+                return detectedVendor;
+            }
+
+            // 5. 从 PK Hash 识别 (最后备用)
+            if (chipInfo != null && !string.IsNullOrEmpty(chipInfo.PkHash))
+            {
+                string vendor = QualcommDatabase.GetVendorByPkHash(chipInfo.PkHash);
+                if (!string.IsNullOrEmpty(vendor) && vendor != "Unknown")
+                {
+                    detectedVendor = NormalizeVendorName(vendor);
+                    _logDetail(string.Format("厂商检测 [PK Hash]: {0}", detectedVendor));
+                    return detectedVendor;
+                }
+            }
+
+            _logDetail("无法确定设备厂商，将使用通用策略");
             return "Unknown";
         }
 
@@ -1632,24 +1770,39 @@ namespace LoveAlways.Qualcomm.UI
             {
                 // 获取品牌用于判断
                 string brandLower = (buildProp.Brand ?? "").ToLowerInvariant();
+                string manufacturerLower = (buildProp.Manufacturer ?? "").ToLowerInvariant();
                 
-                // OnePlus 设备: OxygenOS 格式化 (版本格式 14.0.0.801(CN01) -> OxygenOS 14.0.0.801(CN01))
-                if (brandLower.Contains("oneplus"))
+                // OPLUS 设备 (OnePlus/OPPO/Realme) 版本号清理
+                // 原始格式如: PJD110_14.0.0.801(CN01) -> 14.0.0.801(CN01)
+                bool isOneplus = brandLower.Contains("oneplus") || manufacturerLower.Contains("oneplus");
+                bool isOppo = brandLower.Contains("oppo") || manufacturerLower.Contains("oppo");
+                bool isRealme = brandLower.Contains("realme") || manufacturerLower.Contains("realme");
+                bool isOplus = isOneplus || isOppo || isRealme || brandLower.Contains("oplus");
+                
+                if (isOplus)
                 {
-                    // 如果版本以数字开头且包含括号，格式化为 OxygenOS
-                    if (Regex.IsMatch(otaVer, @"^\d+\.\d+\.\d+") && !otaVer.StartsWith("Oxygen") && !otaVer.StartsWith("Color"))
-                        otaVer = "OxygenOS " + otaVer;
+                    // 提取版本号: "PJD110_14.0.0.801(CN01)" -> "14.0.0.801(CN01)"
+                    // 或者 "A.70" 格式 -> 跳过
+                    var versionMatch = Regex.Match(otaVer, @"(\d+\.\d+\.\d+\.\d+(?:\([A-Z]{2}\d+\))?)");
+                    if (versionMatch.Success)
+                    {
+                        string cleanVersion = versionMatch.Groups[1].Value;
+                        
+                        // 根据品牌添加系统名前缀
+                        if (isOneplus)
+                            otaVer = "OxygenOS " + cleanVersion;
+                        else if (isRealme)
+                            otaVer = "realme UI " + cleanVersion;
+                        else // OPPO
+                            otaVer = "ColorOS " + cleanVersion;
+                    }
                 }
-                // OPPO/Realme 设备: ColorOS 格式化
-                else if (brandLower.Contains("oppo") || brandLower.Contains("realme"))
+                // 联想 ZUI 版本: 提取 17.0.x.x 格式
+                else if (brandLower.Contains("lenovo"))
                 {
-                    if (Regex.IsMatch(otaVer, @"^\d+\.\d+\.\d+") && !otaVer.StartsWith("Color"))
-                        otaVer = "ColorOS " + otaVer;
-                }
-                // 联想 ZUI 版本
-                else if (otaVer.Contains("17.") && !otaVer.Contains("ZUI") && brandLower.Contains("lenovo"))
-                {
-                    otaVer = "ZUI " + otaVer;
+                    var zuiMatch = Regex.Match(otaVer, @"(\d+\.\d+\.\d+\.\d+)");
+                    if (zuiMatch.Success && !otaVer.Contains("ZUI"))
+                        otaVer = "ZUI " + zuiMatch.Groups[1].Value;
                 }
                 // 小米 HyperOS 3.0 (Android 16+)
                 else if (otaVer.StartsWith("OS3.") && !otaVer.Contains("HyperOS"))
@@ -1670,6 +1823,11 @@ namespace LoveAlways.Qualcomm.UI
                 else if (otaVer.Contains("RedMagic") && !otaVer.StartsWith("RedMagicOS"))
                 {
                     otaVer = otaVer.Replace("RedMagic", "RedMagicOS ");
+                }
+                // 中兴 NebulaOS/MiFavor
+                else if (brandLower.Contains("zte") && !otaVer.Contains("NebulaOS"))
+                {
+                    otaVer = "NebulaOS " + otaVer;
                 }
 
                 _currentDeviceInfo.OtaVersion = otaVer;
@@ -1705,17 +1863,37 @@ namespace LoveAlways.Qualcomm.UI
                 UpdateLabelSafe(_unlockLabel, "代号：" + buildProp.Model);
             }
 
+            // 区域信息
+            if (!string.IsNullOrEmpty(buildProp.Region))
+                _currentDeviceInfo.Region = buildProp.Region;
+            if (!string.IsNullOrEmpty(buildProp.MarketRegion))
+                _currentDeviceInfo.MarketRegion = buildProp.MarketRegion;
+            if (!string.IsNullOrEmpty(buildProp.DevProduct))
+                _currentDeviceInfo.DevProduct = buildProp.DevProduct;
+            if (!string.IsNullOrEmpty(buildProp.Product))
+                _currentDeviceInfo.Product = buildProp.Product;
+            
+            // 构建信息
+            if (!string.IsNullOrEmpty(buildProp.BuildId))
+                _currentDeviceInfo.BuildId = buildProp.BuildId;
+            if (!string.IsNullOrEmpty(buildProp.DisplayId))
+                _currentDeviceInfo.DisplayId = buildProp.DisplayId;
+            if (!string.IsNullOrEmpty(buildProp.Fingerprint))
+                _currentDeviceInfo.Fingerprint = buildProp.Fingerprint;
+            if (!string.IsNullOrEmpty(buildProp.BuildDate))
+                _currentDeviceInfo.BuiltDate = buildProp.BuildDate;
+            if (!string.IsNullOrEmpty(buildProp.BuildUtc))
+                _currentDeviceInfo.BuildTimestamp = buildProp.BuildUtc;
+            if (!string.IsNullOrEmpty(buildProp.SecurityPatch))
+                _currentDeviceInfo.SecurityPatch = buildProp.SecurityPatch;
+            if (!string.IsNullOrEmpty(buildProp.OtaVersionFull))
+                _currentDeviceInfo.OtaVersionFull = buildProp.OtaVersionFull;
+
             // OPLUS/Realme 特有属性
             if (!string.IsNullOrEmpty(buildProp.OplusProject))
-            {
                 _currentDeviceInfo.OplusProject = buildProp.OplusProject;
-                Log(string.Format("  项目ID: {0}", buildProp.OplusProject), Color.Blue);
-            }
             if (!string.IsNullOrEmpty(buildProp.OplusNvId))
-            {
                 _currentDeviceInfo.OplusNvId = buildProp.OplusNvId;
-                Log(string.Format("  NV ID: {0}", buildProp.OplusNvId), Color.Blue);
-            }
 
             // Lenovo 特有属性
             if (!string.IsNullOrEmpty(buildProp.LenovoSeries))
@@ -1948,8 +2126,7 @@ namespace LoveAlways.Qualcomm.UI
             }
             finally
             {
-                IsBusy = false;
-                StopOperationTimer();
+                EndOperation(releasePort: true);  // 读取分区表后释放端口
             }
         }
 
@@ -1985,8 +2162,7 @@ namespace LoveAlways.Qualcomm.UI
             }
             finally
             {
-                IsBusy = false;
-                StopOperationTimer();
+                EndOperation(releasePort: true);  // 操作完成后释放端口
             }
         }
 
@@ -2028,8 +2204,7 @@ namespace LoveAlways.Qualcomm.UI
             }
             finally
             {
-                IsBusy = false;
-                StopOperationTimer();
+                EndOperation(releasePort: true);  // 操作完成后释放端口
             }
         }
 
@@ -2072,8 +2247,7 @@ namespace LoveAlways.Qualcomm.UI
             }
             finally
             {
-                IsBusy = false;
-                StopOperationTimer();
+                EndOperation(releasePort: true);  // 操作完成后释放端口
             }
         }
 
@@ -2147,8 +2321,7 @@ namespace LoveAlways.Qualcomm.UI
             }
             finally
             {
-                IsBusy = false;
-                StopOperationTimer();
+                EndOperation(releasePort: true);  // 批量操作完成后释放端口
             }
         }
 
@@ -2515,8 +2688,7 @@ namespace LoveAlways.Qualcomm.UI
             }
             finally
             {
-                IsBusy = false;
-                StopOperationTimer();
+                EndOperation(releasePort: true);  // 批量操作完成后释放端口
             }
         }
 
@@ -2626,6 +2798,40 @@ namespace LoveAlways.Qualcomm.UI
             catch { }
         }
 
+        /// <summary>
+        /// 尝试快速重连（仅重新打开端口，不重新配置 Firehose）
+        /// 适用于操作完成后端口被释放的情况
+        /// </summary>
+        /// <returns>是否成功重连</returns>
+        public async Task<bool> QuickReconnectAsync()
+        {
+            if (_service == null)
+            {
+                Log("未连接设备", Color.Red);
+                return false;
+            }
+            
+            if (!_service.IsPortReleased)
+            {
+                // 端口未释放，检查是否仍然可用
+                if (_service.IsConnectedFast)
+                    return true;
+            }
+            
+            _logDetail("[UI] 尝试快速重连...");
+            
+            // 尝试重新打开端口
+            bool success = await _service.EnsurePortOpenAsync(CancellationToken.None);
+            if (success)
+            {
+                _logDetail("[UI] 快速重连成功");
+                return true;
+            }
+            
+            _logDetail("[UI] 快速重连失败");
+            return false;
+        }
+        
         private bool EnsureConnected()
         {
             if (_service == null)
@@ -2634,19 +2840,45 @@ namespace LoveAlways.Qualcomm.UI
                 return false;
             }
             
+            // 如果端口已释放，尝试重新打开 (同步等待异步操作)
+            if (_service.IsPortReleased)
+            {
+                _logDetail("[UI] 端口已释放，尝试重新打开...");
+                var reopenTask = _service.EnsurePortOpenAsync(CancellationToken.None);
+                if (!reopenTask.GetAwaiter().GetResult())
+                {
+                    // 不立即报错和清理状态，让调用者决定如何处理
+                    _logDetail("[UI] 端口重新打开失败");
+                    return false;
+                }
+                _logDetail("[UI] 端口重新打开成功");
+            }
+            
             // 使用 ValidateConnection 检测端口是否真正可用
             if (!_service.ValidateConnection())
             {
-                Log("设备连接已失效，需要重新完整配置", Color.Red);
-                // 取消勾选"跳过引导"，需要重新完整配置
-                SetSkipSaharaChecked(false);
-                ConnectionStateChanged?.Invoke(this, false);
-                ClearDeviceInfoLabels();
-                RefreshPorts();
+                _logDetail("[UI] 端口验证失败");
                 return false;
             }
             
             return true;
+        }
+        
+        /// <summary>
+        /// 确保连接可用，失败时显示错误并清理状态
+        /// </summary>
+        private bool EnsureConnectedWithCleanup()
+        {
+            if (EnsureConnected())
+                return true;
+            
+            // 连接失败，清理状态
+            Log("设备连接已失效，需要重新完整配置", Color.Red);
+            SetSkipSaharaChecked(false);
+            ConnectionStateChanged?.Invoke(this, false);
+            ClearDeviceInfoLabels();
+            RefreshPorts();
+            return false;
         }
 
         /// <summary>
@@ -2943,6 +3175,30 @@ namespace LoveAlways.Qualcomm.UI
             UpdateLabelSafe(_operationLabel, "当前操作：完成");
             UpdateProgressBarDirect(_progressBar, 100);
             UpdateProgressBarDirect(_subProgressBar, 100);
+        }
+        
+        /// <summary>
+        /// 结束操作并释放端口 (操作完成后调用)
+        /// </summary>
+        /// <param name="releasePort">是否释放端口 (默认 true)</param>
+        private void EndOperation(bool releasePort = true)
+        {
+            IsBusy = false;
+            StopOperationTimer();
+            
+            // 释放端口让其他程序可以连接设备
+            if (releasePort && _service != null)
+            {
+                _service.ReleasePort();
+            }
+        }
+        
+        /// <summary>
+        /// 设置是否保持端口打开 (批量操作时使用)
+        /// </summary>
+        public void SetKeepPortOpen(bool keepOpen)
+        {
+            _service?.SetKeepPortOpen(keepOpen);
         }
         
         /// <summary>

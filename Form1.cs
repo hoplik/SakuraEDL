@@ -132,6 +132,9 @@ namespace LoveAlways
                 _qualcommController = new QualcommUIController(
                     (msg, color) => AppendLog(msg, color),
                     msg => AppendLogDetail(msg));
+                
+                // 订阅小米授权令牌事件 (内置签名失败时弹窗显示令牌)
+                _qualcommController.XiaomiAuthTokenRequired += OnXiaomiAuthTokenRequired;
 
                 // 设置 listView2 支持多选和复选框
                 listView2.MultiSelect = true;
@@ -671,9 +674,34 @@ namespace LoveAlways
 
             if (!_qualcommController.IsConnected)
             {
-                // 先连接
-                bool connected = await QualcommConnectAsync();
-                if (!connected) return;
+                // 检查是否可以快速重连（端口已释放但 Firehose 仍可用）
+                if (_qualcommController.CanQuickReconnect)
+                {
+                    AppendLog("尝试快速重连...", Color.Blue);
+                    bool reconnected = await _qualcommController.QuickReconnectAsync();
+                    if (reconnected)
+                    {
+                        AppendLog("快速重连成功", Color.Green);
+                        // 已有分区数据，不需要重新读取
+                        if (_qualcommController.Partitions != null && _qualcommController.Partitions.Count > 0)
+                        {
+                            AppendLog($"已有 {_qualcommController.Partitions.Count} 个分区数据", Color.Gray);
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        AppendLog("快速重连失败，需要重新完整配置", Color.Orange);
+                        checkbox12.Checked = false; // 取消跳过引导
+                    }
+                }
+                
+                // 快速重连失败或不可用，尝试完整连接
+                if (!_qualcommController.IsConnected)
+                {
+                    bool connected = await QualcommConnectAsync();
+                    if (!connected) return;
+                }
             }
 
             await _qualcommController.ReadPartitionTableAsync();
@@ -688,7 +716,56 @@ namespace LoveAlways
             bool isEdlLoader = selectedLoader.StartsWith("[") && !isVipLoader && !selectedLoader.StartsWith("───");
             bool skipSahara = checkbox12.Checked;
 
-            // VIP 内嵌模式 (OPLUS 签名)
+            // 跳过引导模式 - 直接连接 Firehose (设备已经在 Firehose 模式)
+            if (skipSahara)
+            {
+                AppendLog("[高通] 跳过 Sahara，直接连接 Firehose...", Color.Blue);
+                
+                // 如果选择了 VIP 资源包，跳过 Sahara 后仍需执行 VIP 认证
+                if (isVipLoader)
+                {
+                    string platform = ExtractPlatformFromVipSelection(selectedLoader);
+                    
+                    // 先直接连接 Firehose
+                    bool connected = await _qualcommController.ConnectWithOptionsAsync(
+                        "", _storageType, true, "none");
+                    
+                    if (!connected)
+                    {
+                        AppendLog("Firehose 直连失败", Color.Red);
+                        return false;
+                    }
+                    
+                    // 连接成功后执行 VIP 认证
+                    string digestPath = ChimeraSignDatabase.GetDigestPath(platform);
+                    string signaturePath = ChimeraSignDatabase.GetSignaturePath(platform);
+                    
+                    if (!string.IsNullOrEmpty(digestPath) && !string.IsNullOrEmpty(signaturePath))
+                    {
+                        AppendLog($"[VIP] 执行 VIP 认证 ({platform})...", Color.Blue);
+                        bool vipOk = await _qualcommController.PerformVipAuthAsync(digestPath, signaturePath);
+                        if (vipOk)
+                        {
+                            AppendLog("[VIP] VIP 认证成功", Color.Green);
+                        }
+                        else
+                        {
+                            AppendLog("[VIP] VIP 认证失败，部分操作可能受限", Color.Orange);
+                        }
+                    }
+                    
+                    return true;
+                }
+                
+                // 非 VIP 模式，直接连接
+                return await _qualcommController.ConnectWithOptionsAsync(
+                    "", _storageType, true, _authMode,
+                    input9.Text?.Trim() ?? "",
+                    input7.Text?.Trim() ?? ""
+                );
+            }
+
+            // VIP 内嵌模式 (OPLUS 签名) - 发送引导
             if (isVipLoader)
             {
                 string platform = ExtractPlatformFromVipSelection(selectedLoader);
@@ -738,7 +815,7 @@ namespace LoveAlways
                 );
             }
             
-            // EDL Loader 模式 (通用/无签名)
+            // EDL Loader 模式 (通用/无签名) - 发送引导
             if (isEdlLoader)
             {
                 string edlId = ExtractEdlLoaderIdFromSelection(selectedLoader);
@@ -785,7 +862,7 @@ namespace LoveAlways
                 );
             }
 
-            // 普通模式
+            // 普通模式 (自定义引导文件)
             // input8 = 引导文件路径
             string programmerPath = input8.Text?.Trim() ?? "";
 
@@ -1651,6 +1728,96 @@ namespace LoveAlways
             // 强制垃圾回收
             GC.Collect();
             GC.WaitForPendingFinalizers();
+        }
+        
+        /// <summary>
+        /// 小米授权令牌事件处理 - 弹窗显示令牌供用户复制
+        /// </summary>
+        private void OnXiaomiAuthTokenRequired(string token)
+        {
+            // 确保在 UI 线程上执行
+            if (this.InvokeRequired)
+            {
+                this.BeginInvoke(new Action<string>(OnXiaomiAuthTokenRequired), token);
+                return;
+            }
+            
+            // 创建弹窗
+            using (var form = new Form())
+            {
+                form.Text = "小米授权令牌";
+                form.Size = new Size(500, 220);
+                form.StartPosition = FormStartPosition.CenterParent;
+                form.FormBorderStyle = FormBorderStyle.FixedDialog;
+                form.MaximizeBox = false;
+                form.MinimizeBox = false;
+                
+                // 说明文字
+                var label = new Label
+                {
+                    Text = "内置签名验证失败，请复制以下令牌到小米授权服务获取签名：",
+                    Location = new Point(15, 15),
+                    Size = new Size(460, 20),
+                    Font = new Font("Microsoft YaHei UI", 9F)
+                };
+                form.Controls.Add(label);
+                
+                // 令牌文本框
+                var textBox = new TextBox
+                {
+                    Text = token,
+                    Location = new Point(15, 45),
+                    Size = new Size(455, 60),
+                    Multiline = true,
+                    ReadOnly = true,
+                    Font = new Font("Consolas", 9F),
+                    ScrollBars = ScrollBars.Vertical
+                };
+                form.Controls.Add(textBox);
+                
+                // 复制按钮
+                var copyButton = new Button
+                {
+                    Text = "复制令牌",
+                    Location = new Point(150, 115),
+                    Size = new Size(90, 30),
+                    Font = new Font("Microsoft YaHei UI", 9F)
+                };
+                copyButton.Click += (s, e) =>
+                {
+                    try
+                    {
+                        Clipboard.SetText(token);
+                        MessageBox.Show("令牌已复制到剪贴板", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                    catch { }
+                };
+                form.Controls.Add(copyButton);
+                
+                // 关闭按钮
+                var closeButton = new Button
+                {
+                    Text = "关闭",
+                    Location = new Point(260, 115),
+                    Size = new Size(90, 30),
+                    Font = new Font("Microsoft YaHei UI", 9F),
+                    DialogResult = DialogResult.Cancel
+                };
+                form.Controls.Add(closeButton);
+                
+                // 提示信息
+                var tipLabel = new Label
+                {
+                    Text = "提示: 令牌格式为 VQ 开头的 Base64 字符串",
+                    Location = new Point(15, 155),
+                    Size = new Size(460, 20),
+                    ForeColor = Color.Gray,
+                    Font = new Font("Microsoft YaHei UI", 8F)
+                };
+                form.Controls.Add(tipLabel);
+                
+                form.ShowDialog(this);
+            }
         }
 
         private void InitializeUrlComboBox()
@@ -3436,17 +3603,17 @@ namespace LoveAlways
             // 检查刷写模式选项
             bool useOugaMode = checkbox7.Checked;      // 欧加刷写 = OnePlus/OPPO 主流程
             bool usePureFbdMode = checkbox45.Checked;  // FBD刷写 = 纯 FBD 模式
-            bool useAbFlashMode = checkbox41.Checked;  // 切换A槽 = AB 通刷模式
+            bool switchSlotA = checkbox41.Checked;     // 切换A槽 = 刷写完成后执行 set_active a
             bool clearData = !checkbox50.Checked;      // 保留数据的反义
             bool eraseFrp = checkbox43.Checked;        // 擦除谷歌锁
             bool autoReboot = checkbox44.Checked;      // 自动重启
 
-            // 优先判断：勾选欧加刷写或 FBD 刷写时，使用 OnePlus 刷写流程
-            // 支持 Payload 分区自动提取后刷写
-            if (useOugaMode || usePureFbdMode || useAbFlashMode)
+            // 只有勾选"欧加刷写"或"FBD刷写"时，才使用 OnePlus 刷写流程
+            // "切换A槽"不再触发 OnePlus 流程，而是在普通刷写完成后执行 set_active
+            if (useOugaMode || usePureFbdMode)
             {
                 // OnePlus/OPPO 刷写模式 (支持 Payload/文件夹/镜像)
-                string modeDesc = useAbFlashMode ? "AB 通刷" : (usePureFbdMode ? "纯 FBD" : "欧加刷写");
+                string modeDesc = usePureFbdMode ? "纯 FBD" : "欧加刷写";
                 AppendLog($"使用 OnePlus/OPPO {modeDesc}模式", Color.Blue);
                 
                 // 构建刷写分区列表 (支持 Payload 分区、解包文件夹、脚本任务、普通镜像)
@@ -3463,38 +3630,16 @@ namespace LoveAlways
                 if (payloadCount > 0)
                     AppendLog($"已选择 {partitions.Count} 个分区 (Payload: {payloadCount}, 文件: {fileCount})", Color.Blue);
 
-                // 如果是 AB 通刷模式，弹出槽位选择对话框
-                string targetSlot = "a";
-                if (useAbFlashMode)
-                {
-                    var result = MessageBox.Show(
-                        "您选择了 AB 通刷模式，请选择目标启动槽位：\n\n" +
-                        "点击「是」选择 A 槽位\n" +
-                        "点击「否」选择 B 槽位\n" +
-                        "点击「取消」放弃操作",
-                        "选择启动槽位",
-                        MessageBoxButtons.YesNoCancel,
-                        MessageBoxIcon.Question);
-
-                    if (result == DialogResult.Cancel)
-                    {
-                        AppendLog("用户取消了操作", Color.Orange);
-                        return;
-                    }
-                    targetSlot = result == DialogResult.Yes ? "a" : "b";
-                    AppendLog($"AB 通刷模式：目标槽位 {targetSlot.ToUpper()}", Color.Blue);
-                }
-
-                // 构建刷写选项
+                // 构建刷写选项 (欧加模式默认使用 A 槽位)
                 var options = new LoveAlways.Fastboot.UI.FastbootUIController.OnePlusFlashOptions
                 {
-                    ABFlashMode = useAbFlashMode,
+                    ABFlashMode = false,  // 不再使用 AB 通刷模式
                     PureFBDMode = usePureFbdMode,
                     PowerFlashMode = false,
                     ClearData = clearData,
                     EraseFrp = eraseFrp,
                     AutoReboot = autoReboot,
-                    TargetSlot = targetSlot
+                    TargetSlot = "a"
                 };
 
                 // 执行 OnePlus 刷写流程 (自动提取 Payload 分区)
@@ -3560,12 +3705,7 @@ namespace LoveAlways
             {
                 await _fastbootController.ExecuteSelectedCommandAsync();
             }
-            // 优先级 2: 如果有加载的 Payload，执行 Payload 刷写
-            else if (_fastbootController.IsPayloadLoaded)
-            {
-                await _fastbootController.FlashFromPayloadAsync();
-            }
-            // 优先级 3: 如果有加载的刷机任务，执行刷机脚本
+            // 优先级 2: 如果有加载的刷机脚本任务，执行刷机脚本 (优先于 Payload)
             else if (_fastbootController.FlashTasks != null && _fastbootController.FlashTasks.Count > 0)
             {
                 // 读取用户选项
@@ -3573,6 +3713,11 @@ namespace LoveAlways
                 bool lockBl = checkbox21.Checked;     // 锁定BL
 
                 await _fastbootController.ExecuteFlashScriptAsync(keepData, lockBl);
+            }
+            // 优先级 3: 如果有加载的 Payload，执行 Payload 刷写
+            else if (_fastbootController.IsPayloadLoaded)
+            {
+                await _fastbootController.FlashFromPayloadAsync();
             }
             // 优先级 4: 如果勾选了分区且有镜像文件，直接写入分区
             else if (_fastbootController.HasSelectedPartitionsWithFiles())
