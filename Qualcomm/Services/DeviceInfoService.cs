@@ -34,8 +34,12 @@ namespace LoveAlways.Qualcomm.Services
         // 固件信息 (Firehose/build.prop 获取)
         public string Brand { get; set; }
         public string Model { get; set; }
+        public string Product { get; set; }       // 产品代号
+        public string DevProduct { get; set; }    // 设备产品名
         public string MarketName { get; set; }
         public string MarketNameEn { get; set; }
+        public string MarketRegion { get; set; }  // 市场区域
+        public string Region { get; set; }        // 区域代码
         public string DeviceCodename { get; set; }
         public string AndroidVersion { get; set; }
         public string SdkVersion { get; set; }
@@ -153,11 +157,15 @@ namespace LoveAlways.Qualcomm.Services
     {
         public string Brand { get; set; }
         public string Model { get; set; }
+        public string Product { get; set; }        // 产品代号 ro.product.product
+        public string DevProduct { get; set; }     // 设备产品名
         public string Device { get; set; }
         public string DeviceName { get; set; }     // ro.product.name
         public string Codename { get; set; }       // ro.product.device / ro.build.product
         public string MarketName { get; set; }
         public string MarketNameEn { get; set; }
+        public string MarketRegion { get; set; }   // 市场区域
+        public string Region { get; set; }         // 区域代码
         public string Manufacturer { get; set; }
         public string AndroidVersion { get; set; }
         public string SdkVersion { get; set; }
