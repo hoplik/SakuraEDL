@@ -13,6 +13,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
+using LoveAlways.Common;
 using LoveAlways.Qualcomm.Common;
 using LoveAlways.Qualcomm.Database;
 
@@ -200,6 +201,13 @@ namespace LoveAlways.Qualcomm.Protocol
         private const int MAX_BUFFER_SIZE = 4096;
         private const int READ_TIMEOUT_MS = 30000;
         private const int HELLO_TIMEOUT_MS = 30000;
+        
+        // 看门狗配置
+        private const int WATCHDOG_TIMEOUT_SECONDS = 45;  // 看门狗超时时间
+        private const int WATCHDOG_STALL_THRESHOLD = 3;   // 连续无响应次数阈值
+        private Watchdog _watchdog;
+        private volatile int _watchdogStallCount = 0;       // 使用 volatile 保证线程可见性
+        private volatile bool _watchdogTriggeredReset = false; // 使用 volatile 保证线程可见性
 
         // 协议状态
         public uint ProtocolVersion { get; private set; }
@@ -219,6 +227,11 @@ namespace LoveAlways.Qualcomm.Protocol
 
         // 预读取的 Hello 数据
         private byte[] _pendingHelloData = null;
+        
+        /// <summary>
+        /// 看门狗超时事件 (外部可订阅以获取通知)
+        /// </summary>
+        public event EventHandler<WatchdogTimeoutEventArgs> OnWatchdogTimeout;
         
         /// <summary>
         /// 是否跳过命令模式（某些设备不支持命令模式，强制跳过可避免 InvalidCommand 错误）
@@ -246,6 +259,59 @@ namespace LoveAlways.Qualcomm.Protocol
             ChipHwId = "";
             ChipPkHash = "";
             ChipInfo = new QualcommChipInfo();
+            
+            // 初始化看门狗
+            InitializeWatchdog();
+        }
+        
+        /// <summary>
+        /// 初始化看门狗
+        /// </summary>
+        private void InitializeWatchdog()
+        {
+            _watchdog = new Watchdog("Sahara", TimeSpan.FromSeconds(WATCHDOG_TIMEOUT_SECONDS), _logDetail);
+            _watchdog.OnTimeout += HandleWatchdogTimeout;
+        }
+        
+        /// <summary>
+        /// 看门狗超时处理
+        /// </summary>
+        private void HandleWatchdogTimeout(object sender, WatchdogTimeoutEventArgs e)
+        {
+            _watchdogStallCount++;
+            _log($"[Sahara] ⚠ 看门狗检测到卡死 (第 {_watchdogStallCount} 次，已等待 {e.ElapsedTime.TotalSeconds:F0}秒)");
+            
+            // 通知外部订阅者
+            OnWatchdogTimeout?.Invoke(this, e);
+            
+            if (_watchdogStallCount >= WATCHDOG_STALL_THRESHOLD)
+            {
+                _log("[Sahara] 看门狗触发自动重置...");
+                _watchdogTriggeredReset = true;
+                e.ShouldReset = false; // 停止看门狗，由重置逻辑接管
+            }
+            else
+            {
+                // 尝试发送重置命令但继续监控
+                _logDetail("[Sahara] 看门狗尝试软重置...");
+                try
+                {
+                    SendReset(); // 发送 ResetStateMachine
+                }
+                catch (Exception ex)
+                {
+                    _logDetail($"[Sahara] 软重置失败: {ex.Message}");
+                }
+            }
+        }
+        
+        /// <summary>
+        /// 喂狗 - 收到有效数据时调用
+        /// </summary>
+        private void FeedWatchdog()
+        {
+            _watchdog?.Feed();
+            _watchdogStallCount = 0; // 收到有效数据，重置卡死计数
         }
 
         /// <summary>
@@ -254,6 +320,172 @@ namespace LoveAlways.Qualcomm.Protocol
         public void SetPendingHelloData(byte[] data)
         {
             _pendingHelloData = data;
+        }
+
+        /// <summary>
+        /// 仅获取设备信息 (不上传 Loader)
+        /// 用于云端自动匹配
+        /// </summary>
+        /// <param name="ct">取消令牌</param>
+        /// <returns>是否成功获取设备信息</returns>
+        public async Task<bool> GetDeviceInfoOnlyAsync(CancellationToken ct = default(CancellationToken))
+        {
+            try
+            {
+                _logDetail("[Sahara] 获取设备信息 (不上传 Loader)...");
+                
+                // 读取 Hello 包
+                byte[] header = null;
+                
+                // 检查是否有预读取的 Hello 数据
+                if (_pendingHelloData != null && _pendingHelloData.Length >= 8)
+                {
+                    header = new byte[8];
+                    Array.Copy(_pendingHelloData, 0, header, 0, 8);
+                }
+                else
+                {
+                    header = await ReadBytesAsync(8, READ_TIMEOUT_MS * 3, ct);
+                }
+
+                if (header == null)
+                {
+                    _logDetail("[Sahara] 无法接收 Hello 包");
+                    return false;
+                }
+
+                uint cmdId = BitConverter.ToUInt32(header, 0);
+                uint pktLen = BitConverter.ToUInt32(header, 4);
+
+                if ((SaharaCommand)cmdId != SaharaCommand.Hello)
+                {
+                    _logDetail($"[Sahara] 收到非 Hello 包: 0x{cmdId:X}");
+                    return false;
+                }
+
+                // 处理 Hello 包以获取设备信息
+                await HandleHelloAsync(pktLen, ct);
+                
+                // 验证是否获取到芯片信息
+                if (ChipInfo == null || string.IsNullOrEmpty(ChipInfo.PkHash))
+                {
+                    _logDetail("[Sahara] 芯片信息不完整");
+                    return false;
+                }
+                
+                _logDetail("[Sahara] ✓ 设备信息获取成功");
+                _deviceInfoObtained = true;
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logDetail($"[Sahara] 获取设备信息异常: {ex.Message}");
+                return false;
+            }
+        }
+        
+        // 标记是否已获取设备信息
+        private bool _deviceInfoObtained = false;
+        
+        /// <summary>
+        /// 继续上传 Loader (在 GetDeviceInfoOnlyAsync 之后调用)
+        /// </summary>
+        /// <param name="loaderData">Loader 数据</param>
+        /// <param name="ct">取消令牌</param>
+        /// <returns>是否成功</returns>
+        public async Task<bool> UploadLoaderAsync(byte[] loaderData, CancellationToken ct = default(CancellationToken))
+        {
+            if (!_deviceInfoObtained)
+            {
+                _log("[Sahara] 请先调用 GetDeviceInfoOnlyAsync");
+                return false;
+            }
+            
+            if (loaderData == null || loaderData.Length == 0)
+            {
+                _log("[Sahara] Loader 数据为空");
+                return false;
+            }
+            
+            _log($"[Sahara] 上传 Loader ({loaderData.Length / 1024} KB)...");
+            
+            try
+            {
+                // 发送 Hello Response 开始传输
+                await SendHelloResponseAsync(2, 1, SaharaMode.ImageTransferPending, ct);
+                
+                // 继续 Sahara 数据传输循环
+                bool done = false;
+                int loopGuard = 0;
+                int endImageTxCount = 0;
+                int timeoutCount = 0;
+                _doneSent = false;
+                _totalSent = 0;
+
+                while (!done && loopGuard++ < 1000)
+                {
+                    if (ct.IsCancellationRequested)
+                        return false;
+
+                    byte[] header = await ReadBytesAsync(8, READ_TIMEOUT_MS, ct);
+
+                    if (header == null)
+                    {
+                        timeoutCount++;
+                        if (timeoutCount >= 5)
+                        {
+                            _log("[Sahara] 设备无响应");
+                            return false;
+                        }
+                        await Task.Delay(500, ct);
+                        continue;
+                    }
+
+                    timeoutCount = 0;
+                    uint cmdId = BitConverter.ToUInt32(header, 0);
+                    uint pktLen = BitConverter.ToUInt32(header, 4);
+
+                    switch ((SaharaCommand)cmdId)
+                    {
+                    case SaharaCommand.ReadData:
+                        await HandleReadData32Async(pktLen, loaderData, ct);
+                        break;
+
+                    case SaharaCommand.ReadData64:
+                        await HandleReadData64Async(pktLen, loaderData, ct);
+                        break;
+
+                    case SaharaCommand.EndImageTransfer:
+                        bool success;
+                        bool isDone;
+                        int newCount;
+                        HandleEndImageTransferResult(await HandleEndImageTransferAsync(pktLen, endImageTxCount, ct), out success, out isDone, out newCount);
+                        endImageTxCount = newCount;
+                        if (!success) return false;
+                        if (isDone) done = true;
+                        break;
+
+                    case SaharaCommand.DoneResponse:
+                        if (pktLen > 8) await ReadBytesAsync((int)pktLen - 8, 1000, ct);
+                        _log("[Sahara] ✅ Loader 上传成功");
+                        done = true;
+                        IsConnected = true;
+                        break;
+
+                    default:
+                        if (pktLen > 8)
+                            await ReadBytesAsync((int)pktLen - 8, 1000, ct);
+                        break;
+                    }
+                }
+
+                return done && IsConnected;
+            }
+            catch (Exception ex)
+            {
+                _log($"[Sahara] Loader 上传异常: {ex.Message}");
+                return false;
+            }
         }
 
         /// <summary>
@@ -293,14 +525,39 @@ namespace LoveAlways.Qualcomm.Protocol
         /// </summary>
         private async Task<bool> HandshakeAndUploadCoreAsync(byte[] fileBytes, CancellationToken ct, int maxRetries)
         {
+            // 如果看门狗触发过重置，增加额外重试次数
+            int effectiveMaxRetries = maxRetries;
+            
             // 尝试握手，失败时自动重置并重试
-            for (int attempt = 0; attempt <= maxRetries; attempt++)
+            for (int attempt = 0; attempt <= effectiveMaxRetries; attempt++)
             {
                 if (ct.IsCancellationRequested) return false;
                 
                 if (attempt > 0)
                 {
-                    _log(string.Format("[Sahara] 握手失败，尝试重置 Sahara 状态 (第 {0} 次重试)...", attempt));
+                    // 判断是否由看门狗触发的重置
+                    bool wasWatchdogReset = _watchdogTriggeredReset;
+                    
+                    if (wasWatchdogReset)
+                    {
+                        _log($"[Sahara] 看门狗触发重置，执行硬重置 (第 {attempt} 次重试)...");
+                        
+                        // 看门狗触发时使用更激进的重置方式
+                        PurgeBuffer();
+                        SendHardReset(); // 发送硬重置命令
+                        await Task.Delay(1000, ct); // 等待设备重启
+                        
+                        // 额外增加一次重试机会
+                        if (attempt == effectiveMaxRetries && effectiveMaxRetries < maxRetries + 2)
+                        {
+                            effectiveMaxRetries++;
+                            _log("[Sahara] 看门狗触发，增加额外重试机会");
+                        }
+                    }
+                    else
+                    {
+                        _log(string.Format("[Sahara] 握手失败，尝试重置 Sahara 状态 (第 {0} 次重试)...", attempt));
+                    }
                     
                     // 尝试重置 Sahara 状态机
                     bool resetOk = await TryResetSaharaAsync(ct);
@@ -319,6 +576,8 @@ namespace LoveAlways.Qualcomm.Protocol
                     _doneSent = false;
                     _totalSent = 0;
                     IsConnected = false;
+                    _watchdogTriggeredReset = false;
+                    _watchdogStallCount = 0;
                     
                     await Task.Delay(300, ct);
                 }
@@ -347,65 +606,82 @@ namespace LoveAlways.Qualcomm.Protocol
             int timeoutCount = 0;
             _doneSent = false;
             _totalSent = 0;
+            _watchdogTriggeredReset = false;
+            _watchdogStallCount = 0;
             var sw = Stopwatch.StartNew();
+            
+            // 启动看门狗
+            _watchdog?.Start("Sahara 握手");
 
-            while (!done && loopGuard++ < 1000)
+            try
             {
-                if (ct.IsCancellationRequested)
-                    return false;
-
-                byte[] header = null;
-
-                // 检查是否有预读取的 Hello 数据
-                if (loopGuard == 1 && _pendingHelloData != null && _pendingHelloData.Length >= 8)
+                while (!done && loopGuard++ < 1000)
                 {
-                    header = new byte[8];
-                    Array.Copy(_pendingHelloData, 0, header, 0, 8);
-                }
-                else
-                {
-                    int currentTimeout = (loopGuard == 1) ? READ_TIMEOUT_MS * 2 : READ_TIMEOUT_MS;
-                    header = await ReadBytesAsync(8, currentTimeout, ct);
-                }
-
-                if (header == null)
-                {
-                    timeoutCount++;
-                    if (timeoutCount >= 5)
-                    {
-                        _log("[Sahara] 设备无响应");
+                    if (ct.IsCancellationRequested)
                         return false;
+                    
+                    // 检查看门狗是否触发了重置
+                    if (_watchdogTriggeredReset)
+                    {
+                        _log("[Sahara] 看门狗触发重置，退出握手循环");
+                        return false; // 返回 false 让外层重试逻辑接管
                     }
 
-                    int available = _port.BytesToRead;
-                    if (available > 0)
-                        await ReadBytesAsync(available, 1000, ct);
+                    byte[] header = null;
 
-                    await Task.Delay(500, ct);
-                    continue;
-                }
+                    // 检查是否有预读取的 Hello 数据
+                    if (loopGuard == 1 && _pendingHelloData != null && _pendingHelloData.Length >= 8)
+                    {
+                        header = new byte[8];
+                        Array.Copy(_pendingHelloData, 0, header, 0, 8);
+                        FeedWatchdog(); // 有预读数据，喂狗
+                    }
+                    else
+                    {
+                        int currentTimeout = (loopGuard == 1) ? READ_TIMEOUT_MS * 2 : READ_TIMEOUT_MS;
+                        header = await ReadBytesAsync(8, currentTimeout, ct);
+                    }
 
-                timeoutCount = 0;
-                uint cmdId = BitConverter.ToUInt32(header, 0);
-                uint pktLen = BitConverter.ToUInt32(header, 4);
+                    if (header == null)
+                    {
+                        timeoutCount++;
+                        if (timeoutCount >= 5)
+                        {
+                            _log("[Sahara] 设备无响应");
+                            return false;
+                        }
 
-                if (pktLen < 8 || pktLen > MAX_BUFFER_SIZE * 4)
-                {
-                    PurgeBuffer();
-                    await Task.Delay(50, ct);
-                    continue;
-                }
+                        int available = _port.BytesToRead;
+                        if (available > 0)
+                            await ReadBytesAsync(available, 1000, ct);
 
-                // 调试日志：显示收到的命令 (ReadData 除外，因为太频繁)
-                if ((SaharaCommand)cmdId != SaharaCommand.ReadData && 
-                    (SaharaCommand)cmdId != SaharaCommand.ReadData64)
-                {
-                    _logDetail(string.Format("[Sahara] 收到: Cmd=0x{0:X2} ({1}), Len={2}", 
-                        cmdId, (SaharaCommand)cmdId, pktLen));
-                }
+                        await Task.Delay(500, ct);
+                        continue;
+                    }
 
-                switch ((SaharaCommand)cmdId)
-                {
+                    // 收到有效数据，喂狗
+                    FeedWatchdog();
+                    timeoutCount = 0;
+                    uint cmdId = BitConverter.ToUInt32(header, 0);
+                    uint pktLen = BitConverter.ToUInt32(header, 4);
+
+                    if (pktLen < 8 || pktLen > MAX_BUFFER_SIZE * 4)
+                    {
+                        PurgeBuffer();
+                        await Task.Delay(50, ct);
+                        continue;
+                    }
+
+                    // 调试日志：显示收到的命令 (ReadData 除外，因为太频繁)
+                    if ((SaharaCommand)cmdId != SaharaCommand.ReadData && 
+                        (SaharaCommand)cmdId != SaharaCommand.ReadData64)
+                    {
+                        _logDetail(string.Format("[Sahara] 收到: Cmd=0x{0:X2} ({1}), Len={2}", 
+                            cmdId, (SaharaCommand)cmdId, pktLen));
+                    }
+
+                    switch ((SaharaCommand)cmdId)
+                    {
                     case SaharaCommand.Hello:
                         await HandleHelloAsync(pktLen, ct);
                         break;
@@ -433,22 +709,30 @@ namespace LoveAlways.Qualcomm.Protocol
                         _log("[Sahara] ✅ 引导加载成功");
                         done = true;
                         IsConnected = true;
+                        FeedWatchdog(); // 成功完成，喂狗
                         break;
 
                     case SaharaCommand.CommandReady:
                         if (pktLen > 8) await ReadBytesAsync((int)pktLen - 8, 1000, ct);
                         _log("[Sahara] 收到 CommandReady，切换到传输模式");
                         SendSwitchMode(SaharaMode.ImageTransferPending);
+                        FeedWatchdog();
                         break;
 
                     default:
                         _log(string.Format("[Sahara] 未知命令: 0x{0:X2}", cmdId));
                         if (pktLen > 8) await ReadBytesAsync((int)pktLen - 8, 1000, ct);
                         break;
+                    }
                 }
-            }
 
-            return done;
+                return done;
+            }
+            finally
+            {
+                // 停止看门狗
+                _watchdog?.Stop();
+            }
         }
 
         private void HandleEndImageTransferResult(Tuple<bool, bool, int> result, out bool success, out bool isDone, out int newCount)
@@ -1158,6 +1442,14 @@ namespace LoveAlways.Qualcomm.Protocol
             if (!_disposed)
             {
                 _disposed = true;
+                
+                // 释放看门狗
+                if (_watchdog != null)
+                {
+                    _watchdog.OnTimeout -= HandleWatchdogTimeout;
+                    _watchdog.Dispose();
+                    _watchdog = null;
+                }
             }
         }
     }

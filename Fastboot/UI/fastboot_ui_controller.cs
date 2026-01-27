@@ -602,7 +602,7 @@ namespace LoveAlways.Fastboot.UI
             try
             {
                 IsBusy = true;
-                _cts = new CancellationTokenSource();
+                ResetCancellationToken();
 
                 StartOperationTimer("连接设备");
                 UpdateProgressBar(0);
@@ -698,7 +698,7 @@ namespace LoveAlways.Fastboot.UI
             try
             {
                 IsBusy = true;
-                _cts = new CancellationTokenSource();
+                ResetCancellationToken();
 
                 StartOperationTimer("读取分区表");
                 UpdateProgressBar(0);
@@ -828,7 +828,7 @@ namespace LoveAlways.Fastboot.UI
             try
             {
                 IsBusy = true;
-                _cts = new CancellationTokenSource();
+                ResetCancellationToken();
 
                 StartOperationTimer("刷写分区");
                 UpdateProgressBar(0);
@@ -933,7 +933,7 @@ namespace LoveAlways.Fastboot.UI
             try
             {
                 IsBusy = true;
-                _cts = new CancellationTokenSource();
+                ResetCancellationToken();
 
                 StartOperationTimer("擦除分区");
                 UpdateProgressBar(0);
@@ -2041,7 +2041,7 @@ namespace LoveAlways.Fastboot.UI
             try
             {
                 IsBusy = true;
-                _cts = new CancellationTokenSource();
+                ResetCancellationToken();
 
                 Log($"执行命令: {command}", Color.Blue);
                 var result = await _service.ExecuteCommandAsync(command, _cts.Token);
@@ -2442,9 +2442,29 @@ namespace LoveAlways.Fastboot.UI
         /// </summary>
         public void CancelOperation()
         {
-            _cts?.Cancel();
+            if (_cts != null)
+            {
+                _cts.Cancel();
+                _cts.Dispose();
+                _cts = null;
+            }
             StopOperationTimer();
             UpdateLabelSafe(_operationLabel, "当前操作：已取消");
+        }
+
+        /// <summary>
+        /// 安全重置 CancellationTokenSource（释放旧实例后创建新实例）
+        /// </summary>
+        private void ResetCancellationToken()
+        {
+            if (_cts != null)
+            {
+                try { _cts.Cancel(); } 
+                catch (Exception ex) { Debug.WriteLine($"[Fastboot] 取消令牌异常: {ex.Message}"); }
+                try { _cts.Dispose(); } 
+                catch (Exception ex) { Debug.WriteLine($"[Fastboot] 释放令牌异常: {ex.Message}"); }
+            }
+            _cts = new CancellationTokenSource();
         }
 
         #endregion
@@ -2652,7 +2672,7 @@ namespace LoveAlways.Fastboot.UI
             try
             {
                 IsBusy = true;
-                _cts = new CancellationTokenSource();
+                ResetCancellationToken();
 
                 StartOperationTimer("执行刷机脚本");
                 UpdateProgressBar(0);
@@ -2847,7 +2867,7 @@ namespace LoveAlways.Fastboot.UI
             try
             {
                 IsBusy = true;
-                _cts = new CancellationTokenSource();
+                ResetCancellationToken();
 
                 StartOperationTimer("解析云端 Payload");
                 UpdateProgressBar(0);
@@ -3039,7 +3059,7 @@ namespace LoveAlways.Fastboot.UI
             try
             {
                 IsBusy = true;
-                _cts = new CancellationTokenSource();
+                ResetCancellationToken();
 
                 StartOperationTimer("云端提取分区");
                 UpdateProgressBar(0);
@@ -3161,7 +3181,7 @@ namespace LoveAlways.Fastboot.UI
             try
             {
                 IsBusy = true;
-                _cts = new CancellationTokenSource();
+                ResetCancellationToken();
 
                 StartOperationTimer("解析 Payload");
                 UpdateProgressBar(0);
@@ -3333,7 +3353,7 @@ namespace LoveAlways.Fastboot.UI
             try
             {
                 IsBusy = true;
-                _cts = new CancellationTokenSource();
+                ResetCancellationToken();
 
                 StartOperationTimer("提取 Payload 分区");
                 UpdateProgressBar(0);
@@ -3438,7 +3458,7 @@ namespace LoveAlways.Fastboot.UI
             try
             {
                 IsBusy = true;
-                _cts = new CancellationTokenSource();
+                ResetCancellationToken();
 
                 StartOperationTimer("Payload 刷写");
                 UpdateProgressBar(0);
@@ -3596,7 +3616,7 @@ namespace LoveAlways.Fastboot.UI
             try
             {
                 IsBusy = true;
-                _cts = new CancellationTokenSource();
+                ResetCancellationToken();
 
                 StartOperationTimer("云端 Payload 刷写");
                 UpdateProgressBar(0);
@@ -3819,7 +3839,7 @@ namespace LoveAlways.Fastboot.UI
             try
             {
                 IsBusy = true;
-                _cts = new CancellationTokenSource();
+                ResetCancellationToken();
                 var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token, ct);
                 ct = linkedCts.Token;
 

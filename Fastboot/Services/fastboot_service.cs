@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using LoveAlways.Common;
 using LoveAlways.Fastboot.Common;
 using LoveAlways.Fastboot.Models;
 using LoveAlways.Fastboot.Protocol;
@@ -23,6 +24,9 @@ namespace LoveAlways.Fastboot.Services
 
         private FastbootNativeService _nativeService;
         private bool _disposed;
+        
+        // 看门狗
+        private Watchdog _watchdog;
 
         /// <summary>
         /// 当前连接的设备序列号
@@ -49,7 +53,41 @@ namespace LoveAlways.Fastboot.Services
             _log = log ?? (msg => { });
             _progress = progress;
             _logDetail = logDetail ?? (msg => { });
+            
+            // 初始化看门狗
+            _watchdog = new Watchdog("Fastboot", WatchdogManager.DefaultTimeouts.Fastboot, _logDetail);
+            _watchdog.OnTimeout += OnWatchdogTimeout;
         }
+        
+        /// <summary>
+        /// 看门狗超时处理
+        /// </summary>
+        private void OnWatchdogTimeout(object sender, WatchdogTimeoutEventArgs e)
+        {
+            _log($"[Fastboot] 看门狗超时: {e.OperationName}");
+            
+            if (e.TimeoutCount >= 2)
+            {
+                _log("[Fastboot] 多次超时，断开连接");
+                e.ShouldReset = false;
+                Disconnect();
+            }
+        }
+        
+        /// <summary>
+        /// 喂狗
+        /// </summary>
+        public void FeedWatchdog() => _watchdog?.Feed();
+        
+        /// <summary>
+        /// 启动看门狗
+        /// </summary>
+        public void StartWatchdog(string operation) => _watchdog?.Start(operation);
+        
+        /// <summary>
+        /// 停止看门狗
+        /// </summary>
+        public void StopWatchdog() => _watchdog?.Stop();
 
         #region 设备检测
 

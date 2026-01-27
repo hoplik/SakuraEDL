@@ -73,6 +73,16 @@ namespace LoveAlways.Qualcomm.Models
         /// </summary>
         public ulong Attributes { get; set; }
 
+        /// <summary>
+        /// GPT 条目索引 (用于 patch 操作)
+        /// </summary>
+        public int EntryIndex { get; set; } = -1;
+
+        /// <summary>
+        /// GPT 条目起始扇区 (通常为 2)
+        /// </summary>
+        public long GptEntriesStartSector { get; set; } = 2;
+
         private bool _isSelected;
         /// <summary>
         /// 是否选中 (用于 UI)

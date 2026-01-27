@@ -331,8 +331,9 @@ namespace LoveAlways.Qualcomm.Common
                 _logDetail(string.Format("[GPT] Header信息: PartitionEntryLba={0}, NumberOfEntries={1}, EntrySize={2}, FirstUsableLba={3}",
                     header.PartitionEntryLba, header.NumberOfPartitionEntries, header.SizeOfPartitionEntry, header.FirstUsableLba));
 
-                // 计算分区条目起始位置 - 多种策略
+                // ========== 计算分区条目起始位置 - 多种策略 ==========
                 int entryOffset = -1;
+                string usedStrategy = "";
                 
                 // 策略1: 使用 Header 中指定的 PartitionEntryLba
                 if (header.PartitionEntryLba > 0)
@@ -340,46 +341,111 @@ namespace LoveAlways.Qualcomm.Common
                     long calcOffset = (long)header.PartitionEntryLba * sectorSize;
                     if (calcOffset > 0 && calcOffset < data.Length - 128)
                     {
-                        entryOffset = (int)calcOffset;
-                        _logDetail(string.Format("[GPT] 策略1 (PartitionEntryLba): {0} * {1} = {2}", 
-                            header.PartitionEntryLba, sectorSize, entryOffset));
+                        // 验证该偏移是否有有效的分区条目
+                        if (HasValidPartitionEntry(data, (int)calcOffset))
+                        {
+                            entryOffset = (int)calcOffset;
+                            usedStrategy = string.Format("策略1 (PartitionEntryLba): {0} * {1} = {2}", 
+                                header.PartitionEntryLba, sectorSize, entryOffset);
+                        }
+                        else
+                        {
+                            _logDetail(string.Format("[GPT] 策略1 计算偏移 {0} 无有效分区，尝试其他策略", calcOffset));
+                        }
                     }
                 }
                 
-                // 策略2: 小米/OPPO 等设备使用 512B 扇区，分区条目通常在 LBA 2 = 1024
-                if ((entryOffset < 0 || entryOffset >= data.Length - 128) && sectorSize == 512)
+                // 策略2: 尝试不同扇区大小计算
+                if (entryOffset < 0 && header.PartitionEntryLba > 0)
+                {
+                    int[] trySectorSizes = { 512, 4096 };
+                    foreach (int trySectorSize in trySectorSizes)
+                    {
+                        if (trySectorSize == sectorSize) continue; // 跳过已尝试的
+                        
+                        long calcOffset = (long)header.PartitionEntryLba * trySectorSize;
+                        if (calcOffset > 0 && calcOffset < data.Length - 128 && HasValidPartitionEntry(data, (int)calcOffset))
+                        {
+                            entryOffset = (int)calcOffset;
+                            sectorSize = trySectorSize; // 更新扇区大小
+                            header.SectorSize = trySectorSize;
+                            usedStrategy = string.Format("策略2 (尝试扇区大小{0}B): {1} * {0} = {2}", 
+                                trySectorSize, header.PartitionEntryLba, entryOffset);
+                            break;
+                        }
+                    }
+                }
+                
+                // 策略3: 小米/OPPO 等设备使用 512B 扇区，分区条目通常在 LBA 2 = 1024
+                if (entryOffset < 0)
                 {
                     int xiaomiOffset = 1024; // LBA 2 * 512B
                     if (xiaomiOffset < data.Length - 128 && HasValidPartitionEntry(data, xiaomiOffset))
                     {
                         entryOffset = xiaomiOffset;
-                        _logDetail(string.Format("[GPT] 策略2 (512B扇区/小米): 偏移 {0}", entryOffset));
+                        usedStrategy = string.Format("策略3 (512B扇区标准): 偏移 {0}", entryOffset);
                     }
                 }
                 
-                // 策略3: Header 后紧跟分区条目
-                if (entryOffset < 0 || entryOffset >= data.Length - 128)
+                // 策略4: 4KB 扇区，分区条目在 LBA 2 = 8192
+                if (entryOffset < 0)
                 {
-                    int relativeOffset = headerOffset + sectorSize;
-                    if (relativeOffset < data.Length - 128 && HasValidPartitionEntry(data, relativeOffset))
+                    int ufsOffset = 8192; // LBA 2 * 4096B
+                    if (ufsOffset < data.Length - 128 && HasValidPartitionEntry(data, ufsOffset))
                     {
-                        entryOffset = relativeOffset;
-                        _logDetail(string.Format("[GPT] 策略3 (Header+扇区): {0} + {1} = {2}", 
-                            headerOffset, sectorSize, entryOffset));
+                        entryOffset = ufsOffset;
+                        usedStrategy = string.Format("策略4 (4KB扇区标准): 偏移 {0}", entryOffset);
                     }
                 }
                 
-                // 策略4: 暴力探测常见偏移
-                if (entryOffset < 0 || entryOffset >= data.Length - 128)
+                // 策略5: Header 后紧跟分区条目 (不同扇区大小)
+                if (entryOffset < 0)
                 {
-                    // 常见偏移：512B扇区=1024, 4KB扇区=8192, 以及其他可能
-                    int[] commonOffsets = { 1024, 8192, 4096, 2048, 4096 * 2, 512 * 2, 512 * 4 };
+                    int[] tryGaps = { 512, 4096, 1024, 2048 };
+                    foreach (int gap in tryGaps)
+                    {
+                        int relativeOffset = headerOffset + gap;
+                        if (relativeOffset < data.Length - 128 && HasValidPartitionEntry(data, relativeOffset))
+                        {
+                            entryOffset = relativeOffset;
+                            usedStrategy = string.Format("策略5 (Header+{0}): {1} + {0} = {2}", 
+                                gap, headerOffset, entryOffset);
+                            break;
+                        }
+                    }
+                }
+                
+                // 策略6: 暴力探测更多常见偏移
+                if (entryOffset < 0)
+                {
+                    // 常见偏移：各种扇区大小和 LBA 组合
+                    int[] commonOffsets = { 
+                        1024, 8192, 4096, 2048, 512,           // 基本偏移
+                        4096 * 2, 512 * 4, 512 * 6,            // LBA 2 变体
+                        16384, 32768,                          // 大扇区/大偏移
+                        headerOffset + 92,                      // Header 紧随（无填充）
+                        headerOffset + 128                      // Header 紧随（128对齐）
+                    };
                     foreach (int tryOffset in commonOffsets)
                     {
-                        if (tryOffset < data.Length - 128 && HasValidPartitionEntry(data, tryOffset))
+                        if (tryOffset > 0 && tryOffset < data.Length - 128 && HasValidPartitionEntry(data, tryOffset))
                         {
                             entryOffset = tryOffset;
-                            _logDetail(string.Format("[GPT] 策略4 (探测): 偏移 {0}", entryOffset));
+                            usedStrategy = string.Format("策略6 (暴力探测): 偏移 {0}", entryOffset);
+                            break;
+                        }
+                    }
+                }
+                
+                // 策略7: 从 Header 后开始每 128 字节搜索第一个有效分区
+                if (entryOffset < 0)
+                {
+                    for (int searchOffset = headerOffset + 92; searchOffset < data.Length - 128 && searchOffset < headerOffset + 32768; searchOffset += 128)
+                    {
+                        if (HasValidPartitionEntry(data, searchOffset))
+                        {
+                            entryOffset = searchOffset;
+                            usedStrategy = string.Format("策略7 (搜索): 偏移 {0}", entryOffset);
                             break;
                         }
                     }
@@ -388,16 +454,26 @@ namespace LoveAlways.Qualcomm.Common
                 // 最终检查
                 if (entryOffset < 0 || entryOffset >= data.Length - 128)
                 {
-                    _logDetail(string.Format("[GPT] 无法确定有效的分区条目偏移, entryOffset={0}, dataLen={1}", entryOffset, data.Length));
+                    _logDetail(string.Format("[GPT] 无法确定有效的分区条目偏移, 尝试的最后 entryOffset={0}, dataLen={1}", entryOffset, data.Length));
                     return partitions;
                 }
+                
+                _logDetail(string.Format("[GPT] {0}", usedStrategy));
 
                 int entrySize = (int)header.SizeOfPartitionEntry;
                 if (entrySize <= 0 || entrySize > 512) entrySize = 128;
 
                 // ========== 计算分区条目数量 ==========
                 int headerEntries = (int)header.NumberOfPartitionEntries;
-                if (headerEntries <= 0) headerEntries = 128;
+                
+                // 验证 Header 指定的分区数量是否合理
+                // 有些设备 Header 中的 NumberOfPartitionEntries 可能是 0 或不正确
+                if (headerEntries <= 0 || headerEntries > 1024)
+                {
+                    headerEntries = 128; // 默认值
+                    _logDetail(string.Format("[GPT] Header.NumberOfPartitionEntries 异常({0})，使用默认值 128", 
+                        header.NumberOfPartitionEntries));
+                }
                 
                 // gpttool 方式: ParEntriesArea_Size = (FirstUsableLba - PartitionEntryLba) * SectorSize
                 int actualAvailableEntries = 0;
@@ -412,26 +488,43 @@ namespace LoveAlways.Qualcomm.Common
                 // 从数据长度计算可扫描的最大条目数
                 int maxFromData = Math.Max(0, (data.Length - entryOffset) / entrySize);
                 
-                // 综合计算: 优先使用 Header 指定的数量，但不超过数据容量
-                // 小米设备可能有超过 128 个分区，上限提升到 512
-                int maxEntries = Math.Max(headerEntries, actualAvailableEntries);
-                maxEntries = Math.Min(maxEntries, maxFromData);  // 不能超过数据容量
-                maxEntries = Math.Min(maxEntries, 512);          // 合理上限
+                // ========== 综合计算最大扫描数量 ==========
+                // 1. 首先使用 Header 指定的数量
+                // 2. 如果 gpttool 方式计算的数量更大，使用更大的值（某些设备 Header 信息不准确）
+                // 3. 不超过数据容量
+                // 4. 合理上限 1024（小米等设备可能有很多分区）
+                int maxEntries = headerEntries;
+                
+                // 如果 gpttool 计算的数量显著大于 Header 指定的数量，使用 gpttool 的值
+                if (actualAvailableEntries > headerEntries && actualAvailableEntries <= 1024)
+                {
+                    maxEntries = actualAvailableEntries;
+                    _logDetail(string.Format("[GPT] 使用 gpttool 计算的条目数 {0} (大于 Header 指定的 {1})", 
+                        actualAvailableEntries, headerEntries));
+                }
+                
+                // 确保不超过数据容量
+                maxEntries = Math.Min(maxEntries, maxFromData);
+                
+                // 合理上限
+                maxEntries = Math.Min(maxEntries, 1024);
+                
+                // 确保至少扫描 128 个条目（标准值）
+                maxEntries = Math.Max(maxEntries, Math.Min(128, maxFromData));
 
-                _logDetail(string.Format("[GPT] 分区条目: 偏移={0}, 大小={1}, Header数量={2}, gpttool={3}, 数据容量={4}, 扫描={5}", 
+                _logDetail(string.Format("[GPT] 分区条目: 偏移={0}, 大小={1}, Header数量={2}, gpttool={3}, 数据容量={4}, 最终扫描={5}", 
                     entryOffset, entrySize, headerEntries, actualAvailableEntries, maxFromData, maxEntries));
 
                 int parsedCount = 0;
-                int emptyCount = 0;
+                int totalEmptyCount = 0;
+                
+                // ========== 两遍扫描策略 ==========
+                // 第一遍: 扫描所有条目，找出有效分区
+                var validEntries = new List<int>();
                 for (int i = 0; i < maxEntries; i++)
                 {
                     int offset = entryOffset + i * entrySize;
-                    if (offset + 128 > data.Length)
-                    {
-                        _logDetail(string.Format("[GPT] 数据不足，已解析 {0} 个分区 (offset={1}, dataLen={2})", 
-                            parsedCount, offset, data.Length));
-                        break;
-                    }
+                    if (offset + 128 > data.Length) break;
 
                     // 检查分区类型 GUID 是否为空
                     bool isEmpty = true;
@@ -444,22 +537,67 @@ namespace LoveAlways.Qualcomm.Common
                         }
                     }
                     
-                    if (isEmpty)
+                    if (!isEmpty)
                     {
-                        emptyCount++;
-                        // 连续 32 个空条目则停止扫描
-                        if (emptyCount > 32) break;
-                        continue;
+                        validEntries.Add(i);
                     }
+                    else
+                    {
+                        totalEmptyCount++;
+                    }
+                }
+                
+                _logDetail(string.Format("[GPT] 第一遍扫描: 找到 {0} 个非空条目, {1} 个空条目", 
+                    validEntries.Count, totalEmptyCount));
+                
+                // 第二遍: 解析有效的分区条目
+                foreach (int i in validEntries)
+                {
+                    int offset = entryOffset + i * entrySize;
                     
-                    emptyCount = 0; // 重置空条目计数
-
                     // 解析分区条目
                     var partition = ParsePartitionEntry(data, offset, lun, sectorSize, i + 1);
                     if (partition != null && !string.IsNullOrWhiteSpace(partition.Name))
                     {
                         partitions.Add(partition);
                         parsedCount++;
+                        
+                        // 详细日志：记录每个解析到的分区
+                        if (parsedCount <= 10 || parsedCount % 20 == 0)
+                        {
+                            _logDetail(string.Format("[GPT] #{0}: {1} @ LBA {2}-{3} ({4})", 
+                                parsedCount, partition.Name, partition.StartSector, 
+                                partition.StartSector + partition.NumSectors - 1, partition.FormattedSize));
+                        }
+                    }
+                }
+                
+                // 如果没有找到分区，尝试备用策略：不依赖 Header 信息，直接扫描整个数据
+                if (parsedCount == 0 && data.Length > entryOffset + 128)
+                {
+                    _logDetail("[GPT] 标准解析失败，尝试备用策略：暴力扫描分区条目");
+                    
+                    // 从 entryOffset 开始，每 128 字节检查一次
+                    for (int offset = entryOffset; offset + 128 <= data.Length; offset += 128)
+                    {
+                        // 检查是否有有效的分区名称
+                        if (HasValidPartitionEntry(data, offset))
+                        {
+                            var partition = ParsePartitionEntry(data, offset, lun, sectorSize, parsedCount + 1);
+                            if (partition != null && !string.IsNullOrWhiteSpace(partition.Name))
+                            {
+                                // 检查是否重复
+                                if (!partitions.Any(p => p.Name == partition.Name && p.StartSector == partition.StartSector))
+                                {
+                                    partitions.Add(partition);
+                                    parsedCount++;
+                                    _logDetail(string.Format("[GPT] 备用策略找到: {0} @ offset {1}", partition.Name, offset));
+                                }
+                            }
+                        }
+                        
+                        // 防止无限循环
+                        if (parsedCount > 256) break;
                     }
                 }
                 
@@ -541,7 +679,9 @@ namespace LoveAlways.Qualcomm.Common
                     SectorSize = sectorSize,
                     TypeGuid = typeGuid,
                     UniqueGuid = uniqueGuid,
-                    Attributes = attributes
+                    Attributes = attributes,
+                    EntryIndex = index,
+                    GptEntriesStartSector = 2  // GPT 条目通常从 LBA 2 开始
                 };
             }
             catch

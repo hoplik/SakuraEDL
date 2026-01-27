@@ -12,6 +12,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using LoveAlways.Common;
 using LoveAlways.Qualcomm.Common;
 using LoveAlways.Qualcomm.Database;
 using LoveAlways.Qualcomm.Models;
@@ -47,6 +48,9 @@ namespace LoveAlways.Qualcomm.Services
         private readonly OplusSuperFlashManager _oplusSuperManager;
         private readonly DeviceInfoService _deviceInfoService;
         private bool _disposed;
+        
+        // 看门狗机制
+        private Watchdog _watchdog;
 
         // 状态
         public QualcommConnectionState State { get; private set; }
@@ -153,17 +157,20 @@ namespace LoveAlways.Qualcomm.Services
                 
             _log("[高通] 检测到设备断开");
             
-            // 清理资源
+            // 清理资源 (忽略释放异常，确保完整清理)
             if (_portManager != null)
             {
-                try { _portManager.Close(); } catch { }
-                try { _portManager.Dispose(); } catch { }
+                try { _portManager.Close(); } 
+                catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[QualcommService] 关闭端口异常: {ex.Message}"); }
+                try { _portManager.Dispose(); } 
+                catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[QualcommService] 释放端口异常: {ex.Message}"); }
                 _portManager = null;
             }
             
             if (_firehose != null)
             {
-                try { _firehose.Dispose(); } catch { }
+                try { _firehose.Dispose(); } 
+                catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[QualcommService] 释放 Firehose 异常: {ex.Message}"); }
                 _firehose = null;
             }
             
@@ -183,9 +190,213 @@ namespace LoveAlways.Qualcomm.Services
             _deviceInfoService = new DeviceInfoService(_log, _logDetail);
             _partitionCache = new Dictionary<int, List<PartitionInfo>>();
             State = QualcommConnectionState.Disconnected;
+            
+            // 初始化看门狗
+            _watchdog = new Watchdog("Qualcomm", WatchdogManager.DefaultTimeouts.Qualcomm, _logDetail);
+            _watchdog.OnTimeout += OnWatchdogTimeout;
+        }
+        
+        /// <summary>
+        /// 看门狗超时处理
+        /// </summary>
+        private void OnWatchdogTimeout(object sender, WatchdogTimeoutEventArgs e)
+        {
+            _log($"[高通] 看门狗超时: {e.OperationName} (等待 {e.ElapsedTime.TotalSeconds:F1}秒)");
+            
+            // 超时次数过多时尝试重置
+            if (e.TimeoutCount >= 3)
+            {
+                _log("[高通] 多次超时，尝试重置连接...");
+                e.ShouldReset = false; // 停止看门狗
+                
+                // 触发端口断开事件
+                HandlePortDisconnected();
+            }
+        }
+        
+        /// <summary>
+        /// 喂狗 - 在长时间操作中调用以重置看门狗计时器
+        /// </summary>
+        public void FeedWatchdog()
+        {
+            _watchdog?.Feed();
+        }
+        
+        /// <summary>
+        /// 启动看门狗
+        /// </summary>
+        public void StartWatchdog(string operation)
+        {
+            _watchdog?.Start(operation);
+        }
+        
+        /// <summary>
+        /// 停止看门狗
+        /// </summary>
+        public void StopWatchdog()
+        {
+            _watchdog?.Stop();
         }
 
         #region 连接管理
+
+        /// <summary>
+        /// 仅获取 Sahara 设备信息 (不上传 Loader)
+        /// 用于云端自动匹配
+        /// </summary>
+        /// <param name="portName">COM 端口名</param>
+        /// <param name="ct">取消令牌</param>
+        /// <returns>设备信息，失败返回 null</returns>
+        public async Task<QualcommChipInfo> GetSaharaDeviceInfoOnlyAsync(string portName, CancellationToken ct = default(CancellationToken))
+        {
+            try
+            {
+                _log("[云端] 获取设备信息...");
+
+                // 初始化串口
+                _portManager = new SerialPortManager();
+
+                // Sahara 模式必须保留初始 Hello 包，不清空缓冲区
+                bool opened = await _portManager.OpenAsync(portName, 3, false, ct);
+                if (!opened)
+                {
+                    _log("[云端] 无法打开端口");
+                    return null;
+                }
+
+                // 创建 Sahara 客户端
+                _sahara = new SaharaClient(_portManager, _log, _logDetail, null);
+
+                // 仅执行握手获取设备信息 (不上传 Loader)
+                bool infoOk = await _sahara.GetDeviceInfoOnlyAsync(ct);
+                
+                if (!infoOk || _sahara.ChipInfo == null)
+                {
+                    _log("[云端] 无法获取设备信息");
+                    _portManager.Close();
+                    return null;
+                }
+
+                _log("[云端] 设备信息获取成功");
+                
+                // 保存芯片信息
+                _cachedChipInfo = _sahara.ChipInfo;
+                
+                // 保持端口打开，后续会继续使用
+                return _sahara.ChipInfo;
+            }
+            catch (Exception ex)
+            {
+                _log($"[云端] 获取设备信息异常: {ex.Message}");
+                return null;
+            }
+        }
+        
+        /// <summary>
+        /// 使用已获取的设备信息继续连接 (上传 Loader)
+        /// </summary>
+        /// <param name="loaderData">Loader 数据</param>
+        /// <param name="storageType">存储类型</param>
+        /// <param name="authMode">认证模式</param>
+        /// <param name="ct">取消令牌</param>
+        public async Task<bool> ContinueConnectWithLoaderAsync(byte[] loaderData, string storageType = "ufs", 
+            string authMode = "none", CancellationToken ct = default(CancellationToken))
+        {
+            try
+            {
+                if (_sahara == null || _portManager == null)
+                {
+                    _log("[云端] 请先调用 GetSaharaDeviceInfoOnlyAsync");
+                    return false;
+                }
+
+                SetState(QualcommConnectionState.SaharaMode);
+                
+                // 使用已有的 Sahara 客户端继续上传 Loader
+                bool uploadOk = await _sahara.UploadLoaderAsync(loaderData, ct);
+                if (!uploadOk)
+                {
+                    _log("[云端] Loader 上传失败");
+                    SetState(QualcommConnectionState.Error);
+                    return false;
+                }
+
+                // 根据用户选择的认证模式设置标志
+                IsVipDevice = (authMode.ToLowerInvariant() == "vip" || authMode.ToLowerInvariant() == "oplus");
+
+                // 等待 Firehose 就绪
+                _log("正在发送 Firehose 引导文件 : 成功");
+                await Task.Delay(1000, ct);
+
+                // 重新打开端口 (Firehose 模式)
+                string portName = _portManager.PortName;
+                _portManager.Close();
+                await Task.Delay(500, ct);
+
+                bool opened = await _portManager.OpenAsync(portName, 5, true, ct);
+                if (!opened)
+                {
+                    _log("[云端] 无法重新打开端口");
+                    SetState(QualcommConnectionState.Error);
+                    return false;
+                }
+
+                // Firehose 配置
+                SetState(QualcommConnectionState.FirehoseMode);
+                _firehose = new FirehoseClient(_portManager, _log, _progress, _logDetail);
+
+                // 传递芯片信息
+                if (ChipInfo != null)
+                {
+                    _firehose.ChipSerial = ChipInfo.SerialHex;
+                    _firehose.ChipHwId = ChipInfo.HwIdHex;
+                    _firehose.ChipPkHash = ChipInfo.PkHash;
+                }
+
+                // 执行认证 (如需要)
+                string authModeLower = authMode.ToLowerInvariant();
+                if (authModeLower == "xiaomi" || (authModeLower == "none" && IsXiaomiDevice()))
+                {
+                    _log("[云端] 执行小米认证...");
+                    var xiaomi = new XiaomiAuthStrategy(_log);
+                    xiaomi.OnAuthTokenRequired += token => XiaomiAuthTokenRequired?.Invoke(token);
+                    bool authOk = await xiaomi.AuthenticateAsync(_firehose, null, ct);
+                    if (authOk)
+                        _log("[云端] 小米认证成功");
+                    else
+                        _log("[云端] 小米认证失败");
+                }
+                else if (authModeLower == "oneplus")
+                {
+                    _log("[云端] 执行 OnePlus 认证...");
+                    var oneplus = new OnePlusAuthStrategy(_log);
+                    bool authOk = await oneplus.AuthenticateAsync(_firehose, null, ct);
+                    if (authOk)
+                        _log("[云端] OnePlus 认证成功");
+                    else
+                        _log("[云端] OnePlus 认证失败");
+                }
+
+                _log("正在配置 Firehose...");
+                bool configOk = await _firehose.ConfigureAsync(storageType, 0, ct);
+                if (!configOk)
+                {
+                    _log("配置 Firehose : 失败");
+                    SetState(QualcommConnectionState.Error);
+                    return false;
+                }
+                _log("配置 Firehose : 成功");
+
+                SetState(QualcommConnectionState.Ready);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _log($"[云端] 连接异常: {ex.Message}");
+                SetState(QualcommConnectionState.Error);
+                return false;
+            }
+        }
 
         /// <summary>
         /// 连接设备

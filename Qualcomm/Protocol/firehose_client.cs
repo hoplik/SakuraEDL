@@ -197,10 +197,75 @@ namespace LoveAlways.Qualcomm.Protocol
         private const int FILE_BUFFER_SIZE = 4 * 1024 * 1024;  // 4MB 文件缓冲 (提高读取速度)
         private const int OPTIMAL_PAYLOAD_REQUEST = 16 * 1024 * 1024; // 请求 16MB payload (设备可能返回较小值)
 
+        // 分段传输配置 (默认 0 = 不分段，使用设备支持的最大 payload)
+        private int _customChunkSize = 0;
+
         // 公开属性
         public string StorageType { get; private set; }
         public int SectorSize { get { return _sectorSize; } }
         public int MaxPayloadSize { get { return _maxPayloadSize; } }
+        
+        /// <summary>
+        /// 获取当前有效的分段大小
+        /// </summary>
+        public int EffectiveChunkSize 
+        { 
+            get 
+            { 
+                if (_customChunkSize > 0)
+                    return Math.Min(_customChunkSize, _maxPayloadSize);
+                return _maxPayloadSize;
+            } 
+        }
+        
+        /// <summary>
+        /// 设置自定义分段大小 (0 = 使用默认值)
+        /// </summary>
+        /// <param name="chunkSize">分段大小 (字节), 必须是扇区大小的倍数</param>
+        public void SetChunkSize(int chunkSize)
+        {
+            if (chunkSize < 0)
+                throw new ArgumentException("分段大小不能为负数");
+                
+            if (chunkSize > 0)
+            {
+                // 确保是扇区大小的倍数
+                chunkSize = (chunkSize / _sectorSize) * _sectorSize;
+                if (chunkSize < _sectorSize)
+                    chunkSize = _sectorSize;
+                    
+                // 不能超过设备支持的最大 payload
+                chunkSize = Math.Min(chunkSize, _maxPayloadSize);
+            }
+            
+            _customChunkSize = chunkSize;
+            if (chunkSize == 0)
+                _logDetail(string.Format("[Firehose] 分段模式: 关闭 (使用设备最大值 {0})", FormatSize(_maxPayloadSize)));
+            else
+                _logDetail(string.Format("[Firehose] 分段模式: 开启 ({0}/块)", FormatSize(chunkSize)));
+        }
+        
+        /// <summary>
+        /// 设置分段大小 (按 MB)
+        /// </summary>
+        public void SetChunkSizeMB(int megabytes)
+        {
+            SetChunkSize(megabytes * 1024 * 1024);
+        }
+        
+        /// <summary>
+        /// 格式化大小显示
+        /// </summary>
+        private static string FormatSize(long bytes)
+        {
+            if (bytes >= 1024 * 1024 * 1024)
+                return string.Format("{0:F2} GB", bytes / (1024.0 * 1024 * 1024));
+            if (bytes >= 1024 * 1024)
+                return string.Format("{0:F1} MB", bytes / (1024.0 * 1024));
+            if (bytes >= 1024)
+                return string.Format("{0:F0} KB", bytes / 1024.0);
+            return string.Format("{0} B", bytes);
+        }
         public List<string> SupportedFunctions { get; private set; }
 
         // 芯片信息
@@ -747,45 +812,142 @@ namespace LoveAlways.Qualcomm.Protocol
         #region 读取分区
 
         /// <summary>
-        /// 读取分区到文件
+        /// 读取分区到文件 (支持自定义分段)
         /// </summary>
-        public async Task<bool> ReadPartitionAsync(PartitionInfo partition, string savePath, CancellationToken ct = default(CancellationToken))
+        /// <param name="partition">分区信息</param>
+        /// <param name="savePath">保存路径</param>
+        /// <param name="ct">取消令牌</param>
+        /// <param name="chunkProgress">分段进度回调 (当前块索引, 总块数, 块字节数)</param>
+        public async Task<bool> ReadPartitionAsync(PartitionInfo partition, string savePath, 
+            CancellationToken ct = default(CancellationToken),
+            Action<int, int, long> chunkProgress = null)
         {
-            _log(string.Format("[Firehose] 读取分区: {0}", partition.Name));
+            return await ReadPartitionChunkedAsync(partition.Lun, partition.StartSector, 
+                partition.NumSectors, partition.SectorSize, savePath, partition.Name, ct, chunkProgress);
+        }
 
-            var totalSectors = partition.NumSectors;
-            var sectorsPerChunk = _maxPayloadSize / _sectorSize;
-            var totalRead = 0L;
+        /// <summary>
+        /// 分段读取分区到文件 (核心实现)
+        /// </summary>
+        /// <param name="lun">LUN 编号</param>
+        /// <param name="startSector">起始扇区</param>
+        /// <param name="numSectors">扇区数量</param>
+        /// <param name="sectorSize">扇区大小</param>
+        /// <param name="savePath">保存路径</param>
+        /// <param name="label">分区名称 (日志用)</param>
+        /// <param name="ct">取消令牌</param>
+        /// <param name="chunkProgress">分段进度回调</param>
+        public async Task<bool> ReadPartitionChunkedAsync(int lun, long startSector, long numSectors, 
+            int sectorSize, string savePath, string label,
+            CancellationToken ct = default(CancellationToken),
+            Action<int, int, long> chunkProgress = null)
+        {
+            _log(string.Format("[Firehose] 读取: {0} ({1})", label, FormatSize(numSectors * sectorSize)));
 
-            StartTransferTimer(partition.Size);
+            // 使用有效分段大小 (默认使用设备最大值，不分段)
+            int chunkSize = EffectiveChunkSize;
+            long sectorsPerChunk = chunkSize / sectorSize;
+            
+            // 计算总块数
+            int totalChunks = (int)Math.Ceiling((double)numSectors / sectorsPerChunk);
+            long totalSize = numSectors * sectorSize;
+            long totalRead = 0L;
+            
+            // 只有启用自定义分段时才显示分段信息
+            if (_customChunkSize > 0)
+            {
+                _logDetail(string.Format("[Firehose] 分段传输: {0}/块, 共 {1} 块", 
+                    FormatSize(chunkSize), totalChunks));
+            }
+
+            StartTransferTimer(totalSize);
 
             using (var fs = new FileStream(savePath, FileMode.Create, FileAccess.Write, FileShare.None, FILE_BUFFER_SIZE))
             {
-                for (long sector = 0; sector < totalSectors; sector += sectorsPerChunk)
+                for (int chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++)
                 {
-                    if (ct.IsCancellationRequested) return false;
-
-                    var sectorsToRead = Math.Min(sectorsPerChunk, totalSectors - sector);
-                    var startSector = partition.StartSector + sector;
-
-                    var data = await ReadSectorsAsync(partition.Lun, startSector, (int)sectorsToRead, ct);
-                    if (data == null)
+                    if (ct.IsCancellationRequested) 
                     {
-                        _log(string.Format("[Firehose] 读取失败 @ sector {0}", startSector));
+                        _log("[Firehose] 读取已取消");
                         return false;
                     }
 
-                    fs.Write(data, 0, data.Length);
+                    long sectorOffset = chunkIndex * sectorsPerChunk;
+                    long sectorsToRead = Math.Min(sectorsPerChunk, numSectors - sectorOffset);
+                    long currentStartSector = startSector + sectorOffset;
+
+                    // 分段进度回调
+                    chunkProgress?.Invoke(chunkIndex + 1, totalChunks, sectorsToRead * sectorSize);
+
+                    var data = await ReadSectorsAsync(lun, currentStartSector, (int)sectorsToRead, ct);
+                    if (data == null)
+                    {
+                        _log(string.Format("[Firehose] 读取失败 @ 块 {0}/{1}, sector {2}", 
+                            chunkIndex + 1, totalChunks, currentStartSector));
+                        return false;
+                    }
+
+                    await fs.WriteAsync(data, 0, data.Length, ct);
                     totalRead += data.Length;
 
-                    if (_progress != null)
-                        _progress(totalRead, partition.Size);
+                    // 总进度回调
+                    _progress?.Invoke(totalRead, totalSize);
                 }
             }
 
             StopTransferTimer("读取", totalRead);
-            _log(string.Format("[Firehose] 分区 {0} 读取完成: {1:N0} 字节", partition.Name, totalRead));
+            _log(string.Format("[Firehose] {0} 读取完成: {1}", label, FormatSize(totalRead)));
             return true;
+        }
+
+        /// <summary>
+        /// 分段读取到内存 (适用于小分区)
+        /// </summary>
+        public async Task<byte[]> ReadPartitionToMemoryAsync(PartitionInfo partition, 
+            CancellationToken ct = default(CancellationToken),
+            Action<int, int, long> chunkProgress = null)
+        {
+            return await ReadToMemoryChunkedAsync(partition.Lun, partition.StartSector, 
+                partition.NumSectors, partition.Name, ct, chunkProgress);
+        }
+
+        /// <summary>
+        /// 分段读取到内存 (核心实现)
+        /// </summary>
+        public async Task<byte[]> ReadToMemoryChunkedAsync(int lun, long startSector, long numSectors,
+            string label, CancellationToken ct = default(CancellationToken),
+            Action<int, int, long> chunkProgress = null)
+        {
+            int chunkSize = EffectiveChunkSize;
+            long sectorsPerChunk = chunkSize / _sectorSize;
+            int totalChunks = (int)Math.Ceiling((double)numSectors / sectorsPerChunk);
+            long totalSize = numSectors * _sectorSize;
+
+            using (var ms = new MemoryStream((int)Math.Min(totalSize, int.MaxValue)))
+            {
+                long totalRead = 0L;
+
+                for (int chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++)
+                {
+                    if (ct.IsCancellationRequested) return null;
+
+                    long sectorOffset = chunkIndex * sectorsPerChunk;
+                    long sectorsToRead = Math.Min(sectorsPerChunk, numSectors - sectorOffset);
+                    long currentStartSector = startSector + sectorOffset;
+
+                    chunkProgress?.Invoke(chunkIndex + 1, totalChunks, sectorsToRead * _sectorSize);
+
+                    var data = await ReadSectorsAsync(lun, currentStartSector, (int)sectorsToRead, ct);
+                    if (data == null) return null;
+
+                    ms.Write(data, 0, data.Length);
+                    totalRead += data.Length;
+
+                    _progress?.Invoke(totalRead, totalSize);
+                }
+
+                return ms.ToArray();
+            }
         }
 
         /// <summary>
@@ -885,17 +1047,28 @@ namespace LoveAlways.Qualcomm.Protocol
         #region 写入分区
 
         /// <summary>
-        /// 写入分区数据
+        /// 写入分区数据 (支持自定义分段)
         /// </summary>
-        public async Task<bool> WritePartitionAsync(PartitionInfo partition, string imagePath, bool useOppoMode = false, CancellationToken ct = default(CancellationToken))
+        /// <param name="partition">分区信息</param>
+        /// <param name="imagePath">镜像文件路径</param>
+        /// <param name="useOppoMode">是否使用 OPPO 模式</param>
+        /// <param name="ct">取消令牌</param>
+        /// <param name="chunkProgress">分段进度回调 (当前块索引, 总块数, 块字节数)</param>
+        public async Task<bool> WritePartitionAsync(PartitionInfo partition, string imagePath, 
+            bool useOppoMode = false, CancellationToken ct = default(CancellationToken),
+            Action<int, int, long> chunkProgress = null)
         {
-            return await WritePartitionAsync(partition.Lun, partition.StartSector, _sectorSize, imagePath, partition.Name, useOppoMode, ct);
+            return await WritePartitionChunkedAsync(partition.Lun, partition.StartSector, _sectorSize, 
+                imagePath, partition.Name, useOppoMode, ct, chunkProgress);
         }
 
         /// <summary>
-        /// 写入分区数据 (指定起始扇区)
+        /// 分段写入分区数据 (核心实现)
         /// </summary>
-        public async Task<bool> WritePartitionAsync(int lun, long startSector, int sectorSize, string imagePath, string label = "Partition", bool useOppoMode = false, CancellationToken ct = default(CancellationToken))
+        public async Task<bool> WritePartitionChunkedAsync(int lun, long startSector, int sectorSize, 
+            string imagePath, string label = "Partition", bool useOppoMode = false, 
+            CancellationToken ct = default(CancellationToken),
+            Action<int, int, long> chunkProgress = null)
         {
             if (!File.Exists(imagePath))
                 throw new FileNotFoundException("镜像文件不存在", imagePath);
@@ -909,30 +1082,53 @@ namespace LoveAlways.Qualcomm.Protocol
                 return await WriteSparsePartitionSmartAsync(lun, startSector, sectorSize, imagePath, label, useOppoMode, ct);
             }
             
-            _logDetail(string.Format("[Firehose] 写入: {0} ({1})", label, Path.GetFileName(imagePath)));
+            long fileSize = new FileInfo(imagePath).Length;
+            _log(string.Format("[Firehose] 写入: {0} ({1})", label, FormatSize(fileSize)));
+
+            // 使用有效分段大小 (默认使用设备最大值，不分段)
+            int chunkSize = EffectiveChunkSize;
+            long sectorsPerChunk = chunkSize / sectorSize;
+            long bytesPerChunk = sectorsPerChunk * sectorSize;
+            
+            // 计算总块数
+            int totalChunks = (int)Math.Ceiling((double)fileSize / bytesPerChunk);
+            
+            // 只有启用自定义分段时才显示分段信息
+            if (_customChunkSize > 0)
+            {
+                _logDetail(string.Format("[Firehose] 分段传输: {0}/块, 共 {1} 块", 
+                    FormatSize(chunkSize), totalChunks));
+            }
 
             using (Stream sourceStream = File.OpenRead(imagePath))
             {
                 var totalBytes = sourceStream.Length;
-                var sectorsPerChunk = _maxPayloadSize / sectorSize;
-                var bytesPerChunk = sectorsPerChunk * sectorSize;
                 var totalWritten = 0L;
+                int currentChunk = 0;
 
                 StartTransferTimer(totalBytes);
 
                 // 使用 ArrayPool 减少 GC 压力
-                var buffer = SimpleBufferPool.Rent(bytesPerChunk);
+                var buffer = SimpleBufferPool.Rent((int)bytesPerChunk);
                 try
                 {
                     var currentSector = startSector;
 
                     while (totalWritten < totalBytes)
                     {
-                        if (ct.IsCancellationRequested) return false;
+                        if (ct.IsCancellationRequested) 
+                        {
+                            _log("[Firehose] 写入已取消");
+                            return false;
+                        }
 
+                        currentChunk++;
                         var bytesToRead = (int)Math.Min(bytesPerChunk, totalBytes - totalWritten);
                         var bytesRead = sourceStream.Read(buffer, 0, bytesToRead);
                         if (bytesRead == 0) break;
+
+                        // 分段进度回调
+                        chunkProgress?.Invoke(currentChunk, totalChunks, bytesRead);
 
                         // 补齐到扇区边界
                         var paddedSize = ((bytesRead + sectorSize - 1) / sectorSize) * sectorSize;
@@ -943,19 +1139,20 @@ namespace LoveAlways.Qualcomm.Protocol
 
                         if (!await WriteSectorsAsync(lun, currentSector, buffer, paddedSize, label, useOppoMode, ct))
                         {
-                            _log(string.Format("[Firehose] 写入失败 @ sector {0}", currentSector));
+                            _log(string.Format("[Firehose] 写入失败 @ 块 {0}/{1}, sector {2}", 
+                                currentChunk, totalChunks, currentSector));
                             return false;
                         }
 
                         totalWritten += bytesRead;
                         currentSector += sectorsToWrite;
 
-                        if (_progress != null)
-                            _progress(totalWritten, totalBytes);
+                        // 总进度回调
+                        _progress?.Invoke(totalWritten, totalBytes);
                     }
 
                     StopTransferTimer("写入", totalWritten);
-                    _logDetail(string.Format("[Firehose] {0} 完成: {1:N0} 字节", label, totalWritten));
+                    _log(string.Format("[Firehose] {0} 写入完成: {1}", label, FormatSize(totalWritten)));
                     return true;
                 }
                 finally
@@ -1684,18 +1881,309 @@ namespace LoveAlways.Qualcomm.Protocol
         }
 
         /// <summary>
-        /// 设置活动槽位 (A/B)
+        /// 设置活动槽位 (A/B) - 完整实现
+        /// 优先使用 setactiveslot 命令，失败则回退到 patch 方式
         /// </summary>
         public async Task<bool> SetActiveSlotAsync(string slot, CancellationToken ct = default(CancellationToken))
         {
+            slot = slot?.ToLower() ?? "a";
+            if (slot != "a" && slot != "b")
+            {
+                _log("[Firehose] 错误: 槽位必须是 'a' 或 'b'");
+                return false;
+            }
+
             _log(string.Format("[Firehose] 设置活动 Slot: {0}", slot));
 
+            // 方法 1: 尝试 setactiveslot 命令 (部分设备支持)
             var xml = string.Format("<?xml version=\"1.0\" ?><data><setactiveslot slot=\"{0}\" /></data>", slot);
             PurgeBuffer();
             _port.Write(Encoding.UTF8.GetBytes(xml));
 
-            return await WaitForAckAsync(ct);
+            if (await WaitForAckAsync(ct, 3))
+            {
+                _log("[Firehose] setactiveslot 命令成功");
+                return true;
+            }
+
+            // 方法 2: 回退到 patch 方式修改 GPT 属性
+            _log("[Firehose] setactiveslot 不支持，使用 patch 方式...");
+            return await SetActiveSlotViaPatchAsync(slot, ct);
         }
+
+        /// <summary>
+        /// 通过 patch 命令修改 GPT 分区属性来设置活动槽位
+        /// </summary>
+        private async Task<bool> SetActiveSlotViaPatchAsync(string targetSlot, CancellationToken ct)
+        {
+            if (_cachedPartitions == null || _cachedPartitions.Count == 0)
+            {
+                _log("[Firehose] 错误: 没有缓存的分区信息，请先读取分区表");
+                return false;
+            }
+
+            // 需要修改的核心 A/B 分区 (按启动顺序)
+            string[] coreAbPartitions = {
+                "boot", "dtbo", "vbmeta", "vendor_boot", "init_boot"
+            };
+
+            // 可选的 A/B 分区
+            string[] optionalAbPartitions = {
+                "system", "vendor", "product", "odm", "system_ext",
+                "vendor_dlkm", "odm_dlkm", "system_dlkm"
+            };
+
+            string activeSuffix = "_" + targetSlot;
+            string inactiveSuffix = targetSlot == "a" ? "_b" : "_a";
+            
+            int patchCount = 0;
+            int failCount = 0;
+
+            // 1. 处理核心分区 (必须成功)
+            foreach (var baseName in coreAbPartitions)
+            {
+                var result = await PatchSlotPairAsync(baseName, activeSuffix, inactiveSuffix, ct);
+                if (result > 0) patchCount += result;
+                else if (result < 0) failCount++;
+            }
+
+            // 2. 处理可选分区 (失败不影响整体)
+            foreach (var baseName in optionalAbPartitions)
+            {
+                var result = await PatchSlotPairAsync(baseName, activeSuffix, inactiveSuffix, ct, true);
+                if (result > 0) patchCount += result;
+            }
+
+            if (patchCount == 0)
+            {
+                _log("[Firehose] 未找到任何 A/B 分区");
+                return false;
+            }
+
+            _log(string.Format("[Firehose] 已修改 {0} 个分区属性", patchCount));
+
+            // 3. 修复 GPT 以保存更改
+            _log("[Firehose] 正在保存 GPT 更改...");
+            bool fixResult = await FixGptAsync(-1, false, ct);
+            
+            if (fixResult)
+                _log(string.Format("[Firehose] 活动槽位已切换到: {0}", targetSlot));
+            else
+                _log("[Firehose] 警告: GPT 修复失败，更改可能未保存");
+
+            return fixResult && failCount == 0;
+        }
+
+        /// <summary>
+        /// 修改一对 A/B 分区的属性
+        /// </summary>
+        /// <returns>修改的分区数量，-1 表示失败</returns>
+        private async Task<int> PatchSlotPairAsync(string baseName, string activeSuffix, string inactiveSuffix, 
+            CancellationToken ct, bool optional = false)
+        {
+            int count = 0;
+
+            // 激活目标槽位
+            var activePart = _cachedPartitions.Find(p => 
+                p.Name.Equals(baseName + activeSuffix, StringComparison.OrdinalIgnoreCase));
+            
+            if (activePart != null)
+            {
+                ulong newAttr = SetSlotFlags(activePart.Attributes, active: true, priority: 3, successful: false, unbootable: false);
+                
+                if (await PatchPartitionAttributesAsync(activePart, newAttr, ct))
+                {
+                    _logDetail(string.Format("[Firehose] {0}: 已激活 (attr=0x{1:X16})", activePart.Name, newAttr));
+                    count++;
+                }
+                else if (!optional)
+                {
+                    _log(string.Format("[Firehose] 错误: 无法修改 {0} 属性", activePart.Name));
+                    return -1;
+                }
+            }
+
+            // 停用另一个槽位
+            var inactivePart = _cachedPartitions.Find(p => 
+                p.Name.Equals(baseName + inactiveSuffix, StringComparison.OrdinalIgnoreCase));
+            
+            if (inactivePart != null)
+            {
+                ulong newAttr = SetSlotFlags(inactivePart.Attributes, active: false, priority: 1, successful: null, unbootable: null);
+                
+                if (await PatchPartitionAttributesAsync(inactivePart, newAttr, ct))
+                {
+                    _logDetail(string.Format("[Firehose] {0}: 已停用 (attr=0x{1:X16})", inactivePart.Name, newAttr));
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
+        /// <summary>
+        /// 使用 patch 命令修改分区属性
+        /// </summary>
+        private async Task<bool> PatchPartitionAttributesAsync(PartitionInfo partition, ulong newAttributes, CancellationToken ct)
+        {
+            // GPT Entry 结构 (128 字节):
+            // Offset 0-15:  Type GUID (16 bytes)
+            // Offset 16-31: Unique GUID (16 bytes)
+            // Offset 32-39: Start LBA (8 bytes)
+            // Offset 40-47: End LBA (8 bytes)
+            // Offset 48-55: Attributes (8 bytes) <-- 我们要修改这里
+            // Offset 56-127: Name (72 bytes)
+            
+            const int GPT_ENTRY_SIZE = 128;
+            const int ATTR_OFFSET_IN_ENTRY = 48;
+            
+            // 将属性转换为小端字节序的十六进制字符串
+            byte[] attrBytes = BitConverter.GetBytes(newAttributes);
+            string attrHex = BitConverter.ToString(attrBytes).Replace("-", "");
+
+            // 方法 1: 使用分区名称的 patch (部分设备支持)
+            string xml1 = string.Format(
+                "<?xml version=\"1.0\" ?><data>" +
+                "<patch SECTOR_SIZE_IN_BYTES=\"{0}\" byte_offset=\"{1}\" " +
+                "filename=\"{2}\" physical_partition_number=\"{3}\" " +
+                "size_in_bytes=\"8\" start_sector=\"0\" value=\"{4}\" what=\"attributes\" />" +
+                "</data>",
+                _sectorSize, ATTR_OFFSET_IN_ENTRY, partition.Name, partition.Lun, attrHex);
+
+            PurgeBuffer();
+            _port.Write(Encoding.UTF8.GetBytes(xml1));
+
+            if (await WaitForAckAsync(ct, 3))
+                return true;
+
+            // 方法 2: 使用精确的 GPT 条目位置 (需要 EntryIndex)
+            if (partition.EntryIndex >= 0)
+            {
+                // 计算 GPT 条目在磁盘上的精确位置
+                // GPT 条目起始于 LBA 2 (通常)，每个条目 128 字节
+                long gptEntriesStartByte = partition.GptEntriesStartSector * _sectorSize;
+                long entryByteOffset = gptEntriesStartByte + (partition.EntryIndex * GPT_ENTRY_SIZE);
+                long attrByteOffset = entryByteOffset + ATTR_OFFSET_IN_ENTRY;
+                
+                // 计算扇区和字节偏移
+                long startSector = attrByteOffset / _sectorSize;
+                int byteOffset = (int)(attrByteOffset % _sectorSize);
+
+                _logDetail(string.Format("[Firehose] Patch {0}: Entry#{1}, Sector={2}, Offset={3}", 
+                    partition.Name, partition.EntryIndex, startSector, byteOffset));
+
+                string xml2 = string.Format(
+                    "<?xml version=\"1.0\" ?><data>" +
+                    "<patch SECTOR_SIZE_IN_BYTES=\"{0}\" byte_offset=\"{1}\" " +
+                    "filename=\"DISK\" physical_partition_number=\"{2}\" " +
+                    "size_in_bytes=\"8\" start_sector=\"{3}\" value=\"{4}\" />" +
+                    "</data>",
+                    _sectorSize, byteOffset, partition.Lun, startSector, attrHex);
+
+                PurgeBuffer();
+                _port.Write(Encoding.UTF8.GetBytes(xml2));
+
+                if (await WaitForAckAsync(ct, 3))
+                    return true;
+
+                _logDetail(string.Format("[Firehose] 方法 2 失败: {0}", partition.Name));
+            }
+            else
+            {
+                _logDetail(string.Format("[Firehose] {0} 缺少 EntryIndex，跳过精确 patch", partition.Name));
+            }
+
+            // 方法 3: 尝试使用 setactivepartition 命令 (某些设备支持)
+            string xml3 = string.Format(
+                "<?xml version=\"1.0\" ?><data>" +
+                "<setactivepartition name=\"{0}\" slot=\"{1}\" /></data>",
+                partition.Name.TrimEnd('_', 'a', 'b'),
+                partition.Name.EndsWith("_a") ? "a" : "b");
+
+            PurgeBuffer();
+            _port.Write(Encoding.UTF8.GetBytes(xml3));
+
+            if (await WaitForAckAsync(ct, 2))
+                return true;
+
+            _logDetail(string.Format("[Firehose] 所有 patch 方法均失败: {0}", partition.Name));
+            return false;
+        }
+
+        #region A/B 槽位属性位操作
+
+        /// <summary>
+        /// 设置槽位标志
+        /// </summary>
+        /// <param name="attr">原始属性</param>
+        /// <param name="active">是否激活 (null = 不修改)</param>
+        /// <param name="priority">优先级 0-3 (null = 不修改)</param>
+        /// <param name="successful">启动成功标志 (null = 不修改)</param>
+        /// <param name="unbootable">不可启动标志 (null = 不修改)</param>
+        private ulong SetSlotFlags(ulong attr, bool? active = null, int? priority = null, 
+            bool? successful = null, bool? unbootable = null)
+        {
+            // A/B 属性位布局 (在 Attributes 字段的第 48-55 位):
+            // Bit 48-49: Priority (0-3)
+            // Bit 50: Active
+            // Bit 51: Successful
+            // Bit 52: Unbootable
+            
+            const ulong PRIORITY_MASK = 3UL << 48;
+            const ulong ACTIVE_BIT = 1UL << 50;
+            const ulong SUCCESSFUL_BIT = 1UL << 51;
+            const ulong UNBOOTABLE_BIT = 1UL << 52;
+
+            if (priority.HasValue)
+            {
+                attr &= ~PRIORITY_MASK;
+                attr |= ((ulong)(priority.Value & 3) << 48);
+            }
+
+            if (active.HasValue)
+            {
+                if (active.Value)
+                    attr |= ACTIVE_BIT;
+                else
+                    attr &= ~ACTIVE_BIT;
+            }
+
+            if (successful.HasValue)
+            {
+                if (successful.Value)
+                    attr |= SUCCESSFUL_BIT;
+                else
+                    attr &= ~SUCCESSFUL_BIT;
+            }
+
+            if (unbootable.HasValue)
+            {
+                if (unbootable.Value)
+                    attr |= UNBOOTABLE_BIT;
+                else
+                    attr &= ~UNBOOTABLE_BIT;
+            }
+
+            return attr;
+        }
+
+        /// <summary>
+        /// 检查槽位是否激活
+        /// </summary>
+        public bool IsSlotActive(ulong attributes)
+        {
+            return (attributes & (1UL << 50)) != 0;
+        }
+
+        /// <summary>
+        /// 获取槽位优先级
+        /// </summary>
+        public int GetSlotPriority(ulong attributes)
+        {
+            return (int)((attributes >> 48) & 3);
+        }
+
+        #endregion
 
         /// <summary>
         /// 修复 GPT

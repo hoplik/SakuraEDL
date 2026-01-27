@@ -266,10 +266,6 @@ namespace LoveAlways.Fastboot.Services
             
             try
             {
-                // 强制 GC 释放之前可能残留的大内存块
-                GC.Collect();
-                GC.WaitForPendingFinalizers();
-                
                 return await _client.FlashAsync(partition, imagePath, progress, ct);
             }
             catch (OutOfMemoryException ex)

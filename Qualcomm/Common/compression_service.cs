@@ -316,9 +316,17 @@ namespace LoveAlways.Qualcomm.Common
                         else if (current != null)
                         {
                             if (line.StartsWith("Size = "))
-                                long.TryParse(line.Substring(7), out current.Size);
+                            {
+                                long size;
+                                if (long.TryParse(line.Substring(7), out size))
+                                    current.Size = size;
+                            }
                             else if (line.StartsWith("Packed Size = "))
-                                long.TryParse(line.Substring(14), out current.CompressedSize);
+                            {
+                                long compressedSize;
+                                if (long.TryParse(line.Substring(14), out compressedSize))
+                                    current.CompressedSize = compressedSize;
+                            }
                             else if (line.StartsWith("Folder = "))
                                 current.IsDirectory = line.Substring(9) == "+";
                         }

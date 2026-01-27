@@ -7,7 +7,8 @@ using OPFlashTool.Services;
 namespace LoveAlways
 {
     /// <summary>
-    /// 预加载管理器 - 在启动动画期间后台预加载模块
+    /// 预加载管理器 - 优化版，支持懒加载模式减少内存占用
+    /// EDL Loader 已改为云端自动匹配，不再预加载本地 PAK
     /// </summary>
     public static class PreloadManager
     {
@@ -16,16 +17,110 @@ namespace LoveAlways
         public static string CurrentStatus { get; private set; } = "准备中...";
         public static int Progress { get; private set; } = 0;
 
-        // 预加载数据
-        public static List<string> EdlLoaderItems { get; private set; } = null;
-        public static string SystemInfo { get; private set; } = null;
-        public static bool EdlPakAvailable { get; private set; } = false;
+        // 懒加载数据 - 按需加载
+        private static List<string> _edlLoaderItems = null;
+        private static List<string> _vipLoaderItems = null;
+        private static bool _edlLoaderItemsLoaded = false;
+        private static bool _vipLoaderItemsLoaded = false;
+        private static readonly object _loaderLock = new object();
+
+        /// <summary>
+        /// EDL Loader 列表 (已废弃，使用云端匹配)
+        /// </summary>
+        [Obsolete("使用云端自动匹配")]
+        public static List<string> EdlLoaderItems
+        {
+            get
+            {
+                // 返回空列表，EDL Loader 现在使用云端匹配
+                return new List<string>();
+            }
+        }
+        
+        /// <summary>
+        /// VIP Loader 列表 (仍从本地 PAK 加载)
+        /// </summary>
+        public static List<string> VipLoaderItems
+        {
+            get
+            {
+                if (!_vipLoaderItemsLoaded)
+                {
+                    lock (_loaderLock)
+                    {
+                        if (!_vipLoaderItemsLoaded)
+                        {
+                            _vipLoaderItems = BuildVipLoaderItems();
+                            _vipLoaderItemsLoaded = true;
+                        }
+                    }
+                }
+                return _vipLoaderItems;
+            }
+        }
+
+        private static string _systemInfo = null;
+        public static string SystemInfo
+        {
+            get
+            {
+                if (_systemInfo == null)
+                {
+                    try 
+                    { 
+                        // 使用 Task.Run 避免死锁
+                        _systemInfo = Task.Run(async () => 
+                            await WindowsInfo.GetSystemInfoAsync().ConfigureAwait(false)
+                        ).GetAwaiter().GetResult(); 
+                    }
+                    catch (Exception ex)
+                    { 
+                        System.Diagnostics.Debug.WriteLine($"[PreloadManager] 获取系统信息失败: {ex.Message}");
+                        _systemInfo = "未知"; 
+                    }
+                }
+                return _systemInfo;
+            }
+        }
+
+        private static bool? _edlPakAvailable = null;
+        
+        /// <summary>
+        /// EDL PAK 是否可用 (已废弃，使用云端匹配)
+        /// </summary>
+        [Obsolete("使用云端自动匹配")]
+        public static bool EdlPakAvailable
+        {
+            get
+            {
+                // 始终返回 false，强制使用云端匹配
+                return false;
+            }
+        }
+        
+        private static bool? _vipPakAvailable = null;
+        public static bool VipPakAvailable
+        {
+            get
+            {
+                if (!_vipPakAvailable.HasValue)
+                {
+                    _vipPakAvailable = ChimeraSignDatabase.IsLoaderPackAvailable();
+                }
+                return _vipPakAvailable.Value;
+            }
+        }
 
         // 预加载任务
         private static Task _preloadTask = null;
 
+        // 是否启用懒加载模式 (使用 PerformanceConfig)
+        private static bool EnableLazyLoading => Common.PerformanceConfig.EnableLazyLoading;
+
         /// <summary>
         /// 启动预加载（在 SplashForm 中调用）
+        /// 优化版：仅加载必要资源，其他按需加载
+        /// EDL Loader 改为云端自动匹配，不再预加载
         /// </summary>
         public static void StartPreload()
         {
@@ -35,41 +130,43 @@ namespace LoveAlways
             {
                 try
                 {
-                    // 阶段0: 提取嵌入的工具文件
+                    // 阶段0: 提取嵌入的工具文件（必须）
                     CurrentStatus = "提取工具文件...";
-                    Progress = 5;
-                    await Task.Delay(30);
-                    EmbeddedResourceExtractor.ExtractAll();
-
-                    // 阶段1: 检查 EDL PAK
-                    CurrentStatus = "检查资源包...";
                     Progress = 10;
-                    await Task.Delay(50); // 让状态有时间更新
-                    EdlPakAvailable = EdlLoaderDatabase.IsPakAvailable();
+                    EmbeddedResourceExtractor.ExtractAll();
+                    Progress = 30;
 
-                    // 阶段2: 预加载 EDL Loader 列表
-                    if (EdlPakAvailable)
-                    {
-                        CurrentStatus = "加载 EDL 引导数据库...";
-                        Progress = 20;
-                        EdlLoaderItems = BuildEdlLoaderItems();
-                    }
+                    // 阶段1: 检查 VIP PAK（快速）- EDL 已改为云端匹配
+                    CurrentStatus = "检查资源包...";
+                    Progress = 40;
+                    _vipPakAvailable = ChimeraSignDatabase.IsLoaderPackAvailable();
                     Progress = 50;
 
-                    // 阶段3: 预加载系统信息
-                    CurrentStatus = "获取系统信息...";
-                    Progress = 60;
-                    try
+                    // 懒加载模式：跳过预加载系统信息
+                    if (!EnableLazyLoading)
                     {
-                        SystemInfo = await WindowsInfo.GetSystemInfoAsync();
-                    }
-                    catch { SystemInfo = "未知"; }
-                    Progress = 80;
+                        // 阶段2: 预加载 VIP Loader 列表 (如果可用)
+                        if (_vipPakAvailable.Value)
+                        {
+                            CurrentStatus = "加载 VIP 引导数据库...";
+                            Progress = 60;
+                            _vipLoaderItems = BuildVipLoaderItems();
+                            _vipLoaderItemsLoaded = true;
+                        }
+                        Progress = 70;
 
-                    // 阶段4: 预热常用类型
-                    CurrentStatus = "初始化组件...";
+                        // 阶段3: 预加载系统信息
+                        CurrentStatus = "获取系统信息...";
+                        Progress = 80;
+                        try { _systemInfo = await WindowsInfo.GetSystemInfoAsync(); }
+                        catch { _systemInfo = "未知"; }
+                    }
+                    
                     Progress = 90;
-                    PrewarmTypes();
+
+                    // 阶段4: 预热常用类型（轻量级）
+                    CurrentStatus = "初始化组件...";
+                    PrewarmTypesLight();
 
                     // 完成
                     CurrentStatus = "加载完成";
@@ -87,6 +184,24 @@ namespace LoveAlways
         }
 
         /// <summary>
+        /// 释放缓存以减少内存占用
+        /// </summary>
+        public static void ClearCache()
+        {
+            lock (_loaderLock)
+            {
+                _edlLoaderItems?.Clear();
+                _edlLoaderItems = null;
+                _edlLoaderItemsLoaded = false;
+                
+                _vipLoaderItems?.Clear();
+                _vipLoaderItems = null;
+                _vipLoaderItemsLoaded = false;
+            }
+            GC.Collect(0, GCCollectionMode.Optimized);
+        }
+
+        /// <summary>
         /// 等待预加载完成
         /// </summary>
         public static async Task WaitForPreloadAsync()
@@ -98,53 +213,45 @@ namespace LoveAlways
         }
 
         /// <summary>
-        /// 构建 EDL Loader 列表项
+        /// 构建 EDL Loader 列表项 (已废弃，使用云端匹配)
         /// </summary>
+        [Obsolete("使用云端自动匹配")]
         private static List<string> BuildEdlLoaderItems()
         {
-            var items = new List<string>(300);
+            // 不再构建本地 PAK 列表，EDL Loader 使用云端匹配
+            return new List<string>();
+        }
+        
+        /// <summary>
+        /// 构建 VIP Loader 列表项 (OPLUS 签名认证设备)
+        /// </summary>
+        private static List<string> BuildVipLoaderItems()
+        {
+            var items = new List<string>();
 
             try
             {
-                if (!EdlLoaderDatabase.IsPakAvailable())
+                if (!ChimeraSignDatabase.IsLoaderPackAvailable())
                     return items;
 
-                var brands = EdlLoaderDatabase.GetBrands();
-                if (brands.Length == 0)
+                // 获取所有 VIP 平台
+                var platforms = ChimeraSignDatabase.GetSupportedPlatforms();
+                if (platforms == null || platforms.Length == 0)
                     return items;
 
-                foreach (var brand in brands)
+                items.Add("─── VIP 签名设备 ───");
+                
+                foreach (var platform in platforms)
                 {
-                    var loaders = EdlLoaderDatabase.GetByBrand(brand);
-                    if (loaders.Length == 0) continue;
-
-                    string brandName = GetBrandDisplayName(brand);
-                    items.Add($"─── {brandName} ({loaders.Length}) ───");
-
-                    // 先添加通用 loader
-                    foreach (var loader in loaders)
+                    if (ChimeraSignDatabase.TryGet(platform, out var signData))
                     {
-                        if (loader.IsCommon)
-                        {
-                            string chip = string.IsNullOrEmpty(loader.Chip) ? "" : $" {loader.Chip}";
-                            items.Add($"[{brand}]{chip} (通用)");
-                        }
-                    }
-
-                    // 再添加专用 loader
-                    foreach (var loader in loaders)
-                    {
-                        if (!loader.IsCommon)
-                        {
-                            string shortName = loader.Name.Replace($"{brand} ", "");
-                            items.Add($"[{brand}] {shortName}");
-                        }
+                        items.Add($"[VIP] {signData.Name} ({platform})");
                     }
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"EDL Loader 构建失败: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"VIP Loader 构建失败: {ex.Message}");
             }
 
             return items;
@@ -197,7 +304,27 @@ namespace LoveAlways
                 // 预热网络相关
                 var ______ = typeof(System.Net.Http.HttpClient);
             }
-            catch { }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[PreloadManager] 类型预热失败 (非关键): {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 轻量级预热 - 仅预热核心类型，减少内存占用
+        /// </summary>
+        private static void PrewarmTypesLight()
+        {
+            try
+            {
+                // 仅预热最核心的 IO 类型
+                var _ = typeof(System.IO.FileStream);
+                var __ = typeof(System.Windows.Forms.ListView);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[PreloadManager] 轻量预热失败 (非关键): {ex.Message}");
+            }
         }
     }
 }

@@ -68,6 +68,22 @@ namespace LoveAlways.Qualcomm.Database
             { 0x2A96, "Micromax" },
             { 0x50E1, "OnePlus" },
             { 0xB0E1, "Xiaomi" },      // 小米 (新设备)
+            { 0x01E8, "Motorola" },    // Moto 新设备
+            { 0x0488, "Motorola" },    // Moto Edge 系列
+            { 0x0508, "Motorola" },    // Moto G 系列
+            { 0x0070, "Google" },      // Pixel 系列
+            { 0x00A1, "Meizu" },       // 魅族
+            { 0x00A8, "Meizu" },       // 魅族
+            { 0x0110, "POCO" },        // POCO 设备
+            { 0x0200, "Realme" },      // Realme
+            { 0x0201, "Realme" },      // Realme (备用)
+            { 0x0250, "Redmi" },       // Redmi
+            { 0x0260, "Honor" },       // 荣耀
+            { 0x0270, "iQOO" },        // iQOO
+            { 0x0290, "Nothing" },     // Nothing Phone
+            { 0x0300, "Sony" },        // Sony Xperia
+            { 0x0310, "Sharp" },       // Sharp AQUOS
+            { 0x0320, "Fairphone" },   // Fairphone
         };
 
         // HWID -> 芯片名称 (完整数据库 - 200+ 芯片)
@@ -216,6 +232,11 @@ namespace LoveAlways.Qualcomm.Database
             { 0x0028C0E1, "SM8750 (Snapdragon 8 Elite)" },
             { 0x0028C0E2, "SM8750-AB (Snapdragon 8 Elite)" },
             { 0x0028D0E1, "SA8750 (Snapdragon 8 Elite)" },
+            { 0x0029C0E1, "SM8775 (Snapdragon 8 Elite 2)" },   // 预测: 下一代旗舰
+            
+            // ======================= Snapdragon 8 系列 (精简版) =======================
+            { 0x002630E1, "SM8635 (Snapdragon 8s Gen 3)" },    // 8s Gen 3 备用 ID
+            { 0x0026B0E1, "SA8635 (Snapdragon 8s Gen 3)" },
             
             // ======================= 调制解调器/基带 (MDM/SDX) =======================
             { 0x007F50E1, "MDM9x25" },
@@ -415,6 +436,41 @@ namespace LoveAlways.Qualcomm.Database
             { "cc3153a8", "Qualcomm" },
             { "7be49b72", "Qualcomm" },
             { "afca69d4", "Qualcomm" },
+            
+            // Google Pixel
+            { "9ab13b3e", "Google" },
+            { "6fb2b36f", "Google" },
+            { "7e0b1d5c", "Google" },
+            
+            // Meizu
+            { "5e3a7c21", "Meizu" },
+            { "8d4f9a7b", "Meizu" },
+            { "f3e2a1b4", "Meizu" },
+            
+            // Realme
+            { "4c8e7a2d", "Realme" },
+            { "b7d93f6a", "Realme" },
+            { "e2a45c8f", "Realme" },
+            
+            // Honor
+            { "3a7d8e5c", "Honor" },
+            { "9f4b6c2a", "Honor" },
+            
+            // Redmi
+            { "d5e7f8a9", "Redmi" },
+            { "7c3b4a5d", "Redmi" },
+            
+            // POCO
+            { "6e9d2c7f", "POCO" },
+            { "a4b8c5d3", "POCO" },
+            
+            // iQOO
+            { "f9e8d7c6", "iQOO" },
+            { "5a6b7c8d", "iQOO" },
+            
+            // Sony Xperia
+            { "2d4e6f8a", "Sony" },
+            { "b1c3d5e7", "Sony" },
         };
 
         /// <summary>
@@ -553,6 +609,302 @@ namespace LoveAlways.Qualcomm.Database
                 return MemoryType.Emmc;
 
             return MemoryType.Ufs;
+        }
+
+        #region 数据库统计和辅助方法
+
+        /// <summary>
+        /// 获取数据库统计信息
+        /// </summary>
+        public static QualcommDatabaseStats GetStats()
+        {
+            var stats = new QualcommDatabaseStats();
+            
+            stats.TotalChips = MsmIds.Count;
+            stats.TotalVendors = VendorIds.Count;
+            stats.TotalPkHashPrefixes = PkHashVendorPrefix.Count;
+            
+            // 统计各系列芯片数量
+            var seriesCounts = new Dictionary<string, int>();
+            foreach (var kvp in MsmIds)
+            {
+                string series = GetChipSeries(kvp.Value);
+                if (!seriesCounts.ContainsKey(series))
+                    seriesCounts[series] = 0;
+                seriesCounts[series]++;
+            }
+            stats.ChipsBySeries = seriesCounts;
+            
+            return stats;
+        }
+
+        /// <summary>
+        /// 获取芯片所属系列
+        /// </summary>
+        private static string GetChipSeries(string chipName)
+        {
+            if (string.IsNullOrEmpty(chipName))
+                return "Unknown";
+
+            // 提取芯片代号前缀
+            string codename = chipName.Split(' ')[0].Split('(')[0].Trim();
+            
+            // Snapdragon 8xx 系列 (旗舰)
+            if (codename.StartsWith("SM8") || codename.StartsWith("SDM8") || 
+                codename.Contains("855") || codename.Contains("865") || codename.Contains("888"))
+                return "Snapdragon 8 Series (Flagship)";
+            
+            // Snapdragon 7xx 系列 (中高端)
+            if (codename.StartsWith("SM7") || codename.StartsWith("SDM7") ||
+                codename.Contains("765") || codename.Contains("778") || codename.Contains("780"))
+                return "Snapdragon 7 Series (Upper Mid-Range)";
+            
+            // Snapdragon 6xx 系列 (中端)
+            if (codename.StartsWith("SM6") || codename.StartsWith("SDM6") ||
+                codename.Contains("660") || codename.Contains("675") || codename.Contains("690"))
+                return "Snapdragon 6 Series (Mid-Range)";
+            
+            // Snapdragon 4xx 系列 (入门)
+            if (codename.StartsWith("SM4") || codename.StartsWith("SDM4") ||
+                codename.Contains("MSM8917") || codename.Contains("MSM8937"))
+                return "Snapdragon 4 Series (Entry-Level)";
+            
+            // MDM/SDX 基带
+            if (codename.StartsWith("MDM") || codename.StartsWith("SDX"))
+                return "Modem/Baseband (MDM/SDX)";
+            
+            // SC/QCS IoT
+            if (codename.StartsWith("SC") || codename.StartsWith("QCS") || codename.StartsWith("QCM"))
+                return "IoT/Compute (SC/QCS)";
+            
+            // 可穿戴
+            if (codename.StartsWith("SW") || codename.StartsWith("SDW") || codename.Contains("Wear"))
+                return "Wearable (Snapdragon Wear)";
+            
+            // XR
+            if (codename.StartsWith("XR") || codename.StartsWith("SXR"))
+                return "XR/VR";
+            
+            // 旧 MSM 系列
+            if (codename.StartsWith("MSM") || codename.StartsWith("APQ"))
+                return "Legacy MSM/APQ";
+            
+            return "Other";
+        }
+
+        /// <summary>
+        /// 智能识别芯片 (支持多种 HWID 格式)
+        /// </summary>
+        public static QualcommChipIdentification IdentifyChip(uint hwId)
+        {
+            var result = new QualcommChipIdentification { HwId = hwId };
+            
+            // 1. 直接匹配
+            if (MsmIds.TryGetValue(hwId, out string name))
+            {
+                result.ChipName = name;
+                result.MatchType = "Exact";
+                result.Confidence = 100;
+                return result;
+            }
+            
+            // 2. 尝试标准化 HWID 格式 (添加/移除 E1 后缀)
+            uint[] variants = new uint[]
+            {
+                (hwId & 0xFFFFFF00) | 0xE1,          // 替换最后字节为 E1
+                (hwId & 0xFFFFFF00) | 0xE2,          // 替换最后字节为 E2
+                hwId | 0xE1,                          // 低位添加 E1
+                hwId >> 8,                            // 右移 8 位
+                (hwId & 0x00FFFFFF),                  // 取低 24 位
+            };
+            
+            foreach (var variant in variants)
+            {
+                if (variant != hwId && MsmIds.TryGetValue(variant, out name))
+                {
+                    result.ChipName = name;
+                    result.MatchType = "Variant";
+                    result.Confidence = 85;
+                    return result;
+                }
+            }
+            
+            // 3. 模糊匹配 - 比较核心标识部分
+            uint msmCore = (hwId >> 4) & 0x00FFFF;
+            foreach (var kvp in MsmIds)
+            {
+                uint dbCore = (kvp.Key >> 4) & 0x00FFFF;
+                if (msmCore == dbCore)
+                {
+                    result.ChipName = kvp.Value;
+                    result.MatchType = "Fuzzy";
+                    result.Confidence = 70;
+                    return result;
+                }
+            }
+            
+            // 4. 基于特征猜测
+            result.ChipName = GuessChipByFeatures(hwId);
+            result.MatchType = result.ChipName != "Unknown" ? "Guess" : "Unknown";
+            result.Confidence = result.ChipName != "Unknown" ? 30 : 0;
+            
+            return result;
+        }
+
+        /// <summary>
+        /// 基于 HWID 特征猜测芯片系列
+        /// </summary>
+        private static string GuessChipByFeatures(uint hwId)
+        {
+            // 高通 HWID 通常以 E1/E2 结尾
+            uint suffix = hwId & 0xFF;
+            if (suffix != 0xE1 && suffix != 0xE2)
+                return "Unknown";
+            
+            // 根据 HWID 范围猜测
+            uint idPart = (hwId >> 8) & 0xFFFF;
+            
+            // SM8xxx 范围
+            if (idPart >= 0x1CA && idPart <= 0x2FF)
+                return "SM8xxx Series (Flagship, Exact Model Unknown)";
+            
+            // SM7xxx 范围
+            if (idPart >= 0x190 && idPart <= 0x1C9)
+                return "SM7xxx Series (Upper Mid-Range, Exact Model Unknown)";
+            
+            // SM6xxx 范围
+            if (idPart >= 0x10E && idPart <= 0x18F)
+                return "SM6xxx Series (Mid-Range, Exact Model Unknown)";
+            
+            // SDX 基带范围
+            if (idPart >= 0x160 && idPart <= 0x285 && ((hwId >> 4) & 0xF) >= 0x5)
+                return "SDX Series (Modem, Exact Model Unknown)";
+            
+            return "Unknown";
+        }
+
+        /// <summary>
+        /// 获取芯片的推荐存储类型
+        /// </summary>
+        public static MemoryType GetRecommendedMemoryType(uint hwId)
+        {
+            string chipName = GetChipName(hwId);
+            if (chipName == "Unknown")
+            {
+                // 基于 HWID 猜测
+                uint idPart = (hwId >> 8) & 0xFFFF;
+                // 新旗舰芯片一般使用 UFS
+                if (idPart >= 0x1CA)
+                    return MemoryType.Ufs;
+                // 入门级芯片可能使用 eMMC
+                if (idPart <= 0x100)
+                    return MemoryType.Emmc;
+                return MemoryType.Ufs;
+            }
+            return GetMemoryType(chipName);
+        }
+
+        /// <summary>
+        /// 检查是否为新型 Snapdragon 芯片 (8 Gen 1+)
+        /// </summary>
+        public static bool IsModernSnapdragon(uint hwId)
+        {
+            string chipName = GetChipName(hwId);
+            if (chipName == "Unknown")
+                return false;
+            
+            // 检查是否为 SM8450+ (8 Gen 1 及以后)
+            return chipName.Contains("8 Gen") || chipName.Contains("8Gen") || 
+                   chipName.Contains("8 Elite") || chipName.Contains("8Elite") ||
+                   chipName.Contains("8s Gen") || chipName.Contains("8sGen") ||
+                   chipName.Contains("SM8450") || chipName.Contains("SM8475") ||
+                   chipName.Contains("SM8550") || chipName.Contains("SM8650") ||
+                   chipName.Contains("SM8750");
+        }
+
+        /// <summary>
+        /// 检查芯片是否支持 Sahara 协议
+        /// </summary>
+        public static bool SupportsSaharaProtocol(uint hwId)
+        {
+            // 所有现代高通芯片都支持 Sahara
+            string chipName = GetChipName(hwId);
+            if (chipName == "Unknown")
+                return true; // 假设支持
+            
+            // 非常旧的芯片可能使用 DMSS/Streaming 协议
+            if (chipName.Contains("MSM72") || chipName.Contains("MSM73"))
+                return false;
+            
+            return true;
+        }
+
+        /// <summary>
+        /// 检查芯片是否支持 Firehose 协议
+        /// </summary>
+        public static bool SupportsFirehoseProtocol(uint hwId)
+        {
+            string chipName = GetChipName(hwId);
+            if (chipName == "Unknown")
+                return true; // 假设支持
+            
+            // MSM8916 及以后的芯片都支持 Firehose
+            // 旧芯片使用 SBL/EHostDL
+            if (chipName.Contains("MSM890") || chipName.Contains("MSM891") ||
+                chipName.Contains("MSM72") || chipName.Contains("MSM73"))
+                return false;
+            
+            return true;
+        }
+
+        #endregion
+    }
+
+    /// <summary>
+    /// 数据库统计信息
+    /// </summary>
+    public class QualcommDatabaseStats
+    {
+        public int TotalChips { get; set; }
+        public int TotalVendors { get; set; }
+        public int TotalPkHashPrefixes { get; set; }
+        public Dictionary<string, int> ChipsBySeries { get; set; }
+        
+        public QualcommDatabaseStats()
+        {
+            ChipsBySeries = new Dictionary<string, int>();
+        }
+        
+        public override string ToString()
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine(string.Format("Qualcomm 数据库统计:"));
+            sb.AppendLine(string.Format("  总芯片数: {0}", TotalChips));
+            sb.AppendLine(string.Format("  总厂商数: {0}", TotalVendors));
+            sb.AppendLine(string.Format("  PK Hash 前缀数: {0}", TotalPkHashPrefixes));
+            sb.AppendLine("  按系列分布:");
+            foreach (var kvp in ChipsBySeries)
+            {
+                sb.AppendLine(string.Format("    {0}: {1}", kvp.Key, kvp.Value));
+            }
+            return sb.ToString();
+        }
+    }
+
+    /// <summary>
+    /// 芯片识别结果
+    /// </summary>
+    public class QualcommChipIdentification
+    {
+        public uint HwId { get; set; }
+        public string ChipName { get; set; }
+        public string MatchType { get; set; }  // Exact, Variant, Fuzzy, Guess, Unknown
+        public int Confidence { get; set; }    // 0-100
+        
+        public override string ToString()
+        {
+            return string.Format("{0} (HWID: 0x{1:X8}, Match: {2}, Confidence: {3}%)", 
+                ChipName, HwId, MatchType, Confidence);
         }
     }
 

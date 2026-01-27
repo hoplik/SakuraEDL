@@ -73,6 +73,74 @@ namespace LoveAlways
             this.高通驱动ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.查看日志ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.tabs1 = new AntdUI.Tabs();
+            this.tabPage4 = new AntdUI.TabPage();
+            this.mtkLblDaMode = new Sunny.UI.UILabel();
+            this.mtkLblChipName = new Sunny.UI.UILabel();
+            this.mtkLblHwCode = new Sunny.UI.UILabel();
+            this.mtkLblStatus = new Sunny.UI.UILabel();
+            this.mtkChkRebootAfter = new AntdUI.Checkbox();
+            this.mtkChkSkipUserdata = new AntdUI.Checkbox();
+            this.mtkChkExploit = new AntdUI.Checkbox();
+            this.mtkBtnExploit = new AntdUI.Button();
+            this.mtkSelectExploitType = new AntdUI.Select();
+            this.mtkBtnUnlockBl = new AntdUI.Button();
+            this.mtkBtnFormatData = new AntdUI.Button();
+            this.mtkBtnRestoreNvram = new AntdUI.Button();
+            this.mtkBtnBackupNvram = new AntdUI.Button();
+            this.mtkBtnWriteImei = new AntdUI.Button();
+            this.mtkBtnReadImei = new AntdUI.Button();
+            this.mtkBtnReboot = new AntdUI.Button();
+            this.mtkBtnErasePartition = new AntdUI.Button();
+            this.mtkBtnReadPartition = new AntdUI.Button();
+            this.mtkBtnWritePartition = new AntdUI.Button();
+            this.mtkBtnReadGpt = new AntdUI.Button();
+            this.mtkInputScatterFile = new AntdUI.Input();
+            this.mtkInputDaFile = new AntdUI.Input();
+            this.mtkSelectChip = new AntdUI.Select();
+            this.mtkGrpPartitions = new Sunny.UI.UIGroupBox();
+            this.mtkChkSelectAll = new AntdUI.Checkbox();
+            this.mtkListPartitions = new System.Windows.Forms.ListView();
+            this.mtkColPartition = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+            this.mtkColType = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+            this.mtkColSize = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+            this.mtkColAddress = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+            this.mtkColFileName = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+            this.tabPage5 = new AntdUI.TabPage();
+            this.input10 = new AntdUI.Input();
+            this.input5 = new AntdUI.Input();
+            this.input4 = new AntdUI.Input();
+            this.input2 = new AntdUI.Input();
+            this.sprdSelectSearch = new AntdUI.Select();
+            this.sprdChkRebootAfter = new AntdUI.Checkbox();
+            this.sprdChkSkipUserdata = new AntdUI.Checkbox();
+            this.sprdBtnReboot = new AntdUI.Button();
+            this.sprdBtnReadGpt = new AntdUI.Button();
+            this.sprdBtnWritePartition = new AntdUI.Button();
+            this.sprdBtnReadPartition = new AntdUI.Button();
+            this.sprdBtnErasePartition = new AntdUI.Button();
+            this.sprdBtnExtract = new AntdUI.Button();
+            this.sprdBtnReadImei = new AntdUI.Button();
+            this.sprdBtnWriteImei = new AntdUI.Button();
+            this.sprdBtnBackupCalib = new AntdUI.Button();
+            this.sprdBtnRestoreCalib = new AntdUI.Button();
+            this.sprdBtnFactoryReset = new AntdUI.Button();
+            this.sprdBtnUnlockBL = new AntdUI.Button();
+            this.sprdBtnNvManager = new AntdUI.Button();
+            this.sprdGroupPartitions = new Sunny.UI.UIGroupBox();
+            this.sprdChkSelectAll = new AntdUI.Checkbox();
+            this.sprdListPartitions = new System.Windows.Forms.ListView();
+            this.sprdColPartition = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+            this.sprdColFileName = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+            this.sprdColSize = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+            this.sprdColType = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+            this.sprdColAddress = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+            this.sprdColOffset = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+            this.sprdColSparse = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+            this.sprdInputPac = new AntdUI.Input();
+            this.sprdSelectChip = new AntdUI.Select();
+            this.sprdSelectDevice = new AntdUI.Select();
+            this.tabPage1 = new AntdUI.TabPage();
+            this.labelDevRoot = new Sunny.UI.UILabel();
             this.tabPage2 = new AntdUI.TabPage();
             this.checkbox11 = new AntdUI.Checkbox();
             this.checkbox12 = new AntdUI.Checkbox();
@@ -108,21 +176,8 @@ namespace LoveAlways
             this.checkbox19 = new AntdUI.Checkbox();
             this.checkbox20 = new AntdUI.Checkbox();
             this.select4 = new AntdUI.Select();
-            this.tabPage6 = new AntdUI.TabPage();
-            this.button7 = new AntdUI.Button();
-            this.pictureBox1 = new System.Windows.Forms.PictureBox();
-            this.uiComboBox4 = new Sunny.UI.UIComboBox();
-            this.label4 = new AntdUI.Label();
-            this.uiComboBox3 = new Sunny.UI.UIComboBox();
-            this.button3 = new AntdUI.Button();
-            this.button2 = new AntdUI.Button();
-            this.label3 = new AntdUI.Label();
-            this.label2 = new AntdUI.Label();
-            this.slider1 = new AntdUI.Slider();
-            this.label1 = new AntdUI.Label();
-            this.tabPage1 = new AntdUI.TabPage();
-            this.labelDevRoot = new Sunny.UI.UILabel();
             this.tabPage3 = new AntdUI.TabPage();
+            this.checkbox7 = new AntdUI.Checkbox();
             this.uiButton10 = new Sunny.UI.UIButton();
             this.uiTextBox1 = new Sunny.UI.UITextBox();
             this.uiComboBox2 = new Sunny.UI.UIComboBox();
@@ -150,10 +205,20 @@ namespace LoveAlways
             this.checkbox44 = new AntdUI.Checkbox();
             this.checkbox45 = new AntdUI.Checkbox();
             this.checkbox50 = new AntdUI.Checkbox();
-            this.tabPage4 = new AntdUI.TabPage();
-            this.labelDevMTK = new Sunny.UI.UILabel();
-            this.tabPage5 = new AntdUI.TabPage();
-            this.labelDevSpreadtrum = new Sunny.UI.UILabel();
+            this.tabPage6 = new AntdUI.TabPage();
+            this.button7 = new AntdUI.Button();
+            this.pictureBox1 = new System.Windows.Forms.PictureBox();
+            this.uiComboBox4 = new Sunny.UI.UIComboBox();
+            this.label4 = new AntdUI.Label();
+            this.uiComboBox3 = new Sunny.UI.UIComboBox();
+            this.button3 = new AntdUI.Button();
+            this.button2 = new AntdUI.Button();
+            this.label3 = new AntdUI.Label();
+            this.label2 = new AntdUI.Label();
+            this.slider1 = new AntdUI.Slider();
+            this.label1 = new AntdUI.Label();
+            this.mtkBtnDisconnect = new AntdUI.Button();
+            this.mtkBtnConnect = new AntdUI.Button();
             this.uiComboBox5 = new Sunny.UI.UIComboBox();
             this.uiButton3 = new Sunny.UI.UIButton();
             this.checkbox4 = new AntdUI.Checkbox();
@@ -201,19 +266,20 @@ namespace LoveAlways
             this.uiLabel13 = new Sunny.UI.UILabel();
             this.uiLabel3 = new Sunny.UI.UILabel();
             this.uiLabel10 = new Sunny.UI.UILabel();
-            this.checkbox7 = new AntdUI.Checkbox();
             this.uiGroupBox1.SuspendLayout();
             this.menuStrip1.SuspendLayout();
             this.tabs1.SuspendLayout();
+            this.tabPage4.SuspendLayout();
+            this.mtkGrpPartitions.SuspendLayout();
+            this.tabPage5.SuspendLayout();
+            this.sprdGroupPartitions.SuspendLayout();
+            this.tabPage1.SuspendLayout();
             this.tabPage2.SuspendLayout();
             this.uiGroupBox4.SuspendLayout();
-            this.tabPage6.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
-            this.tabPage1.SuspendLayout();
             this.tabPage3.SuspendLayout();
             this.uiGroupBox7.SuspendLayout();
-            this.tabPage4.SuspendLayout();
-            this.tabPage5.SuspendLayout();
+            this.tabPage6.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.tabs2.SuspendLayout();
             this.tabPage7.SuspendLayout();
             this.uiGroupBox2.SuspendLayout();
@@ -339,7 +405,7 @@ namespace LoveAlways
             this.uiLabel1.Name = "uiLabel1";
             this.uiLabel1.Size = new System.Drawing.Size(169, 27);
             this.uiLabel1.TabIndex = 11;
-            this.uiLabel1.Text = "用户：未知用户";
+            this.uiLabel1.Text = "一言：未知";
             this.uiLabel1.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
             // uiLabel4
@@ -363,7 +429,7 @@ namespace LoveAlways
             this.uiLabel5.Name = "uiLabel5";
             this.uiLabel5.Size = new System.Drawing.Size(177, 25);
             this.uiLabel5.TabIndex = 13;
-            this.uiLabel5.Text = "到期时间：未知";
+            this.uiLabel5.Text = "版本：v2.2.0";
             this.uiLabel5.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
             // uiLabel6
@@ -395,9 +461,9 @@ namespace LoveAlways
             this.uiLabel8.BackColor = System.Drawing.Color.Gainsboro;
             this.uiLabel8.Font = new System.Drawing.Font("微软雅黑", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
             this.uiLabel8.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(48)))), ((int)(((byte)(48)))), ((int)(((byte)(48)))));
-            this.uiLabel8.Location = new System.Drawing.Point(366, 790);
+            this.uiLabel8.Location = new System.Drawing.Point(400, 790);
             this.uiLabel8.Name = "uiLabel8";
-            this.uiLabel8.Size = new System.Drawing.Size(428, 25);
+            this.uiLabel8.Size = new System.Drawing.Size(394, 25);
             this.uiLabel8.TabIndex = 16;
             this.uiLabel8.Text = "当前操作：未知";
             this.uiLabel8.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
@@ -412,7 +478,7 @@ namespace LoveAlways
             this.pageHeader2.ShowButton = true;
             this.pageHeader2.Size = new System.Drawing.Size(1313, 36);
             this.pageHeader2.TabIndex = 1;
-            this.pageHeader2.Text = "MultiFlash TOOL v2.2.0";
+            this.pageHeader2.Text = "MultiFlash TOOL ";
             this.pageHeader2.UseSystemStyleColor = true;
             // 
             // uiComboBox1
@@ -654,13 +720,13 @@ namespace LoveAlways
             // tabs1
             // 
             this.tabs1.BackColor = System.Drawing.Color.Transparent;
-            this.tabs1.Controls.Add(this.tabPage3);
             this.tabs1.Controls.Add(this.tabPage2);
-            this.tabs1.Controls.Add(this.tabPage1);
-            this.tabs1.Controls.Add(this.tabPage4);
+            this.tabs1.Controls.Add(this.tabPage3);
             this.tabs1.Controls.Add(this.tabPage5);
+            this.tabs1.Controls.Add(this.tabPage4);
+            this.tabs1.Controls.Add(this.tabPage1);
             this.tabs1.Controls.Add(this.tabPage6);
-            this.tabs1.Cursor = System.Windows.Forms.Cursors.Default;
+            this.tabs1.Cursor = System.Windows.Forms.Cursors.Hand;
             this.tabs1.Location = new System.Drawing.Point(4, 60);
             this.tabs1.Name = "tabs1";
             this.tabs1.Pages.Add(this.tabPage1);
@@ -669,11 +735,724 @@ namespace LoveAlways
             this.tabs1.Pages.Add(this.tabPage4);
             this.tabs1.Pages.Add(this.tabPage5);
             this.tabs1.Pages.Add(this.tabPage6);
-            this.tabs1.SelectedIndex = 2;
+            this.tabs1.SelectedIndex = 1;
             this.tabs1.Size = new System.Drawing.Size(829, 692);
             this.tabs1.Style = styleLine1;
             this.tabs1.TabIndex = 15;
             this.tabs1.Text = "tabs1";
+            // 
+            // tabPage4
+            // 
+            this.tabPage4.Controls.Add(this.mtkLblDaMode);
+            this.tabPage4.Controls.Add(this.mtkLblChipName);
+            this.tabPage4.Controls.Add(this.mtkLblHwCode);
+            this.tabPage4.Controls.Add(this.mtkLblStatus);
+            this.tabPage4.Controls.Add(this.mtkChkRebootAfter);
+            this.tabPage4.Controls.Add(this.mtkChkSkipUserdata);
+            this.tabPage4.Controls.Add(this.mtkChkExploit);
+            this.tabPage4.Controls.Add(this.mtkBtnExploit);
+            this.tabPage4.Controls.Add(this.mtkSelectExploitType);
+            this.tabPage4.Controls.Add(this.mtkBtnUnlockBl);
+            this.tabPage4.Controls.Add(this.mtkBtnFormatData);
+            this.tabPage4.Controls.Add(this.mtkBtnRestoreNvram);
+            this.tabPage4.Controls.Add(this.mtkBtnBackupNvram);
+            this.tabPage4.Controls.Add(this.mtkBtnWriteImei);
+            this.tabPage4.Controls.Add(this.mtkBtnReadImei);
+            this.tabPage4.Controls.Add(this.mtkBtnReboot);
+            this.tabPage4.Controls.Add(this.mtkBtnErasePartition);
+            this.tabPage4.Controls.Add(this.mtkBtnReadPartition);
+            this.tabPage4.Controls.Add(this.mtkBtnWritePartition);
+            this.tabPage4.Controls.Add(this.mtkBtnReadGpt);
+            this.tabPage4.Controls.Add(this.mtkInputScatterFile);
+            this.tabPage4.Controls.Add(this.mtkInputDaFile);
+            this.tabPage4.Controls.Add(this.mtkSelectChip);
+            this.tabPage4.Controls.Add(this.mtkGrpPartitions);
+            this.tabPage4.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.tabPage4.Location = new System.Drawing.Point(0, 33);
+            this.tabPage4.Name = "tabPage4";
+            this.tabPage4.Size = new System.Drawing.Size(829, 659);
+            this.tabPage4.TabIndex = 2;
+            this.tabPage4.Text = "MTK平台";
+            // 
+            // mtkLblDaMode
+            // 
+            this.mtkLblDaMode.AutoSize = true;
+            this.mtkLblDaMode.Font = new System.Drawing.Font("微软雅黑", 9F);
+            this.mtkLblDaMode.ForeColor = System.Drawing.Color.Gray;
+            this.mtkLblDaMode.Location = new System.Drawing.Point(490, 52);
+            this.mtkLblDaMode.Name = "mtkLblDaMode";
+            this.mtkLblDaMode.Size = new System.Drawing.Size(49, 17);
+            this.mtkLblDaMode.TabIndex = 24;
+            this.mtkLblDaMode.Text = "模式: --";
+            // 
+            // mtkLblChipName
+            // 
+            this.mtkLblChipName.AutoSize = true;
+            this.mtkLblChipName.Font = new System.Drawing.Font("微软雅黑", 9F);
+            this.mtkLblChipName.ForeColor = System.Drawing.Color.Gray;
+            this.mtkLblChipName.Location = new System.Drawing.Point(400, 52);
+            this.mtkLblChipName.Name = "mtkLblChipName";
+            this.mtkLblChipName.Size = new System.Drawing.Size(49, 17);
+            this.mtkLblChipName.TabIndex = 23;
+            this.mtkLblChipName.Text = "芯片: --";
+            // 
+            // mtkLblHwCode
+            // 
+            this.mtkLblHwCode.AutoSize = true;
+            this.mtkLblHwCode.Font = new System.Drawing.Font("微软雅黑", 9F);
+            this.mtkLblHwCode.ForeColor = System.Drawing.Color.Gray;
+            this.mtkLblHwCode.Location = new System.Drawing.Point(320, 52);
+            this.mtkLblHwCode.Name = "mtkLblHwCode";
+            this.mtkLblHwCode.Size = new System.Drawing.Size(46, 17);
+            this.mtkLblHwCode.TabIndex = 22;
+            this.mtkLblHwCode.Text = "HW: --";
+            // 
+            // mtkLblStatus
+            // 
+            this.mtkLblStatus.AutoSize = true;
+            this.mtkLblStatus.Font = new System.Drawing.Font("微软雅黑", 9F);
+            this.mtkLblStatus.ForeColor = System.Drawing.Color.Gray;
+            this.mtkLblStatus.Location = new System.Drawing.Point(737, 16);
+            this.mtkLblStatus.Name = "mtkLblStatus";
+            this.mtkLblStatus.Size = new System.Drawing.Size(75, 17);
+            this.mtkLblStatus.TabIndex = 21;
+            this.mtkLblStatus.Text = "状态: 未连接";
+            // 
+            // mtkChkRebootAfter
+            // 
+            this.mtkChkRebootAfter.Font = new System.Drawing.Font("微软雅黑", 9F);
+            this.mtkChkRebootAfter.Location = new System.Drawing.Point(210, 45);
+            this.mtkChkRebootAfter.Name = "mtkChkRebootAfter";
+            this.mtkChkRebootAfter.Size = new System.Drawing.Size(100, 35);
+            this.mtkChkRebootAfter.TabIndex = 18;
+            this.mtkChkRebootAfter.Text = "完成后重启";
+            // 
+            // mtkChkSkipUserdata
+            // 
+            this.mtkChkSkipUserdata.Checked = true;
+            this.mtkChkSkipUserdata.Font = new System.Drawing.Font("微软雅黑", 9F);
+            this.mtkChkSkipUserdata.Location = new System.Drawing.Point(100, 45);
+            this.mtkChkSkipUserdata.Name = "mtkChkSkipUserdata";
+            this.mtkChkSkipUserdata.Size = new System.Drawing.Size(110, 35);
+            this.mtkChkSkipUserdata.TabIndex = 17;
+            this.mtkChkSkipUserdata.Text = "跳过Userdata";
+            // 
+            // mtkChkExploit
+            // 
+            this.mtkChkExploit.Checked = true;
+            this.mtkChkExploit.Font = new System.Drawing.Font("微软雅黑", 9F);
+            this.mtkChkExploit.Location = new System.Drawing.Point(4, 45);
+            this.mtkChkExploit.Name = "mtkChkExploit";
+            this.mtkChkExploit.Size = new System.Drawing.Size(100, 35);
+            this.mtkChkExploit.TabIndex = 16;
+            this.mtkChkExploit.Text = "使用漏洞";
+            // 
+            // mtkBtnExploit
+            // 
+            this.mtkBtnExploit.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(180)))), ((int)(((byte)(180)))));
+            this.mtkBtnExploit.Location = new System.Drawing.Point(534, 562);
+            this.mtkBtnExploit.Name = "mtkBtnExploit";
+            this.mtkBtnExploit.Size = new System.Drawing.Size(120, 35);
+            this.mtkBtnExploit.TabIndex = 20;
+            this.mtkBtnExploit.Text = "执行漏洞";
+            this.mtkBtnExploit.Type = AntdUI.TTypeMini.Warn;
+            this.mtkBtnExploit.WaveSize = 0;
+            // 
+            // mtkSelectExploitType
+            // 
+            this.mtkSelectExploitType.Location = new System.Drawing.Point(210, 5);
+            this.mtkSelectExploitType.Name = "mtkSelectExploitType";
+            this.mtkSelectExploitType.PlaceholderText = "漏洞类型";
+            this.mtkSelectExploitType.Size = new System.Drawing.Size(150, 35);
+            this.mtkSelectExploitType.TabIndex = 21;
+            this.mtkSelectExploitType.WaveSize = 0;
+            // 
+            // mtkBtnUnlockBl
+            // 
+            this.mtkBtnUnlockBl.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(200)))), ((int)(((byte)(255)))));
+            this.mtkBtnUnlockBl.Location = new System.Drawing.Point(534, 600);
+            this.mtkBtnUnlockBl.Name = "mtkBtnUnlockBl";
+            this.mtkBtnUnlockBl.Size = new System.Drawing.Size(100, 35);
+            this.mtkBtnUnlockBl.TabIndex = 15;
+            this.mtkBtnUnlockBl.Text = "解锁BL";
+            this.mtkBtnUnlockBl.WaveSize = 0;
+            // 
+            // mtkBtnFormatData
+            // 
+            this.mtkBtnFormatData.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(200)))), ((int)(((byte)(200)))));
+            this.mtkBtnFormatData.Location = new System.Drawing.Point(428, 600);
+            this.mtkBtnFormatData.Name = "mtkBtnFormatData";
+            this.mtkBtnFormatData.Size = new System.Drawing.Size(100, 35);
+            this.mtkBtnFormatData.TabIndex = 14;
+            this.mtkBtnFormatData.Text = "格式化Data";
+            this.mtkBtnFormatData.WaveSize = 0;
+            // 
+            // mtkBtnRestoreNvram
+            // 
+            this.mtkBtnRestoreNvram.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(200)))), ((int)(((byte)(255)))), ((int)(((byte)(255)))));
+            this.mtkBtnRestoreNvram.Location = new System.Drawing.Point(322, 600);
+            this.mtkBtnRestoreNvram.Name = "mtkBtnRestoreNvram";
+            this.mtkBtnRestoreNvram.Size = new System.Drawing.Size(100, 35);
+            this.mtkBtnRestoreNvram.TabIndex = 13;
+            this.mtkBtnRestoreNvram.Text = "恢复NVRAM";
+            this.mtkBtnRestoreNvram.WaveSize = 0;
+            // 
+            // mtkBtnBackupNvram
+            // 
+            this.mtkBtnBackupNvram.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(200)))), ((int)(((byte)(255)))), ((int)(((byte)(255)))));
+            this.mtkBtnBackupNvram.Location = new System.Drawing.Point(216, 600);
+            this.mtkBtnBackupNvram.Name = "mtkBtnBackupNvram";
+            this.mtkBtnBackupNvram.Size = new System.Drawing.Size(100, 35);
+            this.mtkBtnBackupNvram.TabIndex = 12;
+            this.mtkBtnBackupNvram.Text = "备份NVRAM";
+            this.mtkBtnBackupNvram.WaveSize = 0;
+            // 
+            // mtkBtnWriteImei
+            // 
+            this.mtkBtnWriteImei.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(255)))), ((int)(((byte)(200)))));
+            this.mtkBtnWriteImei.Location = new System.Drawing.Point(110, 600);
+            this.mtkBtnWriteImei.Name = "mtkBtnWriteImei";
+            this.mtkBtnWriteImei.Size = new System.Drawing.Size(100, 35);
+            this.mtkBtnWriteImei.TabIndex = 11;
+            this.mtkBtnWriteImei.Text = "写入IMEI";
+            this.mtkBtnWriteImei.WaveSize = 0;
+            // 
+            // mtkBtnReadImei
+            // 
+            this.mtkBtnReadImei.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(255)))), ((int)(((byte)(200)))));
+            this.mtkBtnReadImei.Location = new System.Drawing.Point(4, 600);
+            this.mtkBtnReadImei.Name = "mtkBtnReadImei";
+            this.mtkBtnReadImei.Size = new System.Drawing.Size(100, 35);
+            this.mtkBtnReadImei.TabIndex = 10;
+            this.mtkBtnReadImei.Text = "读取IMEI";
+            this.mtkBtnReadImei.WaveSize = 0;
+            // 
+            // mtkBtnReboot
+            // 
+            this.mtkBtnReboot.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(230)))));
+            this.mtkBtnReboot.Location = new System.Drawing.Point(428, 562);
+            this.mtkBtnReboot.Name = "mtkBtnReboot";
+            this.mtkBtnReboot.Size = new System.Drawing.Size(100, 35);
+            this.mtkBtnReboot.TabIndex = 9;
+            this.mtkBtnReboot.Text = "重启设备";
+            this.mtkBtnReboot.WaveSize = 0;
+            // 
+            // mtkBtnErasePartition
+            // 
+            this.mtkBtnErasePartition.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(220)))), ((int)(((byte)(200)))));
+            this.mtkBtnErasePartition.Location = new System.Drawing.Point(322, 562);
+            this.mtkBtnErasePartition.Name = "mtkBtnErasePartition";
+            this.mtkBtnErasePartition.Size = new System.Drawing.Size(100, 35);
+            this.mtkBtnErasePartition.TabIndex = 8;
+            this.mtkBtnErasePartition.Text = "擦除分区";
+            this.mtkBtnErasePartition.WaveSize = 0;
+            // 
+            // mtkBtnReadPartition
+            // 
+            this.mtkBtnReadPartition.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(230)))));
+            this.mtkBtnReadPartition.Location = new System.Drawing.Point(216, 562);
+            this.mtkBtnReadPartition.Name = "mtkBtnReadPartition";
+            this.mtkBtnReadPartition.Size = new System.Drawing.Size(100, 35);
+            this.mtkBtnReadPartition.TabIndex = 7;
+            this.mtkBtnReadPartition.Text = "读取分区";
+            this.mtkBtnReadPartition.WaveSize = 0;
+            // 
+            // mtkBtnWritePartition
+            // 
+            this.mtkBtnWritePartition.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(200)))), ((int)(((byte)(255)))), ((int)(((byte)(200)))));
+            this.mtkBtnWritePartition.Location = new System.Drawing.Point(110, 562);
+            this.mtkBtnWritePartition.Name = "mtkBtnWritePartition";
+            this.mtkBtnWritePartition.Size = new System.Drawing.Size(100, 35);
+            this.mtkBtnWritePartition.TabIndex = 6;
+            this.mtkBtnWritePartition.Text = "写入分区";
+            this.mtkBtnWritePartition.WaveSize = 0;
+            // 
+            // mtkBtnReadGpt
+            // 
+            this.mtkBtnReadGpt.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(200)))), ((int)(((byte)(230)))), ((int)(((byte)(255)))));
+            this.mtkBtnReadGpt.Location = new System.Drawing.Point(4, 562);
+            this.mtkBtnReadGpt.Name = "mtkBtnReadGpt";
+            this.mtkBtnReadGpt.Size = new System.Drawing.Size(100, 35);
+            this.mtkBtnReadGpt.TabIndex = 5;
+            this.mtkBtnReadGpt.Text = "读分区表";
+            this.mtkBtnReadGpt.WaveSize = 0;
+            // 
+            // mtkInputScatterFile
+            // 
+            this.mtkInputScatterFile.AllowClear = true;
+            this.mtkInputScatterFile.Location = new System.Drawing.Point(580, 43);
+            this.mtkInputScatterFile.Name = "mtkInputScatterFile";
+            this.mtkInputScatterFile.PlaceholderText = "Scatter配置文件 (可选)";
+            this.mtkInputScatterFile.PrefixSvg = "FileTextOutlined";
+            this.mtkInputScatterFile.Size = new System.Drawing.Size(230, 35);
+            this.mtkInputScatterFile.SuffixText = "浏览";
+            this.mtkInputScatterFile.TabIndex = 25;
+            this.mtkInputScatterFile.WaveSize = 0;
+            // 
+            // mtkInputDaFile
+            // 
+            this.mtkInputDaFile.AllowClear = true;
+            this.mtkInputDaFile.Location = new System.Drawing.Point(375, 5);
+            this.mtkInputDaFile.Name = "mtkInputDaFile";
+            this.mtkInputDaFile.PlaceholderText = "DA文件 (可选,自动检测)";
+            this.mtkInputDaFile.PrefixSvg = "FolderOutlined";
+            this.mtkInputDaFile.Size = new System.Drawing.Size(300, 35);
+            this.mtkInputDaFile.SuffixText = "浏览";
+            this.mtkInputDaFile.TabIndex = 2;
+            this.mtkInputDaFile.WaveSize = 0;
+            // 
+            // mtkSelectChip
+            // 
+            this.mtkSelectChip.AllowClear = true;
+            this.mtkSelectChip.Location = new System.Drawing.Point(4, 5);
+            this.mtkSelectChip.Name = "mtkSelectChip";
+            this.mtkSelectChip.PlaceholderText = "选择芯片型号";
+            this.mtkSelectChip.PrefixSvg = "AppstoreOutlined";
+            this.mtkSelectChip.Size = new System.Drawing.Size(200, 35);
+            this.mtkSelectChip.TabIndex = 1;
+            this.mtkSelectChip.WaveSize = 0;
+            // 
+            // mtkGrpPartitions
+            // 
+            this.mtkGrpPartitions.Controls.Add(this.mtkChkSelectAll);
+            this.mtkGrpPartitions.Controls.Add(this.mtkListPartitions);
+            this.mtkGrpPartitions.FillColor = System.Drawing.Color.Transparent;
+            this.mtkGrpPartitions.FillColor2 = System.Drawing.Color.Transparent;
+            this.mtkGrpPartitions.Font = new System.Drawing.Font("微软雅黑", 10.5F);
+            this.mtkGrpPartitions.Location = new System.Drawing.Point(4, 84);
+            this.mtkGrpPartitions.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
+            this.mtkGrpPartitions.MinimumSize = new System.Drawing.Size(1, 1);
+            this.mtkGrpPartitions.Name = "mtkGrpPartitions";
+            this.mtkGrpPartitions.Padding = new System.Windows.Forms.Padding(0, 32, 0, 0);
+            this.mtkGrpPartitions.Radius = 14;
+            this.mtkGrpPartitions.RectColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(165)))), ((int)(((byte)(0)))));
+            this.mtkGrpPartitions.Size = new System.Drawing.Size(821, 470);
+            this.mtkGrpPartitions.TabIndex = 0;
+            this.mtkGrpPartitions.Text = "分区表";
+            this.mtkGrpPartitions.TextAlignment = System.Drawing.ContentAlignment.MiddleLeft;
+            // 
+            // mtkChkSelectAll
+            // 
+            this.mtkChkSelectAll.Font = new System.Drawing.Font("微软雅黑", 9F);
+            this.mtkChkSelectAll.Location = new System.Drawing.Point(6, 26);
+            this.mtkChkSelectAll.Name = "mtkChkSelectAll";
+            this.mtkChkSelectAll.Size = new System.Drawing.Size(21, 21);
+            this.mtkChkSelectAll.TabIndex = 0;
+            this.mtkChkSelectAll.Text = "";
+            // 
+            // mtkListPartitions
+            // 
+            this.mtkListPartitions.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            this.mtkListPartitions.CheckBoxes = true;
+            this.mtkListPartitions.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
+            this.mtkColPartition,
+            this.mtkColType,
+            this.mtkColSize,
+            this.mtkColAddress,
+            this.mtkColFileName});
+            this.mtkListPartitions.Font = new System.Drawing.Font("微软雅黑", 9F);
+            this.mtkListPartitions.FullRowSelect = true;
+            this.mtkListPartitions.HideSelection = false;
+            this.mtkListPartitions.Location = new System.Drawing.Point(4, 24);
+            this.mtkListPartitions.Name = "mtkListPartitions";
+            this.mtkListPartitions.Size = new System.Drawing.Size(813, 441);
+            this.mtkListPartitions.TabIndex = 1;
+            this.mtkListPartitions.UseCompatibleStateImageBehavior = false;
+            this.mtkListPartitions.View = System.Windows.Forms.View.Details;
+            // 
+            // mtkColPartition
+            // 
+            this.mtkColPartition.Text = "      分区";
+            this.mtkColPartition.Width = 140;
+            // 
+            // mtkColType
+            // 
+            this.mtkColType.Text = "类型";
+            this.mtkColType.Width = 80;
+            // 
+            // mtkColSize
+            // 
+            this.mtkColSize.Text = "大小";
+            this.mtkColSize.Width = 100;
+            // 
+            // mtkColAddress
+            // 
+            this.mtkColAddress.Text = "地址";
+            this.mtkColAddress.Width = 120;
+            // 
+            // mtkColFileName
+            // 
+            this.mtkColFileName.Text = "文件名";
+            this.mtkColFileName.Width = 180;
+            // 
+            // tabPage5
+            // 
+            this.tabPage5.Controls.Add(this.input10);
+            this.tabPage5.Controls.Add(this.input5);
+            this.tabPage5.Controls.Add(this.input4);
+            this.tabPage5.Controls.Add(this.input2);
+            this.tabPage5.Controls.Add(this.sprdSelectSearch);
+            this.tabPage5.Controls.Add(this.sprdChkRebootAfter);
+            this.tabPage5.Controls.Add(this.sprdChkSkipUserdata);
+            this.tabPage5.Controls.Add(this.sprdBtnReboot);
+            this.tabPage5.Controls.Add(this.sprdBtnReadGpt);
+            this.tabPage5.Controls.Add(this.sprdBtnWritePartition);
+            this.tabPage5.Controls.Add(this.sprdBtnReadPartition);
+            this.tabPage5.Controls.Add(this.sprdBtnErasePartition);
+            this.tabPage5.Controls.Add(this.sprdBtnExtract);
+            this.tabPage5.Controls.Add(this.sprdBtnReadImei);
+            this.tabPage5.Controls.Add(this.sprdBtnWriteImei);
+            this.tabPage5.Controls.Add(this.sprdBtnBackupCalib);
+            this.tabPage5.Controls.Add(this.sprdBtnRestoreCalib);
+            this.tabPage5.Controls.Add(this.sprdBtnFactoryReset);
+            this.tabPage5.Controls.Add(this.sprdBtnUnlockBL);
+            this.tabPage5.Controls.Add(this.sprdBtnNvManager);
+            this.tabPage5.Controls.Add(this.sprdGroupPartitions);
+            this.tabPage5.Controls.Add(this.sprdInputPac);
+            this.tabPage5.Controls.Add(this.sprdSelectChip);
+            this.tabPage5.Controls.Add(this.sprdSelectDevice);
+            this.tabPage5.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.tabPage5.Location = new System.Drawing.Point(0, 33);
+            this.tabPage5.Name = "tabPage5";
+            this.tabPage5.Size = new System.Drawing.Size(829, 659);
+            this.tabPage5.TabIndex = 3;
+            this.tabPage5.Text = "展讯平台";
+            // 
+            // input10
+            // 
+            this.input10.Location = new System.Drawing.Point(520, 45);
+            this.input10.Name = "input10";
+            this.input10.PlaceholderText = "FDL2地址";
+            this.input10.PrefixSvg = "FolderOutlined";
+            this.input10.Size = new System.Drawing.Size(130, 35);
+            this.input10.TabIndex = 17;
+            this.input10.WaveSize = 0;
+            // 
+            // input5
+            // 
+            this.input5.Location = new System.Drawing.Point(370, 45);
+            this.input5.Name = "input5";
+            this.input5.PlaceholderText = "FDL1地址";
+            this.input5.PrefixSvg = "FolderOutlined";
+            this.input5.Size = new System.Drawing.Size(130, 35);
+            this.input5.TabIndex = 16;
+            this.input5.WaveSize = 0;
+            // 
+            // input4
+            // 
+            this.input4.Location = new System.Drawing.Point(190, 45);
+            this.input4.Name = "input4";
+            this.input4.PlaceholderText = "FDL2";
+            this.input4.PrefixSvg = "FolderOutlined";
+            this.input4.Size = new System.Drawing.Size(160, 35);
+            this.input4.TabIndex = 15;
+            this.input4.WaveSize = 0;
+            // 
+            // input2
+            // 
+            this.input2.Location = new System.Drawing.Point(7, 45);
+            this.input2.Name = "input2";
+            this.input2.PlaceholderText = "FDL1";
+            this.input2.PrefixSvg = "FolderOutlined";
+            this.input2.Size = new System.Drawing.Size(160, 35);
+            this.input2.TabIndex = 14;
+            this.input2.WaveSize = 0;
+            // 
+            // sprdSelectSearch
+            // 
+            this.sprdSelectSearch.Location = new System.Drawing.Point(652, 603);
+            this.sprdSelectSearch.Name = "sprdSelectSearch";
+            this.sprdSelectSearch.PlaceholderText = "搜索分区";
+            this.sprdSelectSearch.PrefixSvg = "SearchOutlined";
+            this.sprdSelectSearch.Size = new System.Drawing.Size(171, 35);
+            this.sprdSelectSearch.TabIndex = 11;
+            this.sprdSelectSearch.WaveSize = 0;
+            // 
+            // sprdChkRebootAfter
+            // 
+            this.sprdChkRebootAfter.Checked = true;
+            this.sprdChkRebootAfter.Location = new System.Drawing.Point(10, 635);
+            this.sprdChkRebootAfter.Name = "sprdChkRebootAfter";
+            this.sprdChkRebootAfter.Size = new System.Drawing.Size(120, 24);
+            this.sprdChkRebootAfter.TabIndex = 10;
+            this.sprdChkRebootAfter.Text = "刷机后重启";
+            // 
+            // sprdChkSkipUserdata
+            // 
+            this.sprdChkSkipUserdata.Checked = true;
+            this.sprdChkSkipUserdata.Location = new System.Drawing.Point(136, 635);
+            this.sprdChkSkipUserdata.Name = "sprdChkSkipUserdata";
+            this.sprdChkSkipUserdata.Size = new System.Drawing.Size(130, 24);
+            this.sprdChkSkipUserdata.TabIndex = 9;
+            this.sprdChkSkipUserdata.Text = "跳过Userdata";
+            // 
+            // sprdBtnReboot
+            // 
+            this.sprdBtnReboot.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(220)))), ((int)(((byte)(220)))), ((int)(((byte)(220)))));
+            this.sprdBtnReboot.Location = new System.Drawing.Point(544, 560);
+            this.sprdBtnReboot.Name = "sprdBtnReboot";
+            this.sprdBtnReboot.Size = new System.Drawing.Size(100, 35);
+            this.sprdBtnReboot.TabIndex = 7;
+            this.sprdBtnReboot.Text = "重启设备";
+            this.sprdBtnReboot.WaveSize = 0;
+            // 
+            // sprdBtnReadGpt
+            // 
+            this.sprdBtnReadGpt.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
+            this.sprdBtnReadGpt.Location = new System.Drawing.Point(8, 560);
+            this.sprdBtnReadGpt.Name = "sprdBtnReadGpt";
+            this.sprdBtnReadGpt.Size = new System.Drawing.Size(100, 35);
+            this.sprdBtnReadGpt.TabIndex = 15;
+            this.sprdBtnReadGpt.Text = "读取分区表";
+            this.sprdBtnReadGpt.WaveSize = 0;
+            // 
+            // sprdBtnWritePartition
+            // 
+            this.sprdBtnWritePartition.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(192)))));
+            this.sprdBtnWritePartition.Location = new System.Drawing.Point(112, 560);
+            this.sprdBtnWritePartition.Name = "sprdBtnWritePartition";
+            this.sprdBtnWritePartition.Size = new System.Drawing.Size(100, 35);
+            this.sprdBtnWritePartition.TabIndex = 3;
+            this.sprdBtnWritePartition.Text = "写入分区";
+            this.sprdBtnWritePartition.WaveSize = 0;
+            // 
+            // sprdBtnReadPartition
+            // 
+            this.sprdBtnReadPartition.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(220)))), ((int)(((byte)(255)))));
+            this.sprdBtnReadPartition.Location = new System.Drawing.Point(220, 560);
+            this.sprdBtnReadPartition.Name = "sprdBtnReadPartition";
+            this.sprdBtnReadPartition.Size = new System.Drawing.Size(100, 35);
+            this.sprdBtnReadPartition.TabIndex = 4;
+            this.sprdBtnReadPartition.Text = "读取分区";
+            this.sprdBtnReadPartition.WaveSize = 0;
+            // 
+            // sprdBtnErasePartition
+            // 
+            this.sprdBtnErasePartition.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(220)))), ((int)(((byte)(192)))));
+            this.sprdBtnErasePartition.Location = new System.Drawing.Point(328, 560);
+            this.sprdBtnErasePartition.Name = "sprdBtnErasePartition";
+            this.sprdBtnErasePartition.Size = new System.Drawing.Size(100, 35);
+            this.sprdBtnErasePartition.TabIndex = 5;
+            this.sprdBtnErasePartition.Text = "擦除分区";
+            this.sprdBtnErasePartition.WaveSize = 0;
+            // 
+            // sprdBtnExtract
+            // 
+            this.sprdBtnExtract.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(220)))), ((int)(((byte)(220)))), ((int)(((byte)(220)))));
+            this.sprdBtnExtract.Location = new System.Drawing.Point(437, 560);
+            this.sprdBtnExtract.Name = "sprdBtnExtract";
+            this.sprdBtnExtract.Size = new System.Drawing.Size(100, 35);
+            this.sprdBtnExtract.TabIndex = 6;
+            this.sprdBtnExtract.Text = "提取PAC";
+            this.sprdBtnExtract.WaveSize = 0;
+            // 
+            // sprdBtnReadImei
+            // 
+            this.sprdBtnReadImei.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(220)))), ((int)(((byte)(255)))), ((int)(((byte)(220)))));
+            this.sprdBtnReadImei.Location = new System.Drawing.Point(8, 600);
+            this.sprdBtnReadImei.Name = "sprdBtnReadImei";
+            this.sprdBtnReadImei.Size = new System.Drawing.Size(100, 35);
+            this.sprdBtnReadImei.TabIndex = 16;
+            this.sprdBtnReadImei.Text = "读取IMEI";
+            this.sprdBtnReadImei.WaveSize = 0;
+            // 
+            // sprdBtnWriteImei
+            // 
+            this.sprdBtnWriteImei.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(255)))), ((int)(((byte)(192)))));
+            this.sprdBtnWriteImei.Location = new System.Drawing.Point(112, 600);
+            this.sprdBtnWriteImei.Name = "sprdBtnWriteImei";
+            this.sprdBtnWriteImei.Size = new System.Drawing.Size(100, 35);
+            this.sprdBtnWriteImei.TabIndex = 17;
+            this.sprdBtnWriteImei.Text = "写入IMEI";
+            this.sprdBtnWriteImei.WaveSize = 0;
+            // 
+            // sprdBtnBackupCalib
+            // 
+            this.sprdBtnBackupCalib.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(220)))), ((int)(((byte)(255)))));
+            this.sprdBtnBackupCalib.Location = new System.Drawing.Point(220, 600);
+            this.sprdBtnBackupCalib.Name = "sprdBtnBackupCalib";
+            this.sprdBtnBackupCalib.Size = new System.Drawing.Size(100, 35);
+            this.sprdBtnBackupCalib.TabIndex = 18;
+            this.sprdBtnBackupCalib.Text = "备份校准";
+            this.sprdBtnBackupCalib.WaveSize = 0;
+            // 
+            // sprdBtnRestoreCalib
+            // 
+            this.sprdBtnRestoreCalib.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(220)))), ((int)(((byte)(192)))));
+            this.sprdBtnRestoreCalib.Location = new System.Drawing.Point(328, 600);
+            this.sprdBtnRestoreCalib.Name = "sprdBtnRestoreCalib";
+            this.sprdBtnRestoreCalib.Size = new System.Drawing.Size(100, 35);
+            this.sprdBtnRestoreCalib.TabIndex = 19;
+            this.sprdBtnRestoreCalib.Text = "恢复校准";
+            this.sprdBtnRestoreCalib.WaveSize = 0;
+            // 
+            // sprdBtnFactoryReset
+            // 
+            this.sprdBtnFactoryReset.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(192)))));
+            this.sprdBtnFactoryReset.Location = new System.Drawing.Point(437, 600);
+            this.sprdBtnFactoryReset.Name = "sprdBtnFactoryReset";
+            this.sprdBtnFactoryReset.Size = new System.Drawing.Size(100, 35);
+            this.sprdBtnFactoryReset.TabIndex = 20;
+            this.sprdBtnFactoryReset.Text = "恢复出厂";
+            this.sprdBtnFactoryReset.WaveSize = 0;
+            // 
+            // sprdBtnUnlockBL
+            // 
+            this.sprdBtnUnlockBL.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(200)))), ((int)(((byte)(255)))));
+            this.sprdBtnUnlockBL.Location = new System.Drawing.Point(544, 600);
+            this.sprdBtnUnlockBL.Name = "sprdBtnUnlockBL";
+            this.sprdBtnUnlockBL.Size = new System.Drawing.Size(100, 35);
+            this.sprdBtnUnlockBL.TabIndex = 21;
+            this.sprdBtnUnlockBL.Text = "解锁BL";
+            this.sprdBtnUnlockBL.WaveSize = 0;
+            // 
+            // sprdBtnNvManager
+            // 
+            this.sprdBtnNvManager.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(200)))), ((int)(((byte)(230)))), ((int)(((byte)(255)))));
+            this.sprdBtnNvManager.Location = new System.Drawing.Point(650, 562);
+            this.sprdBtnNvManager.Name = "sprdBtnNvManager";
+            this.sprdBtnNvManager.Size = new System.Drawing.Size(100, 35);
+            this.sprdBtnNvManager.TabIndex = 22;
+            this.sprdBtnNvManager.Text = "NV管理";
+            this.sprdBtnNvManager.WaveSize = 0;
+            // 
+            // sprdGroupPartitions
+            // 
+            this.sprdGroupPartitions.Controls.Add(this.sprdChkSelectAll);
+            this.sprdGroupPartitions.Controls.Add(this.sprdListPartitions);
+            this.sprdGroupPartitions.FillColor = System.Drawing.Color.Transparent;
+            this.sprdGroupPartitions.FillColor2 = System.Drawing.Color.Transparent;
+            this.sprdGroupPartitions.Font = new System.Drawing.Font("微软雅黑", 10.5F);
+            this.sprdGroupPartitions.Location = new System.Drawing.Point(4, 84);
+            this.sprdGroupPartitions.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
+            this.sprdGroupPartitions.MinimumSize = new System.Drawing.Size(1, 1);
+            this.sprdGroupPartitions.Name = "sprdGroupPartitions";
+            this.sprdGroupPartitions.Padding = new System.Windows.Forms.Padding(0, 32, 0, 0);
+            this.sprdGroupPartitions.Radius = 14;
+            this.sprdGroupPartitions.RectColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(128)))), ((int)(((byte)(255)))));
+            this.sprdGroupPartitions.Size = new System.Drawing.Size(821, 470);
+            this.sprdGroupPartitions.TabIndex = 2;
+            this.sprdGroupPartitions.Text = "分区表";
+            this.sprdGroupPartitions.TextAlignment = System.Drawing.ContentAlignment.MiddleLeft;
+            // 
+            // sprdChkSelectAll
+            // 
+            this.sprdChkSelectAll.Font = new System.Drawing.Font("微软雅黑", 9F);
+            this.sprdChkSelectAll.Location = new System.Drawing.Point(6, 26);
+            this.sprdChkSelectAll.Name = "sprdChkSelectAll";
+            this.sprdChkSelectAll.Size = new System.Drawing.Size(21, 21);
+            this.sprdChkSelectAll.TabIndex = 14;
+            this.sprdChkSelectAll.Text = "";
+            // 
+            // sprdListPartitions
+            // 
+            this.sprdListPartitions.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            this.sprdListPartitions.CheckBoxes = true;
+            this.sprdListPartitions.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
+            this.sprdColPartition,
+            this.sprdColFileName,
+            this.sprdColSize,
+            this.sprdColType,
+            this.sprdColAddress,
+            this.sprdColOffset,
+            this.sprdColSparse});
+            this.sprdListPartitions.Font = new System.Drawing.Font("微软雅黑", 9F);
+            this.sprdListPartitions.FullRowSelect = true;
+            this.sprdListPartitions.HideSelection = false;
+            this.sprdListPartitions.Location = new System.Drawing.Point(4, 24);
+            this.sprdListPartitions.Name = "sprdListPartitions";
+            this.sprdListPartitions.Size = new System.Drawing.Size(813, 441);
+            this.sprdListPartitions.TabIndex = 1;
+            this.sprdListPartitions.UseCompatibleStateImageBehavior = false;
+            this.sprdListPartitions.View = System.Windows.Forms.View.Details;
+            // 
+            // sprdColPartition
+            // 
+            this.sprdColPartition.Text = "      分区";
+            this.sprdColPartition.Width = 140;
+            // 
+            // sprdColFileName
+            // 
+            this.sprdColFileName.Text = "文件名";
+            this.sprdColFileName.Width = 180;
+            // 
+            // sprdColSize
+            // 
+            this.sprdColSize.Text = "大小";
+            this.sprdColSize.Width = 90;
+            // 
+            // sprdColType
+            // 
+            this.sprdColType.Text = "类型";
+            this.sprdColType.Width = 80;
+            // 
+            // sprdColAddress
+            // 
+            this.sprdColAddress.Text = "加载地址";
+            this.sprdColAddress.Width = 100;
+            // 
+            // sprdColOffset
+            // 
+            this.sprdColOffset.Text = "偏移";
+            this.sprdColOffset.Width = 100;
+            // 
+            // sprdColSparse
+            // 
+            this.sprdColSparse.Text = "Sparse";
+            // 
+            // sprdInputPac
+            // 
+            this.sprdInputPac.Location = new System.Drawing.Point(0, 4);
+            this.sprdInputPac.Name = "sprdInputPac";
+            this.sprdInputPac.PlaceholderText = "双击选择 PAC 固件包";
+            this.sprdInputPac.PrefixSvg = "FolderOutlined";
+            this.sprdInputPac.Size = new System.Drawing.Size(350, 35);
+            this.sprdInputPac.TabIndex = 0;
+            this.sprdInputPac.WaveSize = 0;
+            // 
+            // sprdSelectChip
+            // 
+            this.sprdSelectChip.List = true;
+            this.sprdSelectChip.Location = new System.Drawing.Point(355, 4);
+            this.sprdSelectChip.MaxCount = 10;
+            this.sprdSelectChip.Name = "sprdSelectChip";
+            this.sprdSelectChip.PlaceholderText = "芯片型号";
+            this.sprdSelectChip.Size = new System.Drawing.Size(140, 35);
+            this.sprdSelectChip.TabIndex = 12;
+            this.sprdSelectChip.WaveSize = 0;
+            // 
+            // sprdSelectDevice
+            // 
+            this.sprdSelectDevice.List = true;
+            this.sprdSelectDevice.Location = new System.Drawing.Point(500, 4);
+            this.sprdSelectDevice.MaxCount = 10;
+            this.sprdSelectDevice.Name = "sprdSelectDevice";
+            this.sprdSelectDevice.PlaceholderText = "设备型号";
+            this.sprdSelectDevice.Size = new System.Drawing.Size(200, 35);
+            this.sprdSelectDevice.TabIndex = 18;
+            this.sprdSelectDevice.WaveSize = 0;
+            // 
+            // tabPage1
+            // 
+            this.tabPage1.Controls.Add(this.labelDevRoot);
+            this.tabPage1.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.tabPage1.Location = new System.Drawing.Point(0, 33);
+            this.tabPage1.Name = "tabPage1";
+            this.tabPage1.Size = new System.Drawing.Size(829, 659);
+            this.tabPage1.TabIndex = 6;
+            this.tabPage1.Text = "自动root";
+            // 
+            // labelDevRoot
+            // 
+            this.labelDevRoot.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.labelDevRoot.Font = new System.Drawing.Font("微软雅黑", 24F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.labelDevRoot.ForeColor = System.Drawing.Color.Silver;
+            this.labelDevRoot.Location = new System.Drawing.Point(0, 0);
+            this.labelDevRoot.Name = "labelDevRoot";
+            this.labelDevRoot.Size = new System.Drawing.Size(829, 659);
+            this.labelDevRoot.TabIndex = 0;
+            this.labelDevRoot.Text = "开发中...";
+            this.labelDevRoot.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
             // tabPage2
             // 
@@ -1079,191 +1858,6 @@ namespace LoveAlways
             this.select4.TabIndex = 117;
             this.select4.WaveSize = 0;
             // 
-            // tabPage6
-            // 
-            this.tabPage6.Controls.Add(this.button7);
-            this.tabPage6.Controls.Add(this.pictureBox1);
-            this.tabPage6.Controls.Add(this.uiComboBox4);
-            this.tabPage6.Controls.Add(this.label4);
-            this.tabPage6.Controls.Add(this.uiComboBox3);
-            this.tabPage6.Controls.Add(this.button3);
-            this.tabPage6.Controls.Add(this.button2);
-            this.tabPage6.Controls.Add(this.label3);
-            this.tabPage6.Controls.Add(this.label2);
-            this.tabPage6.Controls.Add(this.slider1);
-            this.tabPage6.Controls.Add(this.label1);
-            this.tabPage6.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.tabPage6.Location = new System.Drawing.Point(0, 33);
-            this.tabPage6.Name = "tabPage6";
-            this.tabPage6.Size = new System.Drawing.Size(829, 659);
-            this.tabPage6.TabIndex = 4;
-            this.tabPage6.Text = "设置";
-            // 
-            // button7
-            // 
-            this.button7.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(223)))), ((int)(((byte)(200)))), ((int)(((byte)(239)))));
-            this.button7.Location = new System.Drawing.Point(4, 61);
-            this.button7.Name = "button7";
-            this.button7.Size = new System.Drawing.Size(176, 34);
-            this.button7.TabIndex = 37;
-            this.button7.Text = "清理缓存日志";
-            this.button7.WaveSize = 0;
-            // 
-            // pictureBox1
-            // 
-            this.pictureBox1.BackColor = System.Drawing.Color.White;
-            this.pictureBox1.Location = new System.Drawing.Point(4, 256);
-            this.pictureBox1.Name = "pictureBox1";
-            this.pictureBox1.Size = new System.Drawing.Size(530, 285);
-            this.pictureBox1.TabIndex = 36;
-            this.pictureBox1.TabStop = false;
-            // 
-            // uiComboBox4
-            // 
-            this.uiComboBox4.DataSource = null;
-            this.uiComboBox4.DropDownStyle = Sunny.UI.UIDropDownStyle.DropDownList;
-            this.uiComboBox4.DropDownWidth = 215;
-            this.uiComboBox4.FillColor = System.Drawing.Color.Empty;
-            this.uiComboBox4.FillColor2 = System.Drawing.Color.Transparent;
-            this.uiComboBox4.Font = new System.Drawing.Font("微软雅黑", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.uiComboBox4.ImeMode = System.Windows.Forms.ImeMode.Disable;
-            this.uiComboBox4.ItemHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
-            this.uiComboBox4.ItemRectColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
-            this.uiComboBox4.Items.AddRange(new object[] {
-            "简体中文",
-            "English"});
-            this.uiComboBox4.ItemSelectBackColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
-            this.uiComboBox4.ItemSelectForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(235)))), ((int)(((byte)(243)))), ((int)(((byte)(255)))));
-            this.uiComboBox4.Location = new System.Drawing.Point(4, 569);
-            this.uiComboBox4.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            this.uiComboBox4.MinimumSize = new System.Drawing.Size(63, 0);
-            this.uiComboBox4.Name = "uiComboBox4";
-            this.uiComboBox4.Padding = new System.Windows.Forms.Padding(0, 0, 30, 2);
-            this.uiComboBox4.Radius = 14;
-            this.uiComboBox4.RectColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(128)))), ((int)(((byte)(255)))));
-            this.uiComboBox4.Size = new System.Drawing.Size(226, 30);
-            this.uiComboBox4.SymbolSize = 24;
-            this.uiComboBox4.TabIndex = 35;
-            this.uiComboBox4.Text = "简体中文";
-            this.uiComboBox4.TextAlignment = System.Drawing.ContentAlignment.MiddleLeft;
-            this.uiComboBox4.Watermark = "";
-            // 
-            // label4
-            // 
-            this.label4.Font = new System.Drawing.Font("微软雅黑", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.label4.Location = new System.Drawing.Point(7, 547);
-            this.label4.Name = "label4";
-            this.label4.Size = new System.Drawing.Size(160, 23);
-            this.label4.TabIndex = 34;
-            this.label4.Text = "语言";
-            // 
-            // uiComboBox3
-            // 
-            this.uiComboBox3.DataSource = null;
-            this.uiComboBox3.DropDownWidth = 300;
-            this.uiComboBox3.FillColor = System.Drawing.Color.Empty;
-            this.uiComboBox3.FillColor2 = System.Drawing.Color.Transparent;
-            this.uiComboBox3.Font = new System.Drawing.Font("微软雅黑", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.uiComboBox3.ImeMode = System.Windows.Forms.ImeMode.NoControl;
-            this.uiComboBox3.ItemHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
-            this.uiComboBox3.ItemRectColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
-            this.uiComboBox3.ItemSelectBackColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
-            this.uiComboBox3.ItemSelectForeColor = System.Drawing.Color.White;
-            this.uiComboBox3.Location = new System.Drawing.Point(4, 137);
-            this.uiComboBox3.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            this.uiComboBox3.MinimumSize = new System.Drawing.Size(63, 0);
-            this.uiComboBox3.Name = "uiComboBox3";
-            this.uiComboBox3.Padding = new System.Windows.Forms.Padding(0, 0, 30, 2);
-            this.uiComboBox3.Radius = 14;
-            this.uiComboBox3.RectColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
-            this.uiComboBox3.Size = new System.Drawing.Size(356, 34);
-            this.uiComboBox3.StyleDropDown = Sunny.UI.UIStyle.Green;
-            this.uiComboBox3.SymbolSize = 24;
-            this.uiComboBox3.TabIndex = 32;
-            this.uiComboBox3.TextAlignment = System.Drawing.ContentAlignment.MiddleLeft;
-            this.uiComboBox3.Watermark = "输入Url";
-            this.uiComboBox3.WatermarkActiveColor = System.Drawing.Color.Silver;
-            this.uiComboBox3.WatermarkColor = System.Drawing.Color.Silver;
-            // 
-            // button3
-            // 
-            this.button3.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(223)))), ((int)(((byte)(200)))), ((int)(((byte)(239)))));
-            this.button3.Location = new System.Drawing.Point(209, 176);
-            this.button3.Name = "button3";
-            this.button3.Size = new System.Drawing.Size(151, 34);
-            this.button3.TabIndex = 31;
-            this.button3.Text = "应用";
-            this.button3.WaveSize = 0;
-            // 
-            // button2
-            // 
-            this.button2.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(223)))), ((int)(((byte)(200)))), ((int)(((byte)(239)))));
-            this.button2.Location = new System.Drawing.Point(3, 176);
-            this.button2.Name = "button2";
-            this.button2.Size = new System.Drawing.Size(160, 34);
-            this.button2.TabIndex = 30;
-            this.button2.Text = "本地壁纸";
-            this.button2.WaveSize = 0;
-            // 
-            // label3
-            // 
-            this.label3.Font = new System.Drawing.Font("微软雅黑", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.label3.Location = new System.Drawing.Point(7, 227);
-            this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(515, 23);
-            this.label3.TabIndex = 4;
-            this.label3.Text = "预览";
-            // 
-            // label2
-            // 
-            this.label2.Font = new System.Drawing.Font("微软雅黑", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.label2.Location = new System.Drawing.Point(8, 112);
-            this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(276, 23);
-            this.label2.TabIndex = 3;
-            this.label2.Text = "壁纸";
-            // 
-            // slider1
-            // 
-            this.slider1.Font = new System.Drawing.Font("微软雅黑", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.slider1.Location = new System.Drawing.Point(0, 32);
-            this.slider1.Name = "slider1";
-            this.slider1.Size = new System.Drawing.Size(431, 23);
-            this.slider1.TabIndex = 2;
-            this.slider1.Text = "slider1";
-            this.slider1.Value = 100;
-            // 
-            // label1
-            // 
-            this.label1.Font = new System.Drawing.Font("微软雅黑", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.label1.Location = new System.Drawing.Point(8, 3);
-            this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(242, 23);
-            this.label1.TabIndex = 1;
-            this.label1.Text = "背景模糊度";
-            // 
-            // tabPage1
-            // 
-            this.tabPage1.Controls.Add(this.labelDevRoot);
-            this.tabPage1.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.tabPage1.Location = new System.Drawing.Point(0, 33);
-            this.tabPage1.Name = "tabPage1";
-            this.tabPage1.Size = new System.Drawing.Size(829, 659);
-            this.tabPage1.TabIndex = 6;
-            this.tabPage1.Text = "自动root";
-            // 
-            // labelDevRoot
-            // 
-            this.labelDevRoot.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.labelDevRoot.Font = new System.Drawing.Font("微软雅黑", 24F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.labelDevRoot.ForeColor = System.Drawing.Color.Silver;
-            this.labelDevRoot.Location = new System.Drawing.Point(0, 0);
-            this.labelDevRoot.Name = "labelDevRoot";
-            this.labelDevRoot.Size = new System.Drawing.Size(829, 659);
-            this.labelDevRoot.TabIndex = 0;
-            this.labelDevRoot.Text = "开发中...";
-            this.labelDevRoot.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-            // 
             // tabPage3
             // 
             this.tabPage3.Controls.Add(this.checkbox7);
@@ -1294,6 +1888,14 @@ namespace LoveAlways
             this.tabPage3.Size = new System.Drawing.Size(829, 659);
             this.tabPage3.TabIndex = 5;
             this.tabPage3.Text = "引导模式";
+            // 
+            // checkbox7
+            // 
+            this.checkbox7.Location = new System.Drawing.Point(288, 559);
+            this.checkbox7.Name = "checkbox7";
+            this.checkbox7.Size = new System.Drawing.Size(91, 24);
+            this.checkbox7.TabIndex = 154;
+            this.checkbox7.Text = "欧加刷写";
             // 
             // uiButton10
             // 
@@ -1692,49 +2294,191 @@ namespace LoveAlways
             this.checkbox50.TabIndex = 87;
             this.checkbox50.Text = "保留数据";
             // 
-            // tabPage4
+            // tabPage6
             // 
-            this.tabPage4.Controls.Add(this.labelDevMTK);
-            this.tabPage4.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.tabPage4.Location = new System.Drawing.Point(0, 33);
-            this.tabPage4.Name = "tabPage4";
-            this.tabPage4.Size = new System.Drawing.Size(829, 659);
-            this.tabPage4.TabIndex = 2;
-            this.tabPage4.Text = "MTK平台";
+            this.tabPage6.Controls.Add(this.button7);
+            this.tabPage6.Controls.Add(this.pictureBox1);
+            this.tabPage6.Controls.Add(this.uiComboBox4);
+            this.tabPage6.Controls.Add(this.label4);
+            this.tabPage6.Controls.Add(this.uiComboBox3);
+            this.tabPage6.Controls.Add(this.button3);
+            this.tabPage6.Controls.Add(this.button2);
+            this.tabPage6.Controls.Add(this.label3);
+            this.tabPage6.Controls.Add(this.label2);
+            this.tabPage6.Controls.Add(this.slider1);
+            this.tabPage6.Controls.Add(this.label1);
+            this.tabPage6.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.tabPage6.Location = new System.Drawing.Point(0, 33);
+            this.tabPage6.Name = "tabPage6";
+            this.tabPage6.Size = new System.Drawing.Size(829, 659);
+            this.tabPage6.TabIndex = 4;
+            this.tabPage6.Text = "设置";
             // 
-            // labelDevMTK
+            // button7
             // 
-            this.labelDevMTK.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.labelDevMTK.Font = new System.Drawing.Font("微软雅黑", 24F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.labelDevMTK.ForeColor = System.Drawing.Color.Silver;
-            this.labelDevMTK.Location = new System.Drawing.Point(0, 0);
-            this.labelDevMTK.Name = "labelDevMTK";
-            this.labelDevMTK.Size = new System.Drawing.Size(829, 659);
-            this.labelDevMTK.TabIndex = 0;
-            this.labelDevMTK.Text = "开发中...";
-            this.labelDevMTK.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this.button7.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(223)))), ((int)(((byte)(200)))), ((int)(((byte)(239)))));
+            this.button7.Location = new System.Drawing.Point(4, 61);
+            this.button7.Name = "button7";
+            this.button7.Size = new System.Drawing.Size(176, 34);
+            this.button7.TabIndex = 37;
+            this.button7.Text = "清理缓存日志";
+            this.button7.WaveSize = 0;
             // 
-            // tabPage5
+            // pictureBox1
             // 
-            this.tabPage5.Controls.Add(this.labelDevSpreadtrum);
-            this.tabPage5.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.tabPage5.Location = new System.Drawing.Point(0, 33);
-            this.tabPage5.Name = "tabPage5";
-            this.tabPage5.Size = new System.Drawing.Size(829, 659);
-            this.tabPage5.TabIndex = 3;
-            this.tabPage5.Text = "展讯平台";
+            this.pictureBox1.BackColor = System.Drawing.Color.White;
+            this.pictureBox1.Location = new System.Drawing.Point(4, 256);
+            this.pictureBox1.Name = "pictureBox1";
+            this.pictureBox1.Size = new System.Drawing.Size(530, 285);
+            this.pictureBox1.TabIndex = 36;
+            this.pictureBox1.TabStop = false;
             // 
-            // labelDevSpreadtrum
+            // uiComboBox4
             // 
-            this.labelDevSpreadtrum.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.labelDevSpreadtrum.Font = new System.Drawing.Font("微软雅黑", 24F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.labelDevSpreadtrum.ForeColor = System.Drawing.Color.Silver;
-            this.labelDevSpreadtrum.Location = new System.Drawing.Point(0, 0);
-            this.labelDevSpreadtrum.Name = "labelDevSpreadtrum";
-            this.labelDevSpreadtrum.Size = new System.Drawing.Size(829, 659);
-            this.labelDevSpreadtrum.TabIndex = 0;
-            this.labelDevSpreadtrum.Text = "开发中...";
-            this.labelDevSpreadtrum.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this.uiComboBox4.DataSource = null;
+            this.uiComboBox4.DropDownStyle = Sunny.UI.UIDropDownStyle.DropDownList;
+            this.uiComboBox4.DropDownWidth = 215;
+            this.uiComboBox4.FillColor = System.Drawing.Color.Empty;
+            this.uiComboBox4.FillColor2 = System.Drawing.Color.Transparent;
+            this.uiComboBox4.Font = new System.Drawing.Font("微软雅黑", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.uiComboBox4.ImeMode = System.Windows.Forms.ImeMode.Disable;
+            this.uiComboBox4.ItemHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
+            this.uiComboBox4.ItemRectColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
+            this.uiComboBox4.Items.AddRange(new object[] {
+            "简体中文",
+            "English"});
+            this.uiComboBox4.ItemSelectBackColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
+            this.uiComboBox4.ItemSelectForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(235)))), ((int)(((byte)(243)))), ((int)(((byte)(255)))));
+            this.uiComboBox4.Location = new System.Drawing.Point(4, 569);
+            this.uiComboBox4.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
+            this.uiComboBox4.MinimumSize = new System.Drawing.Size(63, 0);
+            this.uiComboBox4.Name = "uiComboBox4";
+            this.uiComboBox4.Padding = new System.Windows.Forms.Padding(0, 0, 30, 2);
+            this.uiComboBox4.Radius = 14;
+            this.uiComboBox4.RectColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(128)))), ((int)(((byte)(255)))));
+            this.uiComboBox4.Size = new System.Drawing.Size(226, 30);
+            this.uiComboBox4.SymbolSize = 24;
+            this.uiComboBox4.TabIndex = 35;
+            this.uiComboBox4.Text = "简体中文";
+            this.uiComboBox4.TextAlignment = System.Drawing.ContentAlignment.MiddleLeft;
+            this.uiComboBox4.Watermark = "";
+            // 
+            // label4
+            // 
+            this.label4.Font = new System.Drawing.Font("微软雅黑", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.label4.Location = new System.Drawing.Point(7, 547);
+            this.label4.Name = "label4";
+            this.label4.Size = new System.Drawing.Size(160, 23);
+            this.label4.TabIndex = 34;
+            this.label4.Text = "语言";
+            // 
+            // uiComboBox3
+            // 
+            this.uiComboBox3.DataSource = null;
+            this.uiComboBox3.DropDownWidth = 300;
+            this.uiComboBox3.FillColor = System.Drawing.Color.Empty;
+            this.uiComboBox3.FillColor2 = System.Drawing.Color.Transparent;
+            this.uiComboBox3.Font = new System.Drawing.Font("微软雅黑", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.uiComboBox3.ImeMode = System.Windows.Forms.ImeMode.NoControl;
+            this.uiComboBox3.ItemHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
+            this.uiComboBox3.ItemRectColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
+            this.uiComboBox3.ItemSelectBackColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
+            this.uiComboBox3.ItemSelectForeColor = System.Drawing.Color.White;
+            this.uiComboBox3.Location = new System.Drawing.Point(4, 137);
+            this.uiComboBox3.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
+            this.uiComboBox3.MinimumSize = new System.Drawing.Size(63, 0);
+            this.uiComboBox3.Name = "uiComboBox3";
+            this.uiComboBox3.Padding = new System.Windows.Forms.Padding(0, 0, 30, 2);
+            this.uiComboBox3.Radius = 14;
+            this.uiComboBox3.RectColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
+            this.uiComboBox3.Size = new System.Drawing.Size(356, 34);
+            this.uiComboBox3.StyleDropDown = Sunny.UI.UIStyle.Green;
+            this.uiComboBox3.SymbolSize = 24;
+            this.uiComboBox3.TabIndex = 32;
+            this.uiComboBox3.TextAlignment = System.Drawing.ContentAlignment.MiddleLeft;
+            this.uiComboBox3.Watermark = "输入Url";
+            this.uiComboBox3.WatermarkActiveColor = System.Drawing.Color.Silver;
+            this.uiComboBox3.WatermarkColor = System.Drawing.Color.Silver;
+            // 
+            // button3
+            // 
+            this.button3.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(223)))), ((int)(((byte)(200)))), ((int)(((byte)(239)))));
+            this.button3.Location = new System.Drawing.Point(209, 176);
+            this.button3.Name = "button3";
+            this.button3.Size = new System.Drawing.Size(151, 34);
+            this.button3.TabIndex = 31;
+            this.button3.Text = "应用";
+            this.button3.WaveSize = 0;
+            // 
+            // button2
+            // 
+            this.button2.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(223)))), ((int)(((byte)(200)))), ((int)(((byte)(239)))));
+            this.button2.Location = new System.Drawing.Point(3, 176);
+            this.button2.Name = "button2";
+            this.button2.Size = new System.Drawing.Size(160, 34);
+            this.button2.TabIndex = 30;
+            this.button2.Text = "本地壁纸";
+            this.button2.WaveSize = 0;
+            // 
+            // label3
+            // 
+            this.label3.Font = new System.Drawing.Font("微软雅黑", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.label3.Location = new System.Drawing.Point(7, 227);
+            this.label3.Name = "label3";
+            this.label3.Size = new System.Drawing.Size(515, 23);
+            this.label3.TabIndex = 4;
+            this.label3.Text = "预览";
+            // 
+            // label2
+            // 
+            this.label2.Font = new System.Drawing.Font("微软雅黑", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.label2.Location = new System.Drawing.Point(8, 112);
+            this.label2.Name = "label2";
+            this.label2.Size = new System.Drawing.Size(276, 23);
+            this.label2.TabIndex = 3;
+            this.label2.Text = "壁纸";
+            // 
+            // slider1
+            // 
+            this.slider1.Font = new System.Drawing.Font("微软雅黑", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.slider1.Location = new System.Drawing.Point(0, 32);
+            this.slider1.Name = "slider1";
+            this.slider1.Size = new System.Drawing.Size(431, 23);
+            this.slider1.TabIndex = 2;
+            this.slider1.Text = "slider1";
+            this.slider1.Value = 100;
+            // 
+            // label1
+            // 
+            this.label1.Font = new System.Drawing.Font("微软雅黑", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.label1.Location = new System.Drawing.Point(8, 3);
+            this.label1.Name = "label1";
+            this.label1.Size = new System.Drawing.Size(242, 23);
+            this.label1.TabIndex = 1;
+            this.label1.Text = "背景模糊度";
+            // 
+            // mtkBtnDisconnect
+            // 
+            this.mtkBtnDisconnect.Enabled = false;
+            this.mtkBtnDisconnect.Location = new System.Drawing.Point(710, 43);
+            this.mtkBtnDisconnect.Name = "mtkBtnDisconnect";
+            this.mtkBtnDisconnect.Size = new System.Drawing.Size(80, 35);
+            this.mtkBtnDisconnect.TabIndex = 4;
+            this.mtkBtnDisconnect.Text = "断开";
+            this.mtkBtnDisconnect.Type = AntdUI.TTypeMini.Error;
+            this.mtkBtnDisconnect.Visible = false;
+            this.mtkBtnDisconnect.WaveSize = 0;
+            // 
+            // mtkBtnConnect
+            // 
+            this.mtkBtnConnect.Location = new System.Drawing.Point(608, 43);
+            this.mtkBtnConnect.Name = "mtkBtnConnect";
+            this.mtkBtnConnect.Size = new System.Drawing.Size(80, 35);
+            this.mtkBtnConnect.TabIndex = 3;
+            this.mtkBtnConnect.Text = "连接";
+            this.mtkBtnConnect.Type = AntdUI.TTypeMini.Primary;
+            this.mtkBtnConnect.Visible = false;
+            this.mtkBtnConnect.WaveSize = 0;
             // 
             // uiComboBox5
             // 
@@ -2404,14 +3148,6 @@ namespace LoveAlways
             this.uiLabel10.TabIndex = 22;
             this.uiLabel10.Text = "芯片序列号：等待连接";
             // 
-            // checkbox7
-            // 
-            this.checkbox7.Location = new System.Drawing.Point(288, 559);
-            this.checkbox7.Name = "checkbox7";
-            this.checkbox7.Size = new System.Drawing.Size(91, 24);
-            this.checkbox7.TabIndex = 154;
-            this.checkbox7.Text = "欧加刷写";
-            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
@@ -2443,15 +3179,18 @@ namespace LoveAlways
             this.menuStrip1.ResumeLayout(false);
             this.menuStrip1.PerformLayout();
             this.tabs1.ResumeLayout(false);
+            this.tabPage4.ResumeLayout(false);
+            this.tabPage4.PerformLayout();
+            this.mtkGrpPartitions.ResumeLayout(false);
+            this.tabPage5.ResumeLayout(false);
+            this.sprdGroupPartitions.ResumeLayout(false);
+            this.tabPage1.ResumeLayout(false);
             this.tabPage2.ResumeLayout(false);
             this.uiGroupBox4.ResumeLayout(false);
-            this.tabPage6.ResumeLayout(false);
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
-            this.tabPage1.ResumeLayout(false);
             this.tabPage3.ResumeLayout(false);
             this.uiGroupBox7.ResumeLayout(false);
-            this.tabPage4.ResumeLayout(false);
-            this.tabPage5.ResumeLayout(false);
+            this.tabPage6.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
             this.tabs2.ResumeLayout(false);
             this.tabPage7.ResumeLayout(false);
             this.uiGroupBox2.ResumeLayout(false);
@@ -2630,9 +3369,76 @@ namespace LoveAlways
         private Sunny.UI.UIComboBox uiComboBox5;
         private Sunny.UI.UIButton uiButton10;
         private Sunny.UI.UILabel labelDevRoot;
-        private Sunny.UI.UILabel labelDevMTK;
-        private Sunny.UI.UILabel labelDevSpreadtrum;
+        // MTK 平台控件
+        private Sunny.UI.UIGroupBox mtkGrpPartitions;
+        private AntdUI.Checkbox mtkChkSelectAll;
+        private System.Windows.Forms.ListView mtkListPartitions;
+        private System.Windows.Forms.ColumnHeader mtkColPartition;
+        private System.Windows.Forms.ColumnHeader mtkColType;
+        private System.Windows.Forms.ColumnHeader mtkColSize;
+        private System.Windows.Forms.ColumnHeader mtkColAddress;
+        private System.Windows.Forms.ColumnHeader mtkColFileName;
+        private AntdUI.Select mtkSelectChip;
+        private AntdUI.Input mtkInputDaFile;
+        private AntdUI.Input mtkInputScatterFile;
+        private AntdUI.Button mtkBtnConnect;
+        private AntdUI.Button mtkBtnDisconnect;
+        private AntdUI.Button mtkBtnReadGpt;
+        private AntdUI.Button mtkBtnWritePartition;
+        private AntdUI.Button mtkBtnReadPartition;
+        private AntdUI.Button mtkBtnErasePartition;
+        private AntdUI.Button mtkBtnReboot;
+        private AntdUI.Button mtkBtnReadImei;
+        private AntdUI.Button mtkBtnWriteImei;
+        private AntdUI.Button mtkBtnBackupNvram;
+        private AntdUI.Button mtkBtnRestoreNvram;
+        private AntdUI.Button mtkBtnFormatData;
+        private AntdUI.Button mtkBtnUnlockBl;
+        private AntdUI.Button mtkBtnExploit;
+        private AntdUI.Select mtkSelectExploitType;
+        private AntdUI.Checkbox mtkChkExploit;
+        private AntdUI.Checkbox mtkChkSkipUserdata;
+        private AntdUI.Checkbox mtkChkRebootAfter;
+        private Sunny.UI.UILabel mtkLblStatus;
+        private Sunny.UI.UILabel mtkLblHwCode;
+        private Sunny.UI.UILabel mtkLblChipName;
+        private Sunny.UI.UILabel mtkLblDaMode;
         private AntdUI.Checkbox checkbox7;
+        // 展讯控件
+        private AntdUI.Input sprdInputPac;
+        private AntdUI.Select sprdSelectChip;
+        private AntdUI.Select sprdSelectDevice;
+        private AntdUI.Button sprdBtnWritePartition;
+        private AntdUI.Button sprdBtnReadPartition;
+        private AntdUI.Button sprdBtnErasePartition;
+        private AntdUI.Button sprdBtnReboot;
+        private AntdUI.Button sprdBtnReadGpt;
+        private AntdUI.Button sprdBtnExtract;
+        private Sunny.UI.UIGroupBox sprdGroupPartitions;
+        private System.Windows.Forms.ListView sprdListPartitions;
+        private System.Windows.Forms.ColumnHeader sprdColPartition;
+        private System.Windows.Forms.ColumnHeader sprdColFileName;
+        private System.Windows.Forms.ColumnHeader sprdColSize;
+        private System.Windows.Forms.ColumnHeader sprdColType;
+        private System.Windows.Forms.ColumnHeader sprdColAddress;
+        private System.Windows.Forms.ColumnHeader sprdColOffset;
+        private System.Windows.Forms.ColumnHeader sprdColSparse;
+        private AntdUI.Checkbox sprdChkSelectAll;
+        private AntdUI.Checkbox sprdChkSkipUserdata;
+        private AntdUI.Checkbox sprdChkRebootAfter;
+        private AntdUI.Select sprdSelectSearch;
+        private AntdUI.Input input10;
+        private AntdUI.Input input5;
+        private AntdUI.Input input4;
+        private AntdUI.Input input2;
+        // 展讯操作按钮 - 第二行
+        private AntdUI.Button sprdBtnReadImei;
+        private AntdUI.Button sprdBtnWriteImei;
+        private AntdUI.Button sprdBtnBackupCalib;
+        private AntdUI.Button sprdBtnRestoreCalib;
+        private AntdUI.Button sprdBtnFactoryReset;
+        private AntdUI.Button sprdBtnUnlockBL;
+        private AntdUI.Button sprdBtnNvManager;
     }
 }
 

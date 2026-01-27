@@ -288,7 +288,10 @@ namespace LoveAlways.Qualcomm.Services
                     }
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ImageMapParser] 解析块映射异常: {ex.Message}");
+            }
             return blocks;
         }
     }
@@ -1057,8 +1060,9 @@ namespace LoveAlways.Qualcomm.Services
                                 }
                                 return task.Result;
                             }
-                            catch
+                            catch (Exception ex)
                             {
+                                _logDetail($"读取 super 分区异常: {ex.Message}");
                                 return null;
                             }
                         };
@@ -1066,9 +1070,11 @@ namespace LoveAlways.Qualcomm.Services
                     });
                     
                     // 整体超时 30 秒
-                    if (await Task.WhenAny(superReadTask, Task.Delay(30000)) == superReadTask)
+                    var completedTask = await Task.WhenAny(superReadTask, Task.Delay(30000)).ConfigureAwait(false);
+                    if (completedTask == superReadTask)
                     {
-                        finalInfo = superReadTask.Result;
+                        // 任务已完成，安全获取结果
+                        finalInfo = await superReadTask.ConfigureAwait(false);
                     }
                     else
                     {
@@ -1427,12 +1433,16 @@ namespace LoveAlways.Qualcomm.Services
 
                 // system 分区较大，需要更长超时时间
                 int timeoutMs = partitionName.Contains("system") ? 30000 : 20000;
-                if (await Task.WhenAny(parseTask, Task.Delay(timeoutMs)) == parseTask)
-                    return parseTask.Result;
+                var completedTask = await Task.WhenAny(parseTask, Task.Delay(timeoutMs)).ConfigureAwait(false);
+                if (completedTask == parseTask)
+                    return await parseTask.ConfigureAwait(false);
                 
                 _log(string.Format("解析分区 {0} 超时 ({1}秒)", partitionName, timeoutMs / 1000));
             }
-            catch { }
+            catch (Exception ex) 
+            { 
+                _logDetail($"解析分区 build.prop 异常: {ex.Message}");
+            }
             return null;
         }
 
@@ -1889,7 +1899,10 @@ namespace LoveAlways.Qualcomm.Services
                     entries = ParseErofsDirectoryEntries(dirData, dirSize);
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                _logDetail($"[EROFS] 读取目录异常: {ex.Message}");
+            }
             return entries;
         }
 
@@ -1937,7 +1950,10 @@ namespace LoveAlways.Qualcomm.Services
                     }
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                _logDetail($"[EROFS] 解析目录项异常: {ex.Message}");
+            }
             return entries;
         }
 
@@ -1997,7 +2013,10 @@ namespace LoveAlways.Qualcomm.Services
                     return ParseBuildProp(content);
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                _logDetail($"[EROFS] 读取文件异常: {ex.Message}");
+            }
             return null;
         }
 
@@ -2322,7 +2341,10 @@ namespace LoveAlways.Qualcomm.Services
                     offset += recLen;
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                _logDetail($"[EXT4] 解析目录项异常: {ex.Message}");
+            }
             return entries;
         }
 
@@ -2377,7 +2399,10 @@ namespace LoveAlways.Qualcomm.Services
                     }
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                _logDetail($"[EXT4] 读取目录数据异常: {ex.Message}");
+            }
             return null;
         }
 
@@ -2425,7 +2450,10 @@ namespace LoveAlways.Qualcomm.Services
                     return ParseBuildProp(content);
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                _logDetail($"[EXT4] 读取文件异常: {ex.Message}");
+            }
             return null;
         }
 

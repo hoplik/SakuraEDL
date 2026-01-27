@@ -79,3 +79,26 @@ super_*.txt
 # ============================================
 nuget.exe
 *.bak
+
+# ============================================
+# Non-project files (v3.0)
+# ============================================
+
+# Website and database files
+www-new/
+www.xiriacg.top_S8SDP/
+
+# Loader resources (large binary files)
+loaders_hjRRx/
+SprdResources/
+Payloads/
+
+# NPM files
+package-lock.json
+node_modules/
+
+# Setup scripts
+setup_payloads.bat
+
+# Terminal files
+terminals/

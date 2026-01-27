@@ -16,9 +16,11 @@ using Microsoft.VisualBasic;
 using LoveAlways.Qualcomm.UI;
 using LoveAlways.Qualcomm.Common;
 using LoveAlways.Qualcomm.Models;
+using LoveAlways.Qualcomm.Services;
 using LoveAlways.Fastboot.UI;
 using LoveAlways.Fastboot.Common;
 using LoveAlways.Qualcomm.Database;
+using LoveAlways.Common;
 
 namespace LoveAlways
 {
@@ -61,6 +63,15 @@ namespace LoveAlways
         public Form1()
         {
             InitializeComponent();
+            
+            // 启用双缓冲减少闪烁 (针对低配电脑优化)
+            if (PerformanceConfig.EnableDoubleBuffering)
+            {
+                SetStyle(ControlStyles.OptimizedDoubleBuffer | 
+                         ControlStyles.AllPaintingInWmPaint | 
+                         ControlStyles.UserPaint, true);
+                UpdateStyles();
+            }
             
             // 初始化日志系统
             InitializeLogSystem();
@@ -120,6 +131,12 @@ namespace LoveAlways
             
             // 初始化 EDL Loader 选择列表
             InitializeEdlLoaderList();
+
+            // 初始化展讯模块
+            InitializeSpreadtrumModule();
+
+            // 初始化联发科模块
+            InitializeMediaTekModule();
         }
 
         #region 高通模块
@@ -313,7 +330,10 @@ namespace LoveAlways
                     _lastEdlCount = edlCount;
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"EDL 端口检测异常: {ex.Message}");
+            }
         }
 
         private void UpdateAuthMode()
@@ -362,8 +382,15 @@ namespace LoveAlways
                         string signaturePath = input7.Text;
                         if (!string.IsNullOrEmpty(signaturePath) && File.Exists(signaturePath))
                         {
-                            AppendLog("已选择完整 VIP 认证文件，开始认证...", Color.Blue);
-                            await QualcommPerformVipAuthAsync();
+                            try
+                            {
+                                AppendLog("已选择完整 VIP 认证文件，开始认证...", Color.Blue);
+                                await QualcommPerformVipAuthAsync();
+                            }
+                            catch (Exception ex)
+                            {
+                                AppendLog($"VIP 认证异常: {ex.Message}", Color.Red);
+                            }
                         }
                     }
                 }
@@ -387,8 +414,15 @@ namespace LoveAlways
                         string digestPath = input9.Text;
                         if (!string.IsNullOrEmpty(digestPath) && File.Exists(digestPath))
                         {
-                            AppendLog("已选择完整 VIP 认证文件，开始认证...", Color.Blue);
-                            await QualcommPerformVipAuthAsync();
+                            try
+                            {
+                                AppendLog("已选择完整 VIP 认证文件，开始认证...", Color.Blue);
+                                await QualcommPerformVipAuthAsync();
+                            }
+                            catch (Exception ex)
+                            {
+                                AppendLog($"VIP 认证异常: {ex.Message}", Color.Red);
+                            }
                         }
                     }
                 }
@@ -712,52 +746,13 @@ namespace LoveAlways
             if (_qualcommController == null) return false;
 
             string selectedLoader = select3.Text;
-            bool isVipLoader = selectedLoader.StartsWith("[VIP]");
-            bool isEdlLoader = selectedLoader.StartsWith("[") && !isVipLoader && !selectedLoader.StartsWith("───");
+            bool isCloudMatch = selectedLoader.Contains("云端自动匹配");
             bool skipSahara = checkbox12.Checked;
 
             // 跳过引导模式 - 直接连接 Firehose (设备已经在 Firehose 模式)
             if (skipSahara)
             {
                 AppendLog("[高通] 跳过 Sahara，直接连接 Firehose...", Color.Blue);
-                
-                // 如果选择了 VIP 资源包，跳过 Sahara 后仍需执行 VIP 认证
-                if (isVipLoader)
-                {
-                    string platform = ExtractPlatformFromVipSelection(selectedLoader);
-                    
-                    // 先直接连接 Firehose
-                    bool connected = await _qualcommController.ConnectWithOptionsAsync(
-                        "", _storageType, true, "none");
-                    
-                    if (!connected)
-                    {
-                        AppendLog("Firehose 直连失败", Color.Red);
-                        return false;
-                    }
-                    
-                    // 连接成功后执行 VIP 认证
-                    string digestPath = ChimeraSignDatabase.GetDigestPath(platform);
-                    string signaturePath = ChimeraSignDatabase.GetSignaturePath(platform);
-                    
-                    if (!string.IsNullOrEmpty(digestPath) && !string.IsNullOrEmpty(signaturePath))
-                    {
-                        AppendLog($"[VIP] 执行 VIP 认证 ({platform})...", Color.Blue);
-                        bool vipOk = await _qualcommController.PerformVipAuthAsync(digestPath, signaturePath);
-                        if (vipOk)
-                        {
-                            AppendLog("[VIP] VIP 认证成功", Color.Green);
-                        }
-                        else
-                        {
-                            AppendLog("[VIP] VIP 认证失败，部分操作可能受限", Color.Orange);
-                        }
-                    }
-                    
-                    return true;
-                }
-                
-                // 非 VIP 模式，直接连接
                 return await _qualcommController.ConnectWithOptionsAsync(
                     "", _storageType, true, _authMode,
                     input9.Text?.Trim() ?? "",
@@ -765,101 +760,10 @@ namespace LoveAlways
                 );
             }
 
-            // VIP 内嵌模式 (OPLUS 签名) - 发送引导
-            if (isVipLoader)
+            // ========== 云端自动匹配模式 ==========
+            if (isCloudMatch)
             {
-                string platform = ExtractPlatformFromVipSelection(selectedLoader);
-                
-                if (!ChimeraSignDatabase.TryGet(platform, out var signData))
-                {
-                    AppendLog($"未找到平台 {platform} 的签名数据", Color.Red);
-                    return false;
-                }
-
-                // 检查 Loader 资源包是否存在
-                if (!ChimeraSignDatabase.IsLoaderPackAvailable())
-                {
-                    AppendLog("错误: 找不到 firehose.pak 资源包", Color.Red);
-                    AppendLog("请将资源包放到程序目录下", Color.Orange);
-                    return false;
-                }
-
-                // 从资源包加载 Loader
-                byte[] loaderData = ChimeraSignDatabase.LoadLoader(platform);
-                if (loaderData == null)
-                {
-                    AppendLog($"无法从资源包加载 {platform} 的 Loader", Color.Red);
-                    return false;
-                }
-
-                // 从资源包获取 Digest 和 Signature 文件路径
-                string digestPath = ChimeraSignDatabase.GetDigestPath(platform);
-                string signaturePath = ChimeraSignDatabase.GetSignaturePath(platform);
-                
-                if (string.IsNullOrEmpty(digestPath) || string.IsNullOrEmpty(signaturePath))
-                {
-                    AppendLog($"错误: 平台 {platform} 的 VIP 认证数据不可用", Color.Red);
-                    AppendLog("请确保 firehose.pak (v2) 包含该平台的认证数据", Color.Orange);
-                    return false;
-                }
-
-                AppendLog($"[VIP] {signData.Name} - Loader: {loaderData.Length/1024}KB (资源包)", Color.Blue);
-                
-                // 使用 VIP 连接 (使用文件路径方式)
-                return await _qualcommController.ConnectWithVipDataAsync(
-                    _storageType,
-                    platform,
-                    loaderData,
-                    digestPath,
-                    signaturePath
-                );
-            }
-            
-            // EDL Loader 模式 (通用/无签名) - 发送引导
-            if (isEdlLoader)
-            {
-                string edlId = ExtractEdlLoaderIdFromSelection(selectedLoader);
-                
-                // 检查资源包是否存在
-                if (!EdlLoaderDatabase.IsPakAvailable())
-                {
-                    AppendLog("错误: 找不到 edl_loaders.pak 资源包", Color.Red);
-                    AppendLog("请将资源包放到程序目录下", Color.Orange);
-                    return false;
-                }
-                
-                // 从资源包加载 Loader
-                byte[] loaderData = EdlLoaderDatabase.LoadLoader(edlId);
-                if (loaderData == null)
-                {
-                    AppendLog($"无法从资源包加载 {edlId}", Color.Red);
-                    return false;
-                }
-                
-                // 获取 Loader 信息用于显示
-                string displayName = edlId;
-                if (EdlLoaderDatabase.Database.TryGetValue(edlId, out var loaderInfo))
-                {
-                    displayName = loaderInfo.Name;
-                }
-                
-                // 获取认证模式
-                string edlAuthMode = "none";
-                if (EdlLoaderDatabase.Database.TryGetValue(edlId, out var edlInfo))
-                {
-                    edlAuthMode = edlInfo.AuthMode ?? "none";
-                }
-                
-                string authInfo = edlAuthMode != "none" ? $" [认证: {edlAuthMode}]" : "";
-                AppendLog($"[EDL] {displayName} - {loaderData.Length/1024}KB{authInfo}", Color.Cyan);
-                
-                // 使用 EDL 连接 (传递认证模式)
-                return await _qualcommController.ConnectWithLoaderDataAsync(
-                    _storageType,
-                    loaderData,
-                    edlId,
-                    edlAuthMode
-                );
+                return await QualcommConnectWithCloudMatchAsync();
             }
 
             // 普通模式 (自定义引导文件)
@@ -868,7 +772,7 @@ namespace LoveAlways
 
             if (!skipSahara && string.IsNullOrEmpty(programmerPath))
             {
-                AppendLog("请选择引导文件或勾选「跳过引导」", Color.Orange);
+                AppendLog("请选择引导文件或使用云端自动匹配", Color.Orange);
                 return false;
             }
 
@@ -881,6 +785,103 @@ namespace LoveAlways
                 input9.Text?.Trim() ?? "",
                 input7.Text?.Trim() ?? ""
             );
+        }
+        
+        /// <summary>
+        /// 云端自动匹配连接
+        /// </summary>
+        private async Task<bool> QualcommConnectWithCloudMatchAsync()
+        {
+            AppendLog("[云端] 正在获取设备信息...", Color.Cyan);
+            
+            // 1. 执行 Sahara 握手获取设备信息 (不上传 Loader)
+            var deviceInfo = await _qualcommController.GetSaharaDeviceInfoAsync();
+            
+            if (deviceInfo == null)
+            {
+                AppendLog("[云端] 无法获取设备信息，请检查设备连接", Color.Red);
+                return false;
+            }
+            
+            AppendLog($"[云端] 设备: MSM={deviceInfo.MsmId}, OEM={deviceInfo.OemId}", Color.Blue);
+            if (!string.IsNullOrEmpty(deviceInfo.PkHash) && deviceInfo.PkHash.Length >= 16)
+            {
+                AppendLog($"[云端] PK Hash: {deviceInfo.PkHash.Substring(0, 16)}...", Color.Gray);
+            }
+            
+            // 2. 调用云端 API 匹配
+            var cloudService = LoveAlways.Qualcomm.Services.CloudLoaderService.Instance;
+            var result = await cloudService.MatchLoaderAsync(
+                deviceInfo.MsmId,
+                deviceInfo.PkHash,
+                deviceInfo.OemId,
+                _storageType
+            );
+            
+            if (result == null || result.Data == null)
+            {
+                AppendLog("[云端] 未找到匹配的 Loader", Color.Orange);
+                AppendLog("[云端] 请尝试手动选择引导文件", Color.Yellow);
+                
+                // 上报未匹配
+                cloudService.ReportDeviceLog(
+                    deviceInfo.MsmId,
+                    deviceInfo.PkHash,
+                    deviceInfo.OemId,
+                    _storageType,
+                    "not_found"
+                );
+                
+                return false;
+            }
+            
+            // 3. 匹配成功
+            AppendLog($"[云端] 匹配成功: {result.Filename}", Color.Green);
+            AppendLog($"[云端] 厂商: {result.Vendor}, 芯片: {result.Chip}", Color.Blue);
+            AppendLog($"[云端] 置信度: {result.Confidence}%, 匹配类型: {result.MatchType}", Color.Gray);
+            
+            // 4. 根据认证类型选择连接方式
+            string authMode = result.AuthType?.ToLower() switch
+            {
+                "miauth" => "xiaomi",
+                "demacia" => "oneplus",
+                "vip" => "vip",
+                _ => "none"
+            };
+            
+            if (authMode != "none")
+            {
+                AppendLog($"[云端] 认证类型: {result.AuthType}", Color.Cyan);
+            }
+            
+            // 5. 继续连接 - 上传云端匹配的 Loader
+            AppendLog($"[云端] 发送 Loader ({result.Data.Length / 1024} KB)...", Color.Cyan);
+            
+            bool success = await _qualcommController.ContinueConnectWithCloudLoaderAsync(
+                result.Data,
+                _storageType,
+                authMode
+            );
+            
+            // 6. 上报设备日志
+            cloudService.ReportDeviceLog(
+                deviceInfo.MsmId,
+                deviceInfo.PkHash,
+                deviceInfo.OemId,
+                _storageType,
+                success ? "success" : "failed"
+            );
+            
+            if (success)
+            {
+                AppendLog("[云端] 设备连接成功", Color.Green);
+            }
+            else
+            {
+                AppendLog("[云端] 设备连接失败", Color.Red);
+            }
+            
+            return success;
         }
 
         private void GeneratePartitionXml()
@@ -1268,7 +1269,10 @@ namespace LoveAlways
                                 .ToList();
                             patchFiles.AddRange(sameDir);
                         }
-                        catch { }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"搜索 Patch 文件异常: {ex.Message}");
+                        }
                         
                         // 2. 如果当前目录没找到，搜索子目录（如 images 文件夹）
                         if (patchFiles.Count == 0)
@@ -1307,7 +1311,10 @@ namespace LoveAlways
                                     patchFiles.AddRange(parentPatches);
                                 }
                             }
-                            catch { }
+                            catch (Exception ex)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"搜索父目录 Patch 文件异常: {ex.Message}");
+                            }
                         }
                         
                         // 排序 patch 文件
@@ -1458,20 +1465,69 @@ namespace LoveAlways
 
         private void StopCurrentOperation()
         {
-            if (_qualcommController == null)
+            bool hasCancelled = false;
+            
+            // 获取当前标签页
+            int currentTab = tabs1.SelectedIndex;
+            
+            // tabPage2 (index 1) = 高通
+            // tabPage4 (index 3) = MTK
+            // tabPage5 (index 4) = 展讯
+            // tabPage1 (index 0) / tabPage3 (index 2) = Fastboot
+            
+            // 根据当前标签页取消对应操作
+            switch (currentTab)
             {
-                AppendLog("没有进行中的操作", Color.Gray);
-                return;
+                case 1: // 高通
+                    if (_qualcommController != null && _qualcommController.HasPendingOperation)
+                    {
+                        _qualcommController.CancelOperation();
+                        AppendLog("[高通] 操作已取消", Color.Orange);
+                        hasCancelled = true;
+                    }
+                    break;
+                    
+                case 3: // MTK
+                    if (MtkHasPendingOperation)
+                    {
+                        MtkCancelOperation();
+                        hasCancelled = true;
+                    }
+                    break;
+                    
+                case 4: // 展讯
+                    if (_spreadtrumController != null)
+                    {
+                        _spreadtrumController.CancelOperation();
+                        hasCancelled = true;
+                    }
+                    break;
+                    
+                case 0: // Fastboot (tabPage1)
+                case 2: // Fastboot (tabPage3)
+                    if (_fastbootController != null)
+                    {
+                        try
+                        {
+                            _fastbootController.CancelOperation();
+                            AppendLog("[Fastboot] 操作已取消", Color.Orange);
+                            hasCancelled = true;
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"取消 Fastboot 操作异常: {ex.Message}");
+                        }
+                    }
+                    break;
             }
 
-            if (_qualcommController.HasPendingOperation)
+            if (hasCancelled)
             {
-                _qualcommController.CancelOperation();
-                AppendLog("操作已取消", Color.Orange);
-                
                 // 重置进度条
                 uiProcessBar1.Value = 0;
                 uiProcessBar2.Value = 0;
+                progress1.Value = 0;
+                progress2.Value = 0;
             }
             else
             {
@@ -1708,12 +1764,40 @@ namespace LoveAlways
         {
             base.OnFormClosing(e);
 
+            // 停止端口刷新定时器
+            if (_portRefreshTimer != null)
+            {
+                _portRefreshTimer.Stop();
+                _portRefreshTimer.Dispose();
+                _portRefreshTimer = null;
+            }
+
             // 释放高通控制器
             if (_qualcommController != null)
             {
-                _qualcommController.Dispose();
+                try { _qualcommController.Dispose(); }
+                catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[Form1] 释放高通控制器异常: {ex.Message}"); }
                 _qualcommController = null;
             }
+
+            // 释放展讯控制器
+            if (_spreadtrumController != null)
+            {
+                try { _spreadtrumController.Dispose(); }
+                catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[Form1] 释放展讯控制器异常: {ex.Message}"); }
+                _spreadtrumController = null;
+            }
+            
+            // 释放 Fastboot 控制器
+            if (_fastbootController != null)
+            {
+                try { _fastbootController.Dispose(); }
+                catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[Form1] 释放 Fastboot 控制器异常: {ex.Message}"); }
+                _fastbootController = null;
+            }
+
+            // 释放联发科模块
+            CleanupMediaTekModule();
 
             // 释放背景图片
             if (this.BackgroundImage != null)
@@ -1725,9 +1809,11 @@ namespace LoveAlways
             // 清空预览
             ClearImagePreview();
 
-            // 强制垃圾回收
-            GC.Collect();
-            GC.WaitForPendingFinalizers();
+            // 释放看门狗管理器
+            LoveAlways.Common.WatchdogManager.DisposeAll();
+
+            // 优化的垃圾回收
+            GC.Collect(0, GCCollectionMode.Optimized);
         }
         
         /// <summary>
@@ -1790,7 +1876,10 @@ namespace LoveAlways
                         Clipboard.SetText(token);
                         MessageBox.Show("令牌已复制到剪贴板", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
-                    catch { }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"复制失败: {ex.Message}", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
                 };
                 form.Controls.Add(copyButton);
                 
@@ -1877,6 +1966,10 @@ namespace LoveAlways
             }
         }
 
+        // 日志计数器，用于限制条目数量
+        private int _logEntryCount = 0;
+        private readonly object _logLock = new object();
+
         private void AppendLog(string message, Color? color = null)
         {
             if (uiRichTextBox1.InvokeRequired)
@@ -1885,20 +1978,78 @@ namespace LoveAlways
                 return;
             }
 
-            Color logColor = color ?? Color.Black;
+            // 白色背景下的颜色映射 (使颜色更清晰)
+            Color logColor = MapLogColor(color ?? Color.Black);
 
             // 写入文件
             try
             {
                 File.AppendAllText(logFilePath, $"[{DateTime.Now:HH:mm:ss}] {message}" + Environment.NewLine);
             }
-            catch { }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"日志写入失败: {ex.Message}");
+            }
 
-            // 显示到 UI
-            uiRichTextBox1.SelectionColor = logColor;
-            uiRichTextBox1.AppendText(message + "\n");
-            uiRichTextBox1.SelectionStart = uiRichTextBox1.Text.Length;
-            uiRichTextBox1.ScrollToCaret();
+            // 检查并限制日志条目数量 (减少内存占用)
+            int maxEntries = Common.PerformanceConfig.MaxLogEntries;
+            lock (_logLock)
+            {
+                _logEntryCount++;
+                if (_logEntryCount > maxEntries)
+                {
+                    // 清理前半部分日志
+                    try
+                    {
+                        string[] lines = uiRichTextBox1.Text.Split('\n');
+                        if (lines.Length > maxEntries / 2)
+                        {
+                            int removeCount = lines.Length - maxEntries / 2;
+                            uiRichTextBox1.Text = string.Join("\n", lines.Skip(removeCount));
+                            _logEntryCount = lines.Length - removeCount;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"日志清理异常: {ex.Message}");
+                    }
+                }
+            }
+
+            // 显示到 UI (减少重绘)
+            uiRichTextBox1.SuspendLayout();
+            try
+            {
+                uiRichTextBox1.SelectionColor = logColor;
+                uiRichTextBox1.AppendText(message + "\n");
+                uiRichTextBox1.SelectionStart = uiRichTextBox1.Text.Length;
+                uiRichTextBox1.ScrollToCaret();
+            }
+            finally
+            {
+                uiRichTextBox1.ResumeLayout();
+            }
+        }
+
+        /// <summary>
+        /// 将颜色映射为适合白色背景的版本 (更深更清晰)
+        /// </summary>
+        private Color MapLogColor(Color originalColor)
+        {
+            // 白色背景配色方案 - 使用更深的颜色
+            if (originalColor == Color.White) return Color.Black;
+            if (originalColor == Color.Blue) return Color.FromArgb(0, 80, 180);      // 深蓝
+            if (originalColor == Color.Gray) return Color.FromArgb(100, 100, 100);   // 深灰
+            if (originalColor == Color.Green) return Color.FromArgb(0, 140, 0);      // 深绿
+            if (originalColor == Color.Red) return Color.FromArgb(200, 0, 0);        // 深红
+            if (originalColor == Color.Orange) return Color.FromArgb(200, 120, 0);   // 深橙
+            if (originalColor == Color.LimeGreen) return Color.FromArgb(0, 160, 0);  // 深黄绿
+            if (originalColor == Color.Cyan) return Color.FromArgb(0, 140, 160);     // 深青
+            if (originalColor == Color.Yellow) return Color.FromArgb(180, 140, 0);   // 深黄
+            if (originalColor == Color.Magenta) return Color.FromArgb(160, 0, 160);  // 深紫
+            
+            // 其他颜色保持不变
+            return originalColor;
         }
 
         /// <summary>
@@ -1910,7 +2061,7 @@ namespace LoveAlways
             {
                 File.AppendAllText(logFilePath, $"[{DateTime.Now:HH:mm:ss}] [DEBUG] {message}" + Environment.NewLine);
             }
-            catch { }
+            catch { /* 调试日志写入失败可忽略 */ }
         }
 
         /// <summary>
@@ -1920,7 +2071,8 @@ namespace LoveAlways
         {
             try
             {
-                string logFolderPath = "C:\\Tool_Log";
+                // 使用应用程序目录下的 Logs 文件夹
+                string logFolderPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs");
                 if (!Directory.Exists(logFolderPath))
                 {
                     Directory.CreateDirectory(logFolderPath);
@@ -1932,8 +2084,9 @@ namespace LoveAlways
                 string logFileName = $"{DateTime.Now:yyyy-MM-dd_HH.mm.ss}_log.txt";
                 logFilePath = Path.Combine(logFolderPath, logFileName);
             }
-            catch
+            catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"日志初始化失败: {ex.Message}");
                 // 日志初始化失败时使用临时目录
                 logFilePath = Path.Combine(Path.GetTempPath(), $"MultiFlash_{DateTime.Now:yyyyMMdd_HHmmss}.log");
             }
@@ -1953,10 +2106,13 @@ namespace LoveAlways
 
                 foreach (var file in oldFiles)
                 {
-                    try { File.Delete(file); } catch { }
+                    try { File.Delete(file); } catch { /* 删除旧日志失败可忽略 */ }
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"清理旧日志异常: {ex.Message}");
+            }
         }
 
         /// <summary>
@@ -1974,7 +2130,7 @@ namespace LoveAlways
 
                 File.WriteAllText(logFilePath, header.ToString());
             }
-            catch { }
+            catch { /* 日志头写入失败可忽略 */ }
         }
 
         /// <summary>
@@ -2025,10 +2181,6 @@ namespace LoveAlways
                 selectedLocalImagePath = openFileDialog.FileName;
                 AppendLog($"已选择本地文件：{selectedLocalImagePath}", Color.Green);
 
-                // 强制垃圾回收释放内存
-                GC.Collect();
-                GC.WaitForPendingFinalizers();
-
                 // 使用异步加载避免UI卡死
                 Task.Run(() => LoadLocalImage(selectedLocalImagePath));
             }
@@ -2040,7 +2192,7 @@ namespace LoveAlways
             {
                 if (!File.Exists(filePath))
                 {
-                    this.Invoke(new Action(() => AppendLog("文件不存在", Color.Red)));
+                    SafeInvoke(() => AppendLog("文件不存在", Color.Red));
                     return;
                 }
 
@@ -2048,7 +2200,7 @@ namespace LoveAlways
                 FileInfo fi = new FileInfo(filePath);
                 if (fi.Length > 50 * 1024 * 1024) // 50MB限制
                 {
-                    this.Invoke(new Action(() => AppendLog($"文件过大（{fi.Length / 1024 / 1024}MB），请选择小于50MB的图片", Color.Red)));
+                    SafeInvoke(() => AppendLog($"文件过大（{fi.Length / 1024 / 1024}MB），请选择小于50MB的图片", Color.Red));
                     return;
                 }
 
@@ -2058,12 +2210,15 @@ namespace LoveAlways
                     if (original != null)
                     {
                         // 创建适合窗体大小的缩略图
-                        Size targetSize = this.Invoke(new Func<Size>(() => this.ClientSize));
+                        Size targetSize = Size.Empty;
+                        SafeInvoke(() => targetSize = this.ClientSize);
+                        if (targetSize.IsEmpty) return;
+                        
                         using (Bitmap resized = ResizeImageToFitWithLowMemory(original, targetSize))
                         {
                             if (resized != null)
                             {
-                                this.Invoke(new Action(() =>
+                                SafeInvoke(() =>
                                 {
                                     // 释放旧图片
                                     if (this.BackgroundImage != null)
@@ -2080,30 +2235,27 @@ namespace LoveAlways
                                     AddImageToPreview(resized.Clone() as Image, Path.GetFileName(filePath));
 
                                     AppendLog($"本地图片设置成功（{resized.Width}x{resized.Height}）", Color.Green);
-                                }));
+                                });
                             }
                         }
                     }
                     else
                     {
-                        this.Invoke(new Action(() => AppendLog("无法加载图片，文件可能已损坏", Color.Red)));
+                        SafeInvoke(() => AppendLog("无法加载图片，文件可能已损坏", Color.Red));
                     }
                 }
-
-                // 再次垃圾回收
-                GC.Collect();
             }
             catch (OutOfMemoryException)
             {
-                this.Invoke(new Action(() =>
+                SafeInvoke(() =>
                 {
                     AppendLog("内存严重不足，请尝试重启应用", Color.Red);
                     AppendLog("建议：关闭其他程序，释放内存", Color.Yellow);
-                }));
+                });
             }
             catch (Exception ex)
             {
-                this.Invoke(new Action(() => AppendLog($"图片加载失败：{ex.Message}", Color.Red)));
+                SafeInvoke(() => AppendLog($"图片加载失败：{ex.Message}", Color.Red));
             }
         }
 
@@ -2205,10 +2357,6 @@ namespace LoveAlways
             // 清理URL
             url = url.Trim('`', '\'');
             AppendLog($"正在从URL获取壁纸：{url}", Color.Blue);
-
-            // 强制垃圾回收
-            GC.Collect();
-            GC.WaitForPendingFinalizers();
 
             try
             {
@@ -2637,7 +2785,7 @@ namespace LoveAlways
                         finally
                         {
                             // 清理临时文件
-                            try { if (File.Exists(tempFile)) File.Delete(tempFile); } catch { }
+                            try { if (File.Exists(tempFile)) File.Delete(tempFile); } catch { /* 临时文件删除失败可忽略 */ }
                         }
                     }
                 }
@@ -2980,109 +3128,44 @@ namespace LoveAlways
         private void Select3_SelectedIndexChanged(object sender, EventArgs e)
         {
             string selectedItem = select3.Text;
-            bool isAutoOrCustom = selectedItem == "自动识别或自选引导";
-            bool isVipLoader = selectedItem.StartsWith("[VIP]");
-            bool isEdlLoader = selectedItem.StartsWith("[") && !isVipLoader && !selectedItem.StartsWith("───");
-            bool isSeparator = selectedItem.StartsWith("───");
+            bool isCloudMatch = selectedItem.Contains("云端自动匹配");
+            bool isLocalSelect = selectedItem.Contains("本地选择");
             
-            // 跳过分隔符选择
-            if (isSeparator)
+            // 处理云端自动匹配模式
+            if (isCloudMatch)
             {
-                select3.Text = "自动识别或自选引导";
-                return;
-            }
-            
-            // 禁用或启用输入字段
-            input9.Enabled = isAutoOrCustom;
-            input8.Enabled = isAutoOrCustom;
-            input7.Enabled = isAutoOrCustom;
-            
-            // 处理 VIP Loader
-            if (isVipLoader)
-            {
-                // 提取平台名称 (例如: "[VIP] SM8550 - Snapdragon 8Gen2/8+Gen2" -> "SM8550")
-                string platform = ExtractPlatformFromVipSelection(selectedItem);
+                // 禁用自定义引导文件输入
+                input9.Enabled = false;
+                input8.Enabled = false;
+                input7.Enabled = false;
                 
-                // 只在首次禁用时保存原始文本
-                if (string.IsNullOrEmpty(input8OriginalText))
-                {
-                    input8OriginalText = input8.Text;
-                }
-                
-                // 显示 VIP 模式信息
-                input8.Text = $"[VIP] {platform} (资源包)";
-                input9.Text = $"[VIP] Digest (内嵌)";
-                input7.Text = $"[VIP] Signature (内嵌)";
-                
-                // 显示平台信息 (简洁模式)
-                if (ChimeraSignDatabase.TryGet(platform, out var signData))
-                {
-                    bool pakAvailable = ChimeraSignDatabase.IsLoaderPackAvailable();
-                    if (!pakAvailable)
-                    {
-                        AppendLog($"[VIP] {signData.Name} - 资源包未找到!", Color.Orange);
-                    }
-                }
-                
-                // 自动启用 VIP 验证
-                checkbox19.Checked = true;
-                checkbox17.Checked = false;  // 取消 oneplus
-                _authMode = "vip";
-            }
-            // 处理 EDL Loader
-            else if (isEdlLoader)
-            {
-                string edlId = ExtractEdlLoaderIdFromSelection(selectedItem);
-                
-                if (string.IsNullOrEmpty(input8OriginalText))
-                {
-                    input8OriginalText = input8.Text;
-                }
-                
-                // 显示 EDL 模式信息
-                input8.Text = $"[EDL] {edlId} (资源包)";
+                // 显示云端匹配提示
+                input8.Text = "[云端] 自动匹配 Loader";
                 input9.Text = "";
                 input7.Text = "";
                 
-                // 根据 AuthMode 决定认证模式
-                string authMode = "none";
-                if (EdlLoaderDatabase.Database.TryGetValue(edlId, out var loaderInfo))
-                {
-                    authMode = loaderInfo.AuthMode ?? "none";
-                }
+                // 重置认证模式 (云端会自动检测)
+                checkbox17.Checked = false;
+                checkbox19.Checked = false;
+                _authMode = "none";
+            }
+            // 处理本地选择模式
+            else if (isLocalSelect)
+            {
+                // 启用自定义引导文件输入
+                input9.Enabled = true;
+                input8.Enabled = true;
+                input7.Enabled = true;
                 
-                if (authMode == "oneplus")
-                {
-                    // OnePlus Loader: 自动启用 oneplus 认证
-                    checkbox17.Checked = true;   // oldoneplus
-                    checkbox19.Checked = false;  // oplus
-                    _authMode = "oneplus";
-                }
-                else
-                {
-                    // OPPO/Realme 或其他: 不需要验证
-                    checkbox17.Checked = false;
-                    checkbox19.Checked = false;
-                    _authMode = "none";
-                }
-            }
-            else if (!isAutoOrCustom)
-            {
-                // 其他非自动模式
-                if (string.IsNullOrEmpty(input8OriginalText))
-                {
-                    input8OriginalText = input8.Text;
-                }
-                input8.Text = "当前模式禁止选择文件";
-            }
-            else
-            {
-                // 强制清空以显示占位符
+                // 清空输入框 (显示占位符)
                 input8.Text = "";
                 input9.Text = "";
                 input7.Text = "";
-                // 重置原始文本存储
-                input8OriginalText = "";
+                
+                // 重置认证模式
+                checkbox17.Checked = false;
+                checkbox19.Checked = false;
+                _authMode = "none";
             }
         }
         
@@ -3149,80 +3232,53 @@ namespace LoveAlways
         private List<string> _edlLoaderItems = null;
         
         /// <summary>
-        /// 初始化 EDL Loader 选择列表 (按品牌分组) - 使用预加载数据
+        /// 初始化 EDL Loader 选择列表 - 云端自动匹配 + 本地选择
         /// </summary>
         private void InitializeEdlLoaderList()
         {
-            // 使用预加载的数据（已在 SplashForm 期间加载完成）
-            var items = PreloadManager.EdlLoaderItems;
-            if (items != null && items.Count > 0)
+            try
             {
-                try
-                {
-                    // 直接批量添加（数据已预加载，无需异步）
-                    select3.Items.AddRange(items.ToArray());
-                }
-                catch { }
+                // 清空 Designer 中的默认项
+                select3.Items.Clear();
+                
+                // 添加选项
+                select3.Items.Add("☁️ 云端自动匹配");
+                select3.Items.Add("📁 本地选择");
+                
+                // 设置默认选中云端自动匹配
+                select3.SelectedIndex = 0;
+                
+                // 初始化云端服务
+                InitializeCloudLoaderService();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(string.Format("加载 Loader 列表异常: {0}", ex.Message));
             }
         }
         
         /// <summary>
-        /// 构建 EDL Loader 列表项 (后台线程)
+        /// 初始化云端 Loader 服务
         /// </summary>
+        private void InitializeCloudLoaderService()
+        {
+            var cloudService = LoveAlways.Qualcomm.Services.CloudLoaderService.Instance;
+            cloudService.SetLogger(
+                msg => AppendLog(msg, Color.Cyan),
+                msg => AppendLog(msg, Color.Gray)
+            );
+            // 配置 API 地址 (生产环境)
+            // cloudService.ApiBase = "https://api.xiriacg.top/api";
+        }
+        
+        /// <summary>
+        /// 构建 EDL Loader 列表项 (已废弃 - 使用云端匹配)
+        /// </summary>
+        [Obsolete("使用云端自动匹配替代本地 PAK 资源")]
         private List<string> BuildEdlLoaderItems()
         {
-            var items = new List<string>(300);
-            
-            try
-            {
-                // 检查 EDL PAK 是否可用
-                if (!EdlLoaderDatabase.IsPakAvailable())
-                    return items;
-                
-                // 获取所有品牌
-                var brands = EdlLoaderDatabase.GetBrands();
-                if (brands.Length == 0)
-                    return items;
-                
-                // 按品牌分组构建
-                foreach (var brand in brands)
-                {
-                    var loaders = EdlLoaderDatabase.GetByBrand(brand);
-                    if (loaders.Length == 0) continue;
-                    
-                    // 添加品牌分隔符
-                    string brandName = GetBrandDisplayName(brand);
-                    items.Add($"─── {brandName} ({loaders.Length}) ───");
-                    
-                    // 先添加通用 loader
-                    foreach (var loader in loaders)
-                    {
-                        if (loader.IsCommon)
-                        {
-                            string chip = string.IsNullOrEmpty(loader.Chip) ? "" : $" {loader.Chip}";
-                            items.Add($"[{brand}]{chip} (通用)");
-                        }
-                    }
-                    
-                    // 再添加专用 loader
-                    foreach (var loader in loaders)
-                    {
-                        if (!loader.IsCommon)
-                        {
-                            string shortName = loader.Name.Replace($"{brand} ", "");
-                            items.Add($"[{brand}] {shortName}");
-                        }
-                    }
-                }
-                
-                _edlLoaderItems = items;
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"EDL Loader 构建失败: {ex.Message}");
-            }
-            
-            return items;
+            // 不再构建本地 PAK 列表，完全使用云端匹配
+            return new List<string>();
         }
         
         /// <summary>
@@ -3409,8 +3465,10 @@ namespace LoveAlways
                     // 切换到 Fastboot 标签页
                     _isOnFastbootTab = true;
                     
-                    // 停止高通端口刷新定时器
+                    // 停止其他模块监控
                     _portRefreshTimer?.Stop();
+                    _mtkController?.StopPortMonitoring();
+                    _spreadtrumController?.StopDeviceMonitor();
                     
                     // 更新 Fastboot 设备信息
                     if (_fastbootController != null)
@@ -3435,8 +3493,10 @@ namespace LoveAlways
                     // 切换到高通标签页
                     _isOnFastbootTab = false;
                     
-                    // 停止 Fastboot 设备监控
+                    // 停止其他模块监控
                     _fastbootController?.StopDeviceMonitoring();
+                    _mtkController?.StopPortMonitoring();
+                    _spreadtrumController?.StopDeviceMonitor();
                     
                     // 启动高通端口刷新定时器
                     _portRefreshTimer?.Start();
@@ -3461,15 +3521,54 @@ namespace LoveAlways
                         uiLabel12.Text = "OTA：等待连接";
                     }
                 }
+                // tabPage4 是联发科平台 (MTK)
+                else if (selectedTab == tabPage4)
+                {
+                    // 切换到 MTK 标签页
+                    _isOnFastbootTab = false;
+                    
+                    // 停止其他模块监控
+                    _fastbootController?.StopDeviceMonitoring();
+                    _portRefreshTimer?.Stop();
+                    _spreadtrumController?.StopDeviceMonitor();
+                    
+                    // 启动 MTK 端口监控
+                    _mtkController?.StartPortMonitoring();
+                    
+                    // 更新右侧信息面板为 MTK 专用
+                    UpdateMtkInfoPanel();
+                }
+                // tabPage5 是展讯平台 (Spreadtrum)
+                else if (selectedTab == tabPage5)
+                {
+                    // 切换到展讯标签页
+                    _isOnFastbootTab = false;
+                    
+                    // 停止其他模块监控
+                    _fastbootController?.StopDeviceMonitoring();
+                    _portRefreshTimer?.Stop();
+                    _mtkController?.StopPortMonitoring();
+                    
+                    // 启动展讯设备监控并刷新设备列表
+                    _spreadtrumController?.RefreshDevices();
+                    
+                    // 更新右侧信息面板为展讯专用
+                    UpdateSprdInfoPanel();
+                }
                 else
                 {
                     // 其他标签页
                     _isOnFastbootTab = false;
-                    // 停止 Fastboot 设备监控
+                    // 停止所有模块监控
                     _fastbootController?.StopDeviceMonitoring();
+                    _mtkController?.StopPortMonitoring();
+                    _spreadtrumController?.StopDeviceMonitor();
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"标签页切换异常: {ex.Message}");
+            }
         }
 
         /// <summary>
@@ -4460,6 +4559,11 @@ namespace LoveAlways
         #endregion
 
         private void checkbox22_CheckedChanged(object sender, AntdUI.BoolEventArgs e)
+        {
+
+        }
+
+        private void mtkBtnConnect_Click_1(object sender, EventArgs e)
         {
 
         }

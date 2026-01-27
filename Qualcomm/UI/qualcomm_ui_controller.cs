@@ -142,7 +142,10 @@ namespace LoveAlways.Qualcomm.UI
                     _service.Disconnect();
                     _service.Dispose();
                 }
-                catch { }
+                catch (Exception ex) 
+                { 
+                    _logDetail?.Invoke($"[UI] 断开服务异常: {ex.Message}"); 
+                }
                 _service = null;
             }
             
@@ -403,6 +406,103 @@ namespace LoveAlways.Qualcomm.UI
         {
             return await ConnectWithOptionsAsync("", "ufs", IsSkipSaharaEnabled(), "none");
         }
+        
+        /// <summary>
+        /// 仅获取 Sahara 设备信息 (用于云端自动匹配)
+        /// </summary>
+        /// <returns>设备信息对象，失败返回 null</returns>
+        public async Task<LoveAlways.Qualcomm.Services.SaharaDeviceInfo> GetSaharaDeviceInfoAsync()
+        {
+            if (IsBusy) { Log("操作进行中", Color.Orange); return null; }
+
+            string portName = GetSelectedPortName();
+            if (string.IsNullOrEmpty(portName)) { Log("请选择端口", Color.Red); return null; }
+
+            try
+            {
+                IsBusy = true;
+                ResetCancellationToken();
+
+                _service = new QualcommService(
+                    msg => Log(msg, null),
+                    null,
+                    _logDetail
+                );
+
+                var chipInfo = await _service.GetSaharaDeviceInfoOnlyAsync(portName, _cts.Token);
+                
+                if (chipInfo == null)
+                {
+                    Log("无法获取设备信息", Color.Red);
+                    return null;
+                }
+
+                // 转换为 SaharaDeviceInfo
+                return new LoveAlways.Qualcomm.Services.SaharaDeviceInfo
+                {
+                    MsmId = chipInfo.MsmId.ToString("X8"),
+                    PkHash = chipInfo.PkHash ?? "",
+                    OemId = "0x" + chipInfo.OemId.ToString("X4"),
+                    HwId = chipInfo.HwIdHex ?? "",
+                    Serial = chipInfo.SerialHex ?? "",
+                    IsUfs = true
+                };
+            }
+            catch (Exception ex)
+            {
+                Log("获取设备信息异常: " + ex.Message, Color.Red);
+                return null;
+            }
+            finally
+            {
+                IsBusy = false;
+            }
+        }
+        
+        /// <summary>
+        /// 使用云端匹配的 Loader 继续连接
+        /// </summary>
+        public async Task<bool> ContinueConnectWithCloudLoaderAsync(byte[] loaderData, string storageType, string authMode)
+        {
+            if (IsBusy) { Log("操作进行中", Color.Orange); return false; }
+            if (_service == null) { Log("请先获取设备信息", Color.Red); return false; }
+
+            try
+            {
+                IsBusy = true;
+
+                bool success = await _service.ContinueConnectWithLoaderAsync(loaderData, storageType, authMode, _cts.Token);
+
+                if (success)
+                {
+                    string portName = GetSelectedPortName();
+                    Log("连接成功！", Color.Green);
+                    UpdateDeviceInfoLabels();
+                    
+                    _service.PortDisconnected += OnServicePortDisconnected;
+                    _service.XiaomiAuthTokenRequired += OnXiaomiAuthTokenRequired;
+                    StartPortMonitor(portName);
+                    SetSkipSaharaChecked(true);
+                    
+                    ConnectionStateChanged?.Invoke(this, true);
+                }
+                else
+                {
+                    Log("连接失败", Color.Red);
+                }
+
+                return success;
+            }
+            catch (Exception ex)
+            {
+                Log("连接异常: " + ex.Message, Color.Red);
+                return false;
+            }
+            finally
+            {
+                IsBusy = false;
+            }
+        }
 
         public async Task<bool> ConnectWithOptionsAsync(string programmerPath, string storageType, bool skipSahara, string authMode, string digestPath = "", string signaturePath = "")
         {
@@ -420,7 +520,7 @@ namespace LoveAlways.Qualcomm.UI
             try
             {
                 IsBusy = true;
-                _cts = new CancellationTokenSource();
+                ResetCancellationToken();
                 
                 // 启动进度条 - 连接过程分4个阶段: Sahara(40%) -> Firehose配置(20%) -> 认证(20%) -> 完成(20%)
                 StartOperationTimer("连接设备", 100, 0);
@@ -526,7 +626,7 @@ namespace LoveAlways.Qualcomm.UI
             try
             {
                 IsBusy = true;
-                _cts = new CancellationTokenSource();
+                ResetCancellationToken();
                 
                 // 启动进度条
                 StartOperationTimer("VIP 连接", 100, 0);
@@ -634,7 +734,7 @@ namespace LoveAlways.Qualcomm.UI
             try
             {
                 IsBusy = true;
-                _cts = new CancellationTokenSource();
+                ResetCancellationToken();
                 
                 // 启动进度条
                 StartOperationTimer("EDL 连接", 100, 0);
@@ -788,7 +888,7 @@ namespace LoveAlways.Qualcomm.UI
             try
             {
                 IsBusy = true;
-                _cts = new CancellationTokenSource();
+                ResetCancellationToken();
                 
                 Log("正在重置 Sahara 状态...", Color.Blue);
                 
@@ -871,7 +971,7 @@ namespace LoveAlways.Qualcomm.UI
             try
             {
                 IsBusy = true;
-                _cts = new CancellationTokenSource();
+                ResetCancellationToken();
                 
                 Log("正在发送硬重置命令...", Color.Blue);
                 
@@ -1643,7 +1743,10 @@ namespace LoveAlways.Qualcomm.UI
                         result = _deviceInfoService.ParseBuildProp(content);
                     }
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    _logDetail?.Invoke($"读取 lenovocust 分区异常: {ex.Message}");
+                }
             }
 
             // 联想 proinfo 分区（包含序列号等信息）
@@ -1658,7 +1761,10 @@ namespace LoveAlways.Qualcomm.UI
                         _deviceInfoService.ParseProInfo(data, _currentDeviceInfo);
                     }
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    _logDetail?.Invoke($"读取 proinfo 分区异常: {ex.Message}");
+                }
             }
 
             // 回落到通用策略
@@ -1943,7 +2049,7 @@ namespace LoveAlways.Qualcomm.UI
         /// </summary>
         public async Task<bool> ReadBuildPropFromDeviceAsync()
         {
-            if (!EnsureConnected()) return false;
+            if (!await EnsureConnectedAsync()) return false;
             if (IsBusy) { Log("操作进行中", Color.Orange); return false; }
 
             // 检查是否有 super 分区
@@ -1957,7 +2063,7 @@ namespace LoveAlways.Qualcomm.UI
             try
             {
                 IsBusy = true;
-                _cts = new CancellationTokenSource();
+                ResetCancellationToken();
                 StartOperationTimer("读取设备信息", 1, 0);
                 Log("正在从设备读取 build.prop...", Color.Blue);
 
@@ -2053,13 +2159,13 @@ namespace LoveAlways.Qualcomm.UI
 
         public async Task<bool> ReadPartitionTableAsync()
         {
-            if (!EnsureConnected()) return false;
+            if (!await EnsureConnectedAsync()) return false;
             if (IsBusy) { Log("操作进行中", Color.Orange); return false; }
 
             try
             {
                 IsBusy = true;
-                _cts = new CancellationTokenSource();
+                ResetCancellationToken();
                 
                 // 读取分区表：分两阶段 - GPT读取(80%) + 设备信息解析(20%)
                 StartOperationTimer("读取分区表", 100, 0);
@@ -2132,7 +2238,7 @@ namespace LoveAlways.Qualcomm.UI
 
         public async Task<bool> ReadPartitionAsync(string partitionName, string outputPath)
         {
-            if (!EnsureConnected()) return false;
+            if (!await EnsureConnectedAsync()) return false;
             if (IsBusy) { Log("操作进行中", Color.Orange); return false; }
 
             var p = _service.FindPartition(partitionName);
@@ -2141,7 +2247,7 @@ namespace LoveAlways.Qualcomm.UI
             try
             {
                 IsBusy = true;
-                _cts = new CancellationTokenSource();
+                ResetCancellationToken();
                 StartOperationTimer("读取 " + partitionName, 1, 0, totalBytes);
                 Log(string.Format("正在读取分区 {0}...", partitionName), Color.Blue);
 
@@ -2168,7 +2274,7 @@ namespace LoveAlways.Qualcomm.UI
 
         public async Task<bool> WritePartitionAsync(string partitionName, string filePath)
         {
-            if (!EnsureConnected()) return false;
+            if (!await EnsureConnectedAsync()) return false;
             if (IsBusy) { Log("操作进行中", Color.Orange); return false; }
             if (!File.Exists(filePath)) { Log("文件不存在: " + filePath, Color.Red); return false; }
 
@@ -2183,7 +2289,7 @@ namespace LoveAlways.Qualcomm.UI
             try
             {
                 IsBusy = true;
-                _cts = new CancellationTokenSource();
+                ResetCancellationToken();
                 StartOperationTimer("写入 " + partitionName, 1, 0, totalBytes);
                 Log(string.Format("正在写入分区 {0}...", partitionName), Color.Blue);
 
@@ -2210,7 +2316,7 @@ namespace LoveAlways.Qualcomm.UI
 
         public async Task<bool> ErasePartitionAsync(string partitionName)
         {
-            if (!EnsureConnected()) return false;
+            if (!await EnsureConnectedAsync()) return false;
             if (IsBusy) { Log("操作进行中", Color.Orange); return false; }
 
             if (IsProtectPartitionsEnabled() && RawprogramParser.IsSensitivePartition(partitionName))
@@ -2222,7 +2328,7 @@ namespace LoveAlways.Qualcomm.UI
             try
             {
                 IsBusy = true;
-                _cts = new CancellationTokenSource();
+                ResetCancellationToken();
                 StartOperationTimer("擦除 " + partitionName, 1, 0);
                 Log(string.Format("正在擦除分区 {0}...", partitionName), Color.Blue);
                 UpdateLabelSafe(_speedLabel, "速度：擦除中...");
@@ -2258,7 +2364,7 @@ namespace LoveAlways.Qualcomm.UI
         /// </summary>
         public async Task<int> ReadPartitionsBatchAsync(List<Tuple<string, string>> partitionsToRead)
         {
-            if (!EnsureConnected()) return 0;
+            if (!await EnsureConnectedAsync()) return 0;
             if (IsBusy) { Log("操作进行中", Color.Orange); return 0; }
 
             int total = partitionsToRead.Count;
@@ -2275,7 +2381,7 @@ namespace LoveAlways.Qualcomm.UI
             try
             {
                 IsBusy = true;
-                _cts = new CancellationTokenSource();
+                ResetCancellationToken();
                 StartOperationTimer("批量读取", total, 0, totalBytes);
                 Log(string.Format("开始批量读取 {0} 个分区 (总计: {1:F2} MB)...", total, totalBytes / 1024.0 / 1024.0), Color.Blue);
 
@@ -2343,7 +2449,7 @@ namespace LoveAlways.Qualcomm.UI
         /// <param name="activateBootLun">是否激活启动 LUN (UFS)</param>
         public async Task<int> WritePartitionsBatchAsync(List<Tuple<string, string, int, long>> partitionsToWrite, List<string> patchFiles, bool activateBootLun)
         {
-            if (!EnsureConnected()) return 0;
+            if (!await EnsureConnectedAsync()) return 0;
             if (IsBusy) { Log("操作进行中", Color.Orange); return 0; }
 
             int total = partitionsToWrite.Count;
@@ -2353,7 +2459,7 @@ namespace LoveAlways.Qualcomm.UI
             try
             {
                 IsBusy = true;
-                _cts = new CancellationTokenSource();
+                ResetCancellationToken();
                 
                 // 计算总步骤: 分区写入 + Patch + 激活
                 int totalSteps = total + (hasPatch ? 1 : 0) + (activateBootLun ? 1 : 0);
@@ -2584,14 +2690,14 @@ namespace LoveAlways.Qualcomm.UI
         /// </summary>
         public async Task<int> ApplyPatchFilesAsync(List<string> patchFiles)
         {
-            if (!EnsureConnected()) return 0;
+            if (!await EnsureConnectedAsync()) return 0;
             if (IsBusy) { Log("操作进行中", Color.Orange); return 0; }
             if (patchFiles == null || patchFiles.Count == 0) return 0;
 
             try
             {
                 IsBusy = true;
-                _cts = new CancellationTokenSource();
+                ResetCancellationToken();
                 StartOperationTimer("应用补丁", patchFiles.Count, 0);
                 Log(string.Format("开始应用 {0} 个 Patch 文件...", patchFiles.Count), Color.Blue);
 
@@ -2630,7 +2736,7 @@ namespace LoveAlways.Qualcomm.UI
         /// </summary>
         public async Task<int> ErasePartitionsBatchAsync(List<string> partitionNames)
         {
-            if (!EnsureConnected()) return 0;
+            if (!await EnsureConnectedAsync()) return 0;
             if (IsBusy) { Log("操作进行中", Color.Orange); return 0; }
 
             int total = partitionNames.Count;
@@ -2639,7 +2745,7 @@ namespace LoveAlways.Qualcomm.UI
             try
             {
                 IsBusy = true;
-                _cts = new CancellationTokenSource();
+                ResetCancellationToken();
                 StartOperationTimer("批量擦除", total, 0);
                 Log(string.Format("开始批量擦除 {0} 个分区...", total), Color.Blue);
                 UpdateLabelSafe(_speedLabel, "速度：擦除中...");
@@ -2696,7 +2802,7 @@ namespace LoveAlways.Qualcomm.UI
 
         public async Task<bool> RebootToEdlAsync()
         {
-            if (!EnsureConnected()) return false;
+            if (!await EnsureConnectedAsync()) return false;
             try
             {
                 bool success = await _service.RebootToEdlAsync(_cts?.Token ?? CancellationToken.None);
@@ -2708,7 +2814,7 @@ namespace LoveAlways.Qualcomm.UI
 
         public async Task<bool> RebootToSystemAsync()
         {
-            if (!EnsureConnected()) return false;
+            if (!await EnsureConnectedAsync()) return false;
             try
             {
                 bool success = await _service.RebootAsync(_cts?.Token ?? CancellationToken.None);
@@ -2720,7 +2826,7 @@ namespace LoveAlways.Qualcomm.UI
 
         public async Task<bool> SwitchSlotAsync(string slot)
         {
-            if (!EnsureConnected()) return false;
+            if (!await EnsureConnectedAsync()) return false;
             try
             {
                 bool success = await _service.SetActiveSlotAsync(slot, _cts?.Token ?? CancellationToken.None);
@@ -2733,7 +2839,7 @@ namespace LoveAlways.Qualcomm.UI
 
         public async Task<bool> SetBootLunAsync(int lun)
         {
-            if (!EnsureConnected()) return false;
+            if (!await EnsureConnectedAsync()) return false;
             try
             {
                 bool success = await _service.SetBootLunAsync(lun, _cts?.Token ?? CancellationToken.None);
@@ -2795,7 +2901,7 @@ namespace LoveAlways.Qualcomm.UI
         private void SetSkipSaharaChecked(bool value)
         {
             try { if (_skipSaharaCheckbox != null) _skipSaharaCheckbox.Checked = value; }
-            catch { }
+            catch { /* UI 控件访问失败可忽略 */ }
         }
 
         /// <summary>
@@ -2832,7 +2938,7 @@ namespace LoveAlways.Qualcomm.UI
             return false;
         }
         
-        private bool EnsureConnected()
+        private async Task<bool> EnsureConnectedAsync()
         {
             if (_service == null)
             {
@@ -2840,12 +2946,11 @@ namespace LoveAlways.Qualcomm.UI
                 return false;
             }
             
-            // 如果端口已释放，尝试重新打开 (同步等待异步操作)
+            // 如果端口已释放，尝试重新打开
             if (_service.IsPortReleased)
             {
                 _logDetail("[UI] 端口已释放，尝试重新打开...");
-                var reopenTask = _service.EnsurePortOpenAsync(CancellationToken.None);
-                if (!reopenTask.GetAwaiter().GetResult())
+                if (!await _service.EnsurePortOpenAsync(CancellationToken.None))
                 {
                     // 不立即报错和清理状态，让调用者决定如何处理
                     _logDetail("[UI] 端口重新打开失败");
@@ -2867,9 +2972,9 @@ namespace LoveAlways.Qualcomm.UI
         /// <summary>
         /// 确保连接可用，失败时显示错误并清理状态
         /// </summary>
-        private bool EnsureConnectedWithCleanup()
+        private async Task<bool> EnsureConnectedWithCleanupAsync()
         {
-            if (EnsureConnected())
+            if (await EnsureConnectedAsync())
                 return true;
             
             // 连接失败，清理状态
@@ -2893,6 +2998,21 @@ namespace LoveAlways.Qualcomm.UI
                 _cts.Dispose(); 
                 _cts = null; 
             }
+        }
+
+        /// <summary>
+        /// 安全重置 CancellationTokenSource（释放旧实例后创建新实例）
+        /// </summary>
+        private void ResetCancellationToken()
+        {
+            if (_cts != null)
+            {
+                try { _cts.Cancel(); } 
+                catch (Exception ex) { _logDetail?.Invoke($"[UI] 取消令牌异常: {ex.Message}"); }
+                try { _cts.Dispose(); } 
+                catch (Exception ex) { _logDetail?.Invoke($"[UI] 释放令牌异常: {ex.Message}"); }
+            }
+            _cts = new CancellationTokenSource();
         }
 
         /// <summary>
@@ -2998,7 +3118,7 @@ namespace LoveAlways.Qualcomm.UI
                     if (progressBar.Value != intValue) progressBar.Value = intValue;
                 }
             }
-            catch { }
+            catch { /* UI 进度条更新失败可忽略 */ }
         }
         
         private void UpdateSpeedDisplayInternal()
@@ -3107,7 +3227,7 @@ namespace LoveAlways.Qualcomm.UI
                 else
                     label.Text = text;
             }
-            catch { }
+            catch { /* UI 标签更新失败可忽略 */ }
         }
         
         /// <summary>
@@ -3282,13 +3402,13 @@ namespace LoveAlways.Qualcomm.UI
         /// </summary>
         public async Task<bool> PerformVipAuthAsync(string digestPath, string signaturePath)
         {
-            if (!EnsureConnected()) return false;
+            if (!await EnsureConnectedAsync()) return false;
             if (IsBusy) { Log("操作进行中", Color.Orange); return false; }
 
             try
             {
                 IsBusy = true;
-                _cts = new CancellationTokenSource();
+                ResetCancellationToken();
                 StartOperationTimer("VIP 认证", 1, 0);
                 Log("正在执行 OPLUS VIP 认证 (Digest + Sign)...", Color.Blue);
 
@@ -3318,7 +3438,7 @@ namespace LoveAlways.Qualcomm.UI
         /// </summary>
         public async Task<string> GetVipChallengeAsync()
         {
-            if (!EnsureConnected()) return null;
+            if (!await EnsureConnectedAsync()) return null;
             return await _service.GetVipChallengeAsync(_cts?.Token ?? default(CancellationToken));
         }
 
@@ -3327,14 +3447,14 @@ namespace LoveAlways.Qualcomm.UI
 
         public async Task<bool> FlashOplusSuperAsync(string firmwareRoot)
         {
-            if (!EnsureConnected()) return false;
+            if (!await EnsureConnectedAsync()) return false;
             if (IsBusy) { Log("操作进行中", Color.Orange); return false; }
             if (!Directory.Exists(firmwareRoot)) { Log("固件目录不存在: " + firmwareRoot, Color.Red); return false; }
 
             try
             {
                 IsBusy = true;
-                _cts = new CancellationTokenSource();
+                ResetCancellationToken();
                 
                 Log("[高通] 正在深度分析 OPLUS Super 布局...", Color.Blue);
                 

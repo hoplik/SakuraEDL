@@ -1,7 +1,7 @@
 // ============================================================================
 // LoveAlways - EDL Loader 数据库
-// 从外部资源包 (edl_loaders.pak) 加载
-// 自动生成，请勿手动修改
+// [已废弃] 本地 PAK 资源已替换为云端自动匹配
+// 保留此文件仅用于离线回退兼容
 // ============================================================================
 
 using System;
@@ -12,6 +12,11 @@ using System.Text;
 
 namespace LoveAlways.Qualcomm.Database
 {
+    /// <summary>
+    /// EDL Loader 本地数据库 (已废弃)
+    /// 现在使用 CloudLoaderService 进行云端自动匹配
+    /// </summary>
+    [Obsolete("使用 CloudLoaderService 进行云端自动匹配")]
     public static class EdlLoaderDatabase
     {
         public class LoaderInfo
@@ -28,7 +33,6 @@ namespace LoveAlways.Qualcomm.Database
         }
 
         private static Dictionary<string, LoaderInfo> _database;
-        private static EdlLoaderPak _pak;
         private static readonly object _lock = new object();
 
         public static Dictionary<string, LoaderInfo> Database
@@ -47,50 +51,36 @@ namespace LoveAlways.Qualcomm.Database
             }
         }
 
+        [Obsolete("使用 CloudLoaderService")]
         public static string[] GetBrands()
         {
-            var brands = new HashSet<string>();
-            foreach (var info in Database.Values)
-                brands.Add(info.Brand);
-            var list = new List<string>(brands);
-            list.Sort();
-            return list.ToArray();
+            return new string[0]; // 不再使用本地数据库
         }
 
+        [Obsolete("使用 CloudLoaderService")]
         public static LoaderInfo[] GetByBrand(string brand)
         {
-            var result = new List<LoaderInfo>();
-            foreach (var info in Database.Values)
-                if (info.Brand.Equals(brand, StringComparison.OrdinalIgnoreCase))
-                    result.Add(info);
-            return result.ToArray();
+            return new LoaderInfo[0]; // 不再使用本地数据库
         }
 
+        [Obsolete("使用 CloudLoaderService")]
         public static LoaderInfo[] GetByChip(string chip)
         {
-            var result = new List<LoaderInfo>();
-            foreach (var info in Database.Values)
-                if (info.Chip.Equals(chip, StringComparison.OrdinalIgnoreCase))
-                    result.Add(info);
-            return result.ToArray();
+            return new LoaderInfo[0]; // 不再使用本地数据库
         }
 
+        [Obsolete("使用 CloudLoaderService")]
         public static byte[] LoadLoader(string id)
         {
-            if (_pak == null)
-            {
-                string pakPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "edl_loaders.pak");
-                if (!File.Exists(pakPath))
-                    return null;
-                _pak = new EdlLoaderPak(pakPath);
-            }
-            return _pak.GetLoader(id);
+            // 不再从本地 PAK 加载，返回 null
+            return null;
         }
 
+        [Obsolete("使用 CloudLoaderService")]
         public static bool IsPakAvailable()
         {
-            string pakPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "edl_loaders.pak");
-            return File.Exists(pakPath);
+            // 始终返回 false，强制使用云端匹配
+            return false;
         }
 
         private static Dictionary<string, LoaderInfo> InitDatabase()
@@ -135,23 +125,13 @@ namespace LoveAlways.Qualcomm.Database
             db["Huawei_695"] = new LoaderInfo { Id = "Huawei_695", Name = "Huawei 695 (通用)", Brand = "Huawei", Chip = "695", IsCommon = true, AuthMode = "none" };
             db["Huawei_695_2"] = new LoaderInfo { Id = "Huawei_695_2", Name = "Huawei 695 (通用)", Brand = "Huawei", Chip = "695", IsCommon = true, AuthMode = "none" };
             db["Huawei_778G"] = new LoaderInfo { Id = "Huawei_778G", Name = "Huawei 778G (通用)", Brand = "Huawei", Chip = "778G", IsCommon = true, AuthMode = "none" };
-            db["Huawei_778G_2"] = new LoaderInfo { Id = "Huawei_778G_2", Name = "Huawei 778G (通用)", Brand = "Huawei", Chip = "778G", IsCommon = true, AuthMode = "none" };
-            db["Huawei_778G_2"] = new LoaderInfo { Id = "Huawei_778G_2", Name = "Huawei 778G (通用)", Brand = "Huawei", Chip = "778G", IsCommon = true, AuthMode = "none" };
-            db["Huawei_778G_2"] = new LoaderInfo { Id = "Huawei_778G_2", Name = "Huawei 778G (通用)", Brand = "Huawei", Chip = "778G", IsCommon = true, AuthMode = "none" };
-            db["Huawei_778G_2"] = new LoaderInfo { Id = "Huawei_778G_2", Name = "Huawei 778G (通用)", Brand = "Huawei", Chip = "778G", IsCommon = true, AuthMode = "none" };
-            db["Huawei_778G_2"] = new LoaderInfo { Id = "Huawei_778G_2", Name = "Huawei 778G (通用)", Brand = "Huawei", Chip = "778G", IsCommon = true, AuthMode = "none" };
-            db["Huawei_778G_2"] = new LoaderInfo { Id = "Huawei_778G_2", Name = "Huawei 778G (通用)", Brand = "Huawei", Chip = "778G", IsCommon = true, AuthMode = "none" };
-            db["Huawei_778G_2"] = new LoaderInfo { Id = "Huawei_778G_2", Name = "Huawei 778G (通用)", Brand = "Huawei", Chip = "778G", IsCommon = true, AuthMode = "none" };
-            db["Huawei_778G_2"] = new LoaderInfo { Id = "Huawei_778G_2", Name = "Huawei 778G (通用)", Brand = "Huawei", Chip = "778G", IsCommon = true, AuthMode = "none" };
+            db["Huawei_778G_2"] = new LoaderInfo { Id = "Huawei_778G_2", Name = "Huawei 778G V2 (通用)", Brand = "Huawei", Chip = "778G", IsCommon = true, AuthMode = "none" };
             db["Huawei_8+Gen1"] = new LoaderInfo { Id = "Huawei_8+Gen1", Name = "Huawei 8+Gen1 (通用)", Brand = "Huawei", Chip = "8+Gen1", IsCommon = true, AuthMode = "none" };
             db["Huawei_8+Gen1_2"] = new LoaderInfo { Id = "Huawei_8+Gen1_2", Name = "Huawei 8+Gen1 (通用)", Brand = "Huawei", Chip = "8+Gen1", IsCommon = true, AuthMode = "none" };
             db["Huawei_870"] = new LoaderInfo { Id = "Huawei_870", Name = "Huawei 870 (通用)", Brand = "Huawei", Chip = "870", IsCommon = true, AuthMode = "none" };
             db["Huawei_870_2"] = new LoaderInfo { Id = "Huawei_870_2", Name = "Huawei 870 (通用)", Brand = "Huawei", Chip = "870", IsCommon = true, AuthMode = "none" };
             db["Huawei_888"] = new LoaderInfo { Id = "Huawei_888", Name = "Huawei 888 (通用)", Brand = "Huawei", Chip = "888", IsCommon = true, AuthMode = "none" };
-            db["Huawei_888_2"] = new LoaderInfo { Id = "Huawei_888_2", Name = "Huawei 888 (通用)", Brand = "Huawei", Chip = "888", IsCommon = true, AuthMode = "none" };
-            db["Huawei_888_2"] = new LoaderInfo { Id = "Huawei_888_2", Name = "Huawei 888 (通用)", Brand = "Huawei", Chip = "888", IsCommon = true, AuthMode = "none" };
-            db["Huawei_888_2"] = new LoaderInfo { Id = "Huawei_888_2", Name = "Huawei 888 (通用)", Brand = "Huawei", Chip = "888", IsCommon = true, AuthMode = "none" };
-            db["Huawei_888_2"] = new LoaderInfo { Id = "Huawei_888_2", Name = "Huawei 888 (通用)", Brand = "Huawei", Chip = "888", IsCommon = true, AuthMode = "none" };
+            db["Huawei_888_2"] = new LoaderInfo { Id = "Huawei_888_2", Name = "Huawei 888 V2 (通用)", Brand = "Huawei", Chip = "888", IsCommon = true, AuthMode = "none" };
             db["Huawei_8Gen1"] = new LoaderInfo { Id = "Huawei_8Gen1", Name = "Huawei 8Gen1 (通用)", Brand = "Huawei", Chip = "8Gen1", IsCommon = true, AuthMode = "none" };
             db["Huawei_8Gen1_2"] = new LoaderInfo { Id = "Huawei_8Gen1_2", Name = "Huawei 8Gen1 (通用)", Brand = "Huawei", Chip = "8Gen1", IsCommon = true, AuthMode = "none" };
             db["Huawei_Common_615616"] = new LoaderInfo { Id = "Huawei_Common_615616", Name = "Huawei Common_615616 (通用)", Brand = "Huawei", Chip = "", IsCommon = true, AuthMode = "none" };
@@ -229,8 +209,7 @@ namespace LoveAlways.Qualcomm.Database
             db["OPLUS_710"] = new LoaderInfo { Id = "OPLUS_710", Name = "OPLUS 710 (通用)", Brand = "OPLUS", Chip = "710", IsCommon = true, AuthMode = "none" };
             db["OPLUS_710_2"] = new LoaderInfo { Id = "OPLUS_710_2", Name = "OPLUS 710 (通用)", Brand = "OPLUS", Chip = "710", IsCommon = true, AuthMode = "none" };
             db["OPLUS_765G"] = new LoaderInfo { Id = "OPLUS_765G", Name = "OPLUS 765G (通用)", Brand = "OPLUS", Chip = "765G", IsCommon = true, AuthMode = "none" };
-            db["OPLUS_765G_2"] = new LoaderInfo { Id = "OPLUS_765G_2", Name = "OPLUS 765G (通用)", Brand = "OPLUS", Chip = "765G", IsCommon = true, AuthMode = "none" };
-            db["OPLUS_765G_2"] = new LoaderInfo { Id = "OPLUS_765G_2", Name = "OPLUS 765G (通用)", Brand = "OPLUS", Chip = "765G", IsCommon = true, AuthMode = "none" };
+            db["OPLUS_765G_2"] = new LoaderInfo { Id = "OPLUS_765G_2", Name = "OPLUS 765G V2 (通用)", Brand = "OPLUS", Chip = "765G", IsCommon = true, AuthMode = "none" };
             db["OPLUS_778G"] = new LoaderInfo { Id = "OPLUS_778G", Name = "OPLUS 778G (通用)", Brand = "OPLUS", Chip = "778G", IsCommon = true, AuthMode = "none" };
             db["OPLUS_855"] = new LoaderInfo { Id = "OPLUS_855", Name = "OPLUS 855 (通用)", Brand = "OPLUS", Chip = "855", IsCommon = true, AuthMode = "none" };
             db["OPLUS_865"] = new LoaderInfo { Id = "OPLUS_865", Name = "OPLUS 865 (通用)", Brand = "OPLUS", Chip = "865", IsCommon = true, AuthMode = "none" };

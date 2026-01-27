@@ -163,7 +163,7 @@ namespace LoveAlways.Qualcomm.Database
             }
             catch
             {
-                return null;
+                    return null;
             }
         }
 

@@ -3,6 +3,7 @@ using System.Drawing;
 using System.Windows.Forms;
 using System.Diagnostics;
 using Sunny.UI;
+using LoveAlways.Common;
 
 namespace LoveAlways
 {
@@ -19,21 +20,34 @@ namespace LoveAlways
         private Point _logoTarget;
         private Color _logoBaseColor;
 
+        // 低配模式标志
+        private bool _lowPerformanceMode;
 
         public SplashForm()
         {
             InitializeComponent();
             DoubleBuffered = true;
-            // 启动时背景略微透明，随后淡入
-            this.Opacity = 0.85;
+            
+            // 读取性能配置
+            _lowPerformanceMode = PerformanceConfig.LowPerformanceMode;
+            
+            // 启动时背景略微透明，随后淡入 (低配模式直接不透明)
+            this.Opacity = _lowPerformanceMode ? 1.0 : 0.85;
 
             // 启动后台预加载
             PreloadManager.StartPreload();
 
             _timer = new Timer();
-            _timer.Interval = 30; // ~33 FPS
+            // 根据性能配置调整帧率
+            _timer.Interval = PerformanceConfig.AnimationInterval;
             _timer.Tick += Timer_Tick;
             _timer.Start();
+            
+            // 低配模式减少动画步骤
+            if (_lowPerformanceMode)
+            {
+                _logoAnimTotal = 18;
+            }
 
             // 初始化徽标进入动画：向下移动并淡入（如有异常则忽略）
             try
@@ -57,11 +71,12 @@ namespace LoveAlways
 
         private void Timer_Tick(object sender, EventArgs e)
         {
-            _angle = (_angle + 6) % 360;
+            // 低配模式下加快角度变化以补偿较低的帧率
+            _angle = (_angle + (_lowPerformanceMode ? 12 : 6)) % 360;
 
-            // fade-in（放慢）
-            if (this.Opacity < 1.0)
-                this.Opacity = Math.Min(1.0, this.Opacity + 0.01);
+            // fade-in (低配模式跳过或加快)
+            if (!_lowPerformanceMode && this.Opacity < 1.0)
+                this.Opacity = Math.Min(1.0, this.Opacity + 0.02);
 
             // 同步预加载进度（动画进度不低于预加载进度，但可以略微领先）
             int targetProgress = Math.Max(_progress, PreloadManager.Progress);
