@@ -1,7 +1,7 @@
 {
-  "name": "multiflash-docs",
+  "name": "sakuraedl-docs",
   "version": "3.0.0",
-  "description": "MultiFlash Tool 官方文档",
+  "description": "SakuraEDL 官方文档",
   "scripts": {
     "dev": "vitepress dev",
     "build": "vitepress build",
