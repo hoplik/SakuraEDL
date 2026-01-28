@@ -58,9 +58,7 @@ export default {
         {
           text: 'API 文档',
           items: [
-            { text: '概述', link: '/api/' },
-            { text: 'Loader 接口', link: '/api/loaders' },
-            { text: '设备匹配', link: '/api/match' }
+            { text: '概述', link: '/api/' }
           ]
         }
       ]
