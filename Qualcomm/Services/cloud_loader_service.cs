@@ -40,10 +40,10 @@ namespace SakuraEDL.Qualcomm.Services
         
         // API 地址配置
         private const string API_BASE_DEV = "http://localhost:8082/api";
-        private const string API_BASE_PROD = "https://api.xiriacg.top/api";
+        private const string API_BASE_PROD = "https://api.sakuraedl.org/api";
         
         // 当前使用的 API 地址
-        public string ApiBase { get; set; } = API_BASE_DEV;
+        public string ApiBase { get; set; } = API_BASE_PROD;
         
         // 本地缓存目录
         public string CacheDirectory { get; set; }
