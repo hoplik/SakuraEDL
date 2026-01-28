@@ -24,7 +24,7 @@ DisableProgramGroupPage=yes
 ; 输出设置
 OutputDir=installer
 OutputBaseFilename=SakuraEDL_Setup_v{#MyAppVersion}_Lite
-SetupIconFile=MultiFlash TOOL.ico
+SetupIconFile=SakuraEDL.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 
 ; 最大压缩
@@ -99,14 +99,14 @@ Source: "bin\Release\SunnyUI.Common.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "bin\Release\HandyControl.dll"; DestDir: "{app}"; Flags: ignoreversion
 
 ; 图标
-Source: "MultiFlash TOOL.ico"; DestDir: "{app}"; Flags: ignoreversion
+Source: "SakuraEDL.ico"; DestDir: "{app}"; Flags: ignoreversion
 
 ; 注意: 精简版不包含 edl_loaders.pak 和 firehose.pak
 
 [Icons]
-Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\MultiFlash TOOL.ico"
+Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\SakuraEDL.ico"
 Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\MultiFlash TOOL.ico"; Tasks: desktopicon
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\SakuraEDL.ico"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent

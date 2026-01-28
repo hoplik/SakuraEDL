@@ -26,7 +26,7 @@ DisableProgramGroupPage=yes
 ; 输出设置
 OutputDir=installer
 OutputBaseFilename=SakuraEDL_Setup_v{#MyAppVersion}
-SetupIconFile=MultiFlash TOOL.ico
+SetupIconFile=SakuraEDL.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 
 ; 压缩设置
@@ -112,12 +112,12 @@ Source: "bin\Release\edl_loaders.pak"; DestDir: "{app}"; Flags: ignoreversion sk
 Source: "bin\Release\firehose.pak"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 
 ; 图标
-Source: "MultiFlash TOOL.ico"; DestDir: "{app}"; Flags: ignoreversion
+Source: "SakuraEDL.ico"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
-Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\MultiFlash TOOL.ico"
+Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\SakuraEDL.ico"
 Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\MultiFlash TOOL.ico"; Tasks: desktopicon
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\SakuraEDL.ico"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent

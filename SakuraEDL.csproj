@@ -21,7 +21,7 @@
     <Product>SakuraEDL</Product>
     <Copyright>Copyright © xiri 2025-2026. All Rights Reserved.</Copyright>
     <Description>多功能安卓刷机工具 - 支持高通/联发科/展讯</Description>
-    <ApplicationIcon>MultiFlash TOOL.ico</ApplicationIcon>
+    <ApplicationIcon>SakuraEDL.ico</ApplicationIcon>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
