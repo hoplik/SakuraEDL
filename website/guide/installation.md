@@ -4,7 +4,7 @@
 
 从以下渠道下载最新版本：
 
-- [GitHub Releases](https://github.com/xiriovo/MultiFlash-Tool/releases)
+- [GitHub Releases](https://github.com/xiriovo/SakuraEDL/releases)
 - [蓝奏云](https://www.lanzoui.com/multiflash)
 
 ## 系统要求

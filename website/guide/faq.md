@@ -185,4 +185,4 @@ SakuraEDL 是开源软件，部分杀软可能误报。可以：
 如果以上方法都无法解决问题：
 
 - **QQ 群**: [点击加入](https://qm.qq.com/q/z3iVnkm22c)
-- **GitHub Issues**: [提交问题](https://github.com/xiriovo/MultiFlash-Tool/issues)
+- **GitHub Issues**: [提交问题](https://github.com/xiriovo/SakuraEDL/issues)

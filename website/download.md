@@ -7,7 +7,7 @@
 <div class="download-card">
   <div class="version">v3.0.0</div>
   <div class="date">2026-01-28</div>
-  <a href="https://github.com/xiriovo/MultiFlash-Tool/releases/latest" class="btn-download">
+  <a href="https://github.com/xiriovo/SakuraEDL/releases/latest" class="btn-download">
     📥 GitHub 下载
   </a>
   <a href="https://wwbda.lanzn.com/iIb7t3h6um2b" class="btn-download alt">
