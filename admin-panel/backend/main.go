@@ -1,4 +1,4 @@
-// MultiFlash Admin Panel - Backend API Server
+// SakuraEDL Admin Panel - Backend API Server
 // 后台管理面板 - Go API 服务器
 package main
 
@@ -110,7 +110,7 @@ func main() {
 	mux.Handle("/", http.FileServer(http.Dir("./static")))
 
 	port := ":8082"
-	log.Printf("🚀 MultiFlash Admin API 服务器启动于 http://localhost%s", port)
+	log.Printf("🚀 SakuraEDL Admin API 服务器启动于 http://localhost%s", port)
 	log.Printf("📁 上传目录: %s", uploadDir)
 	log.Fatal(http.ListenAndServe(port, mux))
 }
@@ -119,7 +119,7 @@ func main() {
 
 func initDatabase() {
 	var err error
-	db, err = sql.Open("sqlite", "./multiflash.db")
+	db, err = sql.Open("sqlite", "./sakuraedl.db")
 	if err != nil {
 		log.Fatal("数据库连接失败:", err)
 	}
@@ -211,7 +211,7 @@ func authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 		// 默认管理员 Token (生产环境应从配置读取)
 		validToken := os.Getenv("ADMIN_TOKEN")
 		if validToken == "" {
-			validToken = "multiflash-admin-2024"
+			validToken = "sakuraedl-admin-2024"
 		}
 
 		if token != validToken {
@@ -511,7 +511,7 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 		adminUser = "admin"
 	}
 	if adminPass == "" {
-		adminPass = "multiflash2024"
+		adminPass = "sakuraedl2024"
 	}
 
 	if req.Username != adminUser || req.Password != adminPass {
@@ -521,7 +521,7 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 
 	token := os.Getenv("ADMIN_TOKEN")
 	if token == "" {
-		token = "multiflash-admin-2024"
+		token = "sakuraedl-admin-2024"
 	}
 
 	sendJSON(w, http.StatusOK, Response{

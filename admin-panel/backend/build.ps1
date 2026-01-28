@@ -1,10 +1,10 @@
-# MultiFlash Admin 构建脚本 (Windows PowerShell)
+# SakuraEDL Admin 构建脚本 (Windows PowerShell)
 
 $VERSION = "3.0.0"
 $OUTPUT_DIR = "./dist"
 
 Write-Host "==========================================" -ForegroundColor Cyan
-Write-Host "  MultiFlash Admin 构建脚本" -ForegroundColor Cyan
+Write-Host "  SakuraEDL Admin 构建脚本" -ForegroundColor Cyan
 Write-Host "  版本: $VERSION" -ForegroundColor Cyan
 Write-Host "==========================================" -ForegroundColor Cyan
 
@@ -21,8 +21,8 @@ Write-Host "[1/4] 编译 Linux AMD64..." -ForegroundColor Yellow
 $env:GOOS = "linux"
 $env:GOARCH = "amd64"
 $env:CGO_ENABLED = "0"
-go build -ldflags="-s -w" -o "$OUTPUT_DIR/multiflash-admin-linux-amd64" .
-Write-Host "      完成: $OUTPUT_DIR/multiflash-admin-linux-amd64" -ForegroundColor Green
+go build -ldflags="-s -w" -o "$OUTPUT_DIR/sakuraedl-admin-linux-amd64" .
+Write-Host "      完成: $OUTPUT_DIR/sakuraedl-admin-linux-amd64" -ForegroundColor Green
 
 # 编译 Linux ARM64
 Write-Host ""
@@ -30,8 +30,8 @@ Write-Host "[2/4] 编译 Linux ARM64..." -ForegroundColor Yellow
 $env:GOOS = "linux"
 $env:GOARCH = "arm64"
 $env:CGO_ENABLED = "0"
-go build -ldflags="-s -w" -o "$OUTPUT_DIR/multiflash-admin-linux-arm64" .
-Write-Host "      完成: $OUTPUT_DIR/multiflash-admin-linux-arm64" -ForegroundColor Green
+go build -ldflags="-s -w" -o "$OUTPUT_DIR/sakuraedl-admin-linux-arm64" .
+Write-Host "      完成: $OUTPUT_DIR/sakuraedl-admin-linux-arm64" -ForegroundColor Green
 
 # 编译 Windows
 Write-Host ""
@@ -39,8 +39,8 @@ Write-Host "[3/4] 编译 Windows AMD64..." -ForegroundColor Yellow
 $env:GOOS = "windows"
 $env:GOARCH = "amd64"
 $env:CGO_ENABLED = "0"
-go build -ldflags="-s -w" -o "$OUTPUT_DIR/multiflash-admin-windows-amd64.exe" .
-Write-Host "      完成: $OUTPUT_DIR/multiflash-admin-windows-amd64.exe" -ForegroundColor Green
+go build -ldflags="-s -w" -o "$OUTPUT_DIR/sakuraedl-admin-windows-amd64.exe" .
+Write-Host "      完成: $OUTPUT_DIR/sakuraedl-admin-windows-amd64.exe" -ForegroundColor Green
 
 # 复制静态文件
 Write-Host ""
@@ -59,4 +59,4 @@ Write-Host "  构建完成!" -ForegroundColor Cyan
 Write-Host "==========================================" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "输出文件:" -ForegroundColor White
-Get-ChildItem -Path $OUTPUT_DIR -Filter "multiflash-admin*" | Format-Table Name, Length -AutoSize
+Get-ChildItem -Path $OUTPUT_DIR -Filter "sakuraedl-admin*" | Format-Table Name, Length -AutoSize

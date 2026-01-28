@@ -1,4 +1,4 @@
-# MultiFlash Admin Backend Dockerfile
+# SakuraEDL Admin Backend Dockerfile
 FROM golang:1.21-alpine AS builder
 
 WORKDIR /app
@@ -14,7 +14,7 @@ RUN go mod download
 COPY . .
 
 # 编译
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o multiflash-admin .
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o sakuraedl-admin .
 
 # 运行阶段
 FROM alpine:latest
@@ -24,7 +24,7 @@ RUN apk --no-cache add ca-certificates tzdata
 WORKDIR /app
 
 # 复制编译好的二进制
-COPY --from=builder /app/multiflash-admin .
+COPY --from=builder /app/sakuraedl-admin .
 COPY --from=builder /app/static ./static
 
 # 创建上传目录
@@ -37,4 +37,4 @@ ENV TZ=Asia/Shanghai
 EXPOSE 8082
 
 # 运行
-CMD ["./multiflash-admin"]
+CMD ["./sakuraedl-admin"]

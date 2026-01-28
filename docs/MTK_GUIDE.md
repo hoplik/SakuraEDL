@@ -1,6 +1,6 @@
 # 联发科 (MTK) 刷机教程
 
-> 本文档详细介绍如何使用 MultiFlash Tool 对联发科设备进行刷机操作
+> 本文档详细介绍如何使用 SakuraEDL 对联发科设备进行刷机操作
 
 ## 目录
 
@@ -17,7 +17,7 @@
 
 ## 概述
 
-MultiFlash Tool 支持联发科 (MediaTek) 设备的完整刷机流程，包括：
+SakuraEDL 支持联发科 (MediaTek) 设备的完整刷机流程，包括：
 
 - **BROM 模式**: BootROM 模式，设备最底层的下载模式
 - **Preloader 模式**: 预加载模式，部分设备支持
@@ -121,7 +121,7 @@ adb reboot edl
 
 ### 连接设备
 
-1. 打开 MultiFlash Tool
+1. 打开 SakuraEDL
 2. 切换到 **MTK** 标签页
 3. 点击 **"连接设备"** 按钮
 4. 设备进入 BROM 模式

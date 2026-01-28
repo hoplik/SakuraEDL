@@ -1,4 +1,4 @@
-# MultiFlash Admin 部署指南
+# SakuraEDL Admin 部署指南
 
 ## 目录
 
@@ -24,13 +24,13 @@
 
 ```bash
 # 将以下文件上传到服务器
-scp -r admin-panel/backend user@server:/opt/multiflash-admin/
+scp -r admin-panel/backend user@server:/opt/sakuraedl-admin/
 ```
 
 2. **创建环境配置**
 
 ```bash
-cd /opt/multiflash-admin
+cd /opt/sakuraedl-admin
 cat > .env << EOF
 ADMIN_TOKEN=your-secure-token-$(openssl rand -hex 16)
 ADMIN_USER=admin
@@ -61,7 +61,7 @@ curl http://localhost:8082/api/loaders/list
 
 ```bash
 # 查看日志
-docker-compose logs -f multiflash-admin
+docker-compose logs -f sakuraedl-admin
 
 # 重启服务
 docker-compose restart
@@ -104,34 +104,34 @@ chmod +x build.sh
 
 ```bash
 # 上传构建产物
-scp dist/multiflash-admin-linux-amd64 user@server:/opt/multiflash-admin/
-scp -r dist/static user@server:/opt/multiflash-admin/
+scp dist/sakuraedl-admin-linux-amd64 user@server:/opt/sakuraedl-admin/
+scp -r dist/static user@server:/opt/sakuraedl-admin/
 
 # 或上传整个部署包
-scp dist/multiflash-admin-linux-amd64-3.0.0.tar.gz user@server:/opt/
-ssh user@server "cd /opt && tar -xzvf multiflash-admin-linux-amd64-3.0.0.tar.gz"
+scp dist/sakuraedl-admin-linux-amd64-3.0.0.tar.gz user@server:/opt/
+ssh user@server "cd /opt && tar -xzvf sakuraedl-admin-linux-amd64-3.0.0.tar.gz"
 ```
 
 #### 3. 配置 systemd 服务
 
 ```bash
 # 复制服务文件
-sudo cp deploy/multiflash-admin.service /etc/systemd/system/
+sudo cp deploy/sakuraedl-admin.service /etc/systemd/system/
 
 # 编辑配置 (修改密码等)
-sudo nano /etc/systemd/system/multiflash-admin.service
+sudo nano /etc/systemd/system/sakuraedl-admin.service
 
 # 创建目录和权限
-sudo mkdir -p /opt/multiflash-admin/{data,uploads}
-sudo chown -R www-data:www-data /opt/multiflash-admin
+sudo mkdir -p /opt/sakuraedl-admin/{data,uploads}
+sudo chown -R www-data:www-data /opt/sakuraedl-admin
 
 # 启动服务
 sudo systemctl daemon-reload
-sudo systemctl enable multiflash-admin
-sudo systemctl start multiflash-admin
+sudo systemctl enable sakuraedl-admin
+sudo systemctl start sakuraedl-admin
 
 # 查看状态
-sudo systemctl status multiflash-admin
+sudo systemctl status sakuraedl-admin
 ```
 
 #### 4. 配置防火墙
@@ -163,13 +163,13 @@ sudo yum install nginx
 
 ```bash
 # 复制配置文件
-sudo cp nginx.conf /etc/nginx/sites-available/multiflash-admin
+sudo cp nginx.conf /etc/nginx/sites-available/sakuraedl-admin
 
 # 编辑配置 (修改域名)
-sudo nano /etc/nginx/sites-available/multiflash-admin
+sudo nano /etc/nginx/sites-available/sakuraedl-admin
 
 # 启用站点
-sudo ln -s /etc/nginx/sites-available/multiflash-admin /etc/nginx/sites-enabled/
+sudo ln -s /etc/nginx/sites-available/sakuraedl-admin /etc/nginx/sites-enabled/
 
 # 测试配置
 sudo nginx -t
@@ -247,10 +247,10 @@ server {
 
 | 变量名 | 默认值 | 说明 |
 |--------|--------|------|
-| `ADMIN_TOKEN` | `multiflash-admin-2024` | API 认证 Token |
+| `ADMIN_TOKEN` | `sakuraedl-admin-2024` | API 认证 Token |
 | `ADMIN_USER` | `admin` | 管理员用户名 |
 | `ADMIN_PASS` | `admin123` | 管理员密码 |
-| `DB_PATH` | `./multiflash.db` | SQLite 数据库路径 |
+| `DB_PATH` | `./sakuraedl.db` | SQLite 数据库路径 |
 | `PORT` | `8082` | 服务端口 |
 | `TZ` | `Asia/Shanghai` | 时区 |
 
@@ -284,7 +284,7 @@ server {
 
 ## 客户端配置
 
-部署完成后，修改 MultiFlash 客户端的 API 地址：
+部署完成后，修改 SakuraEDL 客户端的 API 地址：
 
 **文件:** `Qualcomm/Services/cloud_loader_service.cs`
 
@@ -301,7 +301,7 @@ private const string API_BASE_PROD = "https://api.your-domain.com/api";
 
 ```bash
 # 查看详细日志
-sudo journalctl -u multiflash-admin -f
+sudo journalctl -u sakuraedl-admin -f
 
 # 检查端口占用
 sudo netstat -tlnp | grep 8082
@@ -311,7 +311,7 @@ sudo netstat -tlnp | grep 8082
 
 ```bash
 # 确保目录权限正确
-sudo chown -R www-data:www-data /opt/multiflash-admin
+sudo chown -R www-data:www-data /opt/sakuraedl-admin
 ```
 
 ### Q: Docker 容器无法访问
@@ -321,7 +321,7 @@ sudo chown -R www-data:www-data /opt/multiflash-admin
 docker ps -a
 
 # 查看容器日志
-docker logs multiflash-admin
+docker logs sakuraedl-admin
 ```
 
 ### Q: Nginx 502 错误
@@ -342,22 +342,22 @@ sudo tail -f /var/log/nginx/error.log
 
 ```bash
 # 备份数据库和上传文件
-tar -czvf multiflash-backup-$(date +%Y%m%d).tar.gz \
-    /opt/multiflash-admin/data \
-    /opt/multiflash-admin/uploads
+tar -czvf sakuraedl-backup-$(date +%Y%m%d).tar.gz \
+    /opt/sakuraedl-admin/data \
+    /opt/sakuraedl-admin/uploads
 ```
 
 ### 恢复
 
 ```bash
 # 停止服务
-sudo systemctl stop multiflash-admin
+sudo systemctl stop sakuraedl-admin
 
 # 恢复备份
-tar -xzvf multiflash-backup-YYYYMMDD.tar.gz -C /
+tar -xzvf sakuraedl-backup-YYYYMMDD.tar.gz -C /
 
 # 启动服务
-sudo systemctl start multiflash-admin
+sudo systemctl start sakuraedl-admin
 ```
 
 ---
@@ -365,4 +365,4 @@ sudo systemctl start multiflash-admin
 ## 联系支持
 
 - QQ 群: https://qm.qq.com/q/z3iVnkm22c
-- GitHub: https://github.com/your-repo/multiflash
+- GitHub: https://github.com/your-repo/sakuraedl

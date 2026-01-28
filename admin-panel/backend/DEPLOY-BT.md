@@ -1,4 +1,4 @@
-# MultiFlash Admin - 宝塔面板部署指南
+# SakuraEDL Admin - 宝塔面板部署指南
 
 ## 前置要求
 
@@ -13,15 +13,15 @@
 
 1. 打开宝塔面板 → **文件**
 2. 进入 `/www/wwwroot/` 目录
-3. 创建文件夹 `multiflash-admin`
+3. 创建文件夹 `sakuraedl-admin`
 4. 上传以下文件到该目录：
-   - `multiflash-admin-linux-amd64` (重命名为 `multiflash-admin`)
+   - `sakuraedl-admin-linux-amd64` (重命名为 `sakuraedl-admin`)
    - `static/` 文件夹
 
 目录结构：
 ```
-/www/wwwroot/multiflash-admin/
-├── multiflash-admin          # 主程序
+/www/wwwroot/sakuraedl-admin/
+├── sakuraedl-admin          # 主程序
 ├── static/
 │   └── index.html            # 前端页面
 ├── uploads/                  # 自动创建
@@ -29,17 +29,17 @@
 │   ├── digest/
 │   └── sign/
 └── data/                     # 自动创建
-    └── multiflash.db
+    └── sakuraedl.db
 ```
 
 ### 步骤 2：设置执行权限
 
-1. 在宝塔文件管理器中，右键点击 `multiflash-admin`
+1. 在宝塔文件管理器中，右键点击 `sakuraedl-admin`
 2. 选择 **权限** → 设置为 `755`
 
 或使用终端：
 ```bash
-chmod +x /www/wwwroot/multiflash-admin/multiflash-admin
+chmod +x /www/wwwroot/sakuraedl-admin/sakuraedl-admin
 ```
 
 ### 步骤 3：安装 Supervisor
@@ -56,10 +56,10 @@ chmod +x /www/wwwroot/multiflash-admin/multiflash-admin
 
 | 字段 | 值 |
 |------|-----|
-| 名称 | `multiflash-admin` |
+| 名称 | `sakuraedl-admin` |
 | 启动用户 | `root` |
-| 运行目录 | `/www/wwwroot/multiflash-admin` |
-| 启动命令 | `/www/wwwroot/multiflash-admin/multiflash-admin` |
+| 运行目录 | `/www/wwwroot/sakuraedl-admin` |
+| 启动命令 | `/www/wwwroot/sakuraedl-admin/sakuraedl-admin` |
 | 进程数量 | `1` |
 
 4. 点击 **确定**
@@ -68,13 +68,13 @@ chmod +x /www/wwwroot/multiflash-admin/multiflash-admin
 
 如需修改默认配置，编辑 Supervisor 配置文件：
 
-1. 打开 `/etc/supervisor/conf.d/multiflash-admin.conf`
+1. 打开 `/etc/supervisor/conf.d/sakuraedl-admin.conf`
 2. 添加环境变量：
 
 ```ini
-[program:multiflash-admin]
-command=/www/wwwroot/multiflash-admin/multiflash-admin
-directory=/www/wwwroot/multiflash-admin
+[program:sakuraedl-admin]
+command=/www/wwwroot/sakuraedl-admin/sakuraedl-admin
+directory=/www/wwwroot/sakuraedl-admin
 user=root
 autostart=true
 autorestart=true
@@ -95,7 +95,7 @@ environment=ADMIN_TOKEN="your-secure-token",ADMIN_USER="admin",ADMIN_PASS="your-
 
 | 字段 | 值 |
 |------|-----|
-| 代理名称 | `multiflash` |
+| 代理名称 | `sakuraedl` |
 | 目标URL | `http://127.0.0.1:8082` |
 | 发送域名 | `$host` |
 
@@ -120,7 +120,7 @@ environment=ADMIN_TOKEN="your-secure-token",ADMIN_USER="admin",ADMIN_PASS="your-
 
 ### 步骤 2：上传文件
 
-上传以下文件到 `/www/wwwroot/multiflash-admin/`：
+上传以下文件到 `/www/wwwroot/sakuraedl-admin/`：
 - `Dockerfile`
 - `docker-compose.yml`
 - `main.go`
@@ -132,7 +132,7 @@ environment=ADMIN_TOKEN="your-secure-token",ADMIN_USER="admin",ADMIN_PASS="your-
 
 在宝塔终端执行：
 ```bash
-cd /www/wwwroot/multiflash-admin
+cd /www/wwwroot/sakuraedl-admin
 docker-compose up -d --build
 ```
 
@@ -147,11 +147,11 @@ docker-compose up -d --build
 ### 使用宝塔终端
 
 ```bash
-cd /www/wwwroot/multiflash-admin
-chmod +x multiflash-admin
+cd /www/wwwroot/sakuraedl-admin
+chmod +x sakuraedl-admin
 
 # 后台运行
-nohup ./multiflash-admin > app.log 2>&1 &
+nohup ./sakuraedl-admin > app.log 2>&1 &
 
 # 查看日志
 tail -f app.log
@@ -206,7 +206,7 @@ location / {
 
 ```bash
 # 查看进程
-ps aux | grep multiflash
+ps aux | grep sakuraedl
 
 # 查看端口
 netstat -tlnp | grep 8082
@@ -228,7 +228,7 @@ curl http://127.0.0.1:8082/api/loaders/list
 
 ## 客户端配置
 
-部署完成后，修改 MultiFlash 客户端连接地址：
+部署完成后，修改 SakuraEDL 客户端连接地址：
 
 **文件：** `Qualcomm/Services/cloud_loader_service.cs`
 
@@ -247,31 +247,31 @@ private const string API_BASE_PROD = "https://api.your-domain.com/api";
 
 ```bash
 # 查看 Supervisor 日志
-tail -f /var/log/supervisor/multiflash-admin.log
+tail -f /var/log/supervisor/sakuraedl-admin.log
 
 # 或查看程序日志
-tail -f /www/wwwroot/multiflash-admin/app.log
+tail -f /www/wwwroot/sakuraedl-admin/app.log
 ```
 
 ### Q: 502 Bad Gateway
 
-1. 检查服务是否运行：`ps aux | grep multiflash`
+1. 检查服务是否运行：`ps aux | grep sakuraedl`
 2. 检查端口是否监听：`netstat -tlnp | grep 8082`
 3. 重启服务：在 Supervisor 管理器中点击重启
 
 ### Q: 权限问题
 
 ```bash
-chown -R www:www /www/wwwroot/multiflash-admin
-chmod -R 755 /www/wwwroot/multiflash-admin
+chown -R www:www /www/wwwroot/sakuraedl-admin
+chmod -R 755 /www/wwwroot/sakuraedl-admin
 ```
 
 ### Q: 数据库错误
 
 确保 `data` 目录存在且有写入权限：
 ```bash
-mkdir -p /www/wwwroot/multiflash-admin/data
-chmod 777 /www/wwwroot/multiflash-admin/data
+mkdir -p /www/wwwroot/sakuraedl-admin/data
+chmod 777 /www/wwwroot/sakuraedl-admin/data
 ```
 
 ---
@@ -289,11 +289,11 @@ chmod 777 /www/wwwroot/multiflash-admin/data
 ```bash
 #!/bin/bash
 DATE=$(date +%Y%m%d)
-BACKUP_DIR=/www/backup/multiflash
+BACKUP_DIR=/www/backup/sakuraedl
 mkdir -p $BACKUP_DIR
-tar -czvf $BACKUP_DIR/multiflash-$DATE.tar.gz \
-    /www/wwwroot/multiflash-admin/data \
-    /www/wwwroot/multiflash-admin/uploads
+tar -czvf $BACKUP_DIR/sakuraedl-$DATE.tar.gz \
+    /www/wwwroot/sakuraedl-admin/data \
+    /www/wwwroot/sakuraedl-admin/uploads
 # 删除 7 天前的备份
 find $BACKUP_DIR -name "*.tar.gz" -mtime +7 -delete
 ```
@@ -303,8 +303,8 @@ find $BACKUP_DIR -name "*.tar.gz" -mtime +7 -delete
 ## 更新部署
 
 1. 停止服务（在 Supervisor 管理器中）
-2. 上传新的 `multiflash-admin` 文件
-3. 设置权限：`chmod +x multiflash-admin`
+2. 上传新的 `sakuraedl-admin` 文件
+3. 设置权限：`chmod +x sakuraedl-admin`
 4. 启动服务
 
 ---

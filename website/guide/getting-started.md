@@ -11,7 +11,7 @@
 ### 下载地址
 
 - **官方下载**: [GitHub Releases](https://github.com/xiriovo/SakuraEDL/releases)
-- **蓝奏云**: [点击下载](https://www.lanzoui.com/multiflash)
+- **蓝奏云**: [点击下载](https://www.lanzoui.com/sakuraedl)
 
 ### 安装步骤
 

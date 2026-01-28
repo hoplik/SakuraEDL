@@ -1,4 +1,4 @@
-module multiflash-admin
+module sakuraedl-admin
 
 go 1.21
 

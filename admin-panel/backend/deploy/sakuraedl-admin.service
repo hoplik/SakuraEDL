@@ -1,13 +1,13 @@
 [Unit]
-Description=MultiFlash Admin API Server
+Description=SakuraEDL Admin API Server
 After=network.target
 
 [Service]
 Type=simple
 User=www-data
 Group=www-data
-WorkingDirectory=/opt/multiflash-admin
-ExecStart=/opt/multiflash-admin/multiflash-admin
+WorkingDirectory=/opt/sakuraedl-admin
+ExecStart=/opt/sakuraedl-admin/sakuraedl-admin
 Restart=always
 RestartSec=5
 
@@ -15,14 +15,14 @@ RestartSec=5
 Environment=ADMIN_TOKEN=your-secure-token-here
 Environment=ADMIN_USER=admin
 Environment=ADMIN_PASS=your-secure-password
-Environment=DB_PATH=/opt/multiflash-admin/data/multiflash.db
+Environment=DB_PATH=/opt/sakuraedl-admin/data/sakuraedl.db
 Environment=TZ=Asia/Shanghai
 
 # 安全设置
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/opt/multiflash-admin
+ReadWritePaths=/opt/sakuraedl-admin
 
 [Install]
 WantedBy=multi-user.target

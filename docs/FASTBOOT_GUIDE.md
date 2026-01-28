@@ -1,6 +1,6 @@
 # Fastboot 刷机教程
 
-> 本文档详细介绍如何使用 MultiFlash Tool 的 Fastboot 功能
+> 本文档详细介绍如何使用 SakuraEDL 的 Fastboot 功能
 
 ## 目录
 
@@ -16,7 +16,7 @@
 
 ## 概述
 
-Fastboot 是 Android 设备的标准刷机模式，MultiFlash Tool 提供增强的 Fastboot 功能：
+Fastboot 是 Android 设备的标准刷机模式，SakuraEDL 提供增强的 Fastboot 功能：
 
 - **设备检测**: 自动检测 Fastboot 设备
 - **分区管理**: 读取、刷写、擦除分区
@@ -76,7 +76,7 @@ adb reboot bootloader
 
 ### 检测设备
 
-1. 打开 MultiFlash Tool
+1. 打开 SakuraEDL
 2. 切换到 **Fastboot** 标签页
 3. 设备进入 Fastboot 模式
 4. 点击 **"刷新设备"**

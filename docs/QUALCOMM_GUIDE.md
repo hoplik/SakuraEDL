@@ -1,6 +1,6 @@
 # 高通 EDL (9008) 刷机教程
 
-> 本文档详细介绍如何使用 MultiFlash Tool 对高通设备进行 EDL 模式刷机操作
+> 本文档详细介绍如何使用 SakuraEDL 对高通设备进行 EDL 模式刷机操作
 
 ## 目录
 
@@ -17,7 +17,7 @@
 
 ## 概述
 
-MultiFlash Tool 支持高通 (Qualcomm) 设备的 EDL (Emergency Download) 模式刷机，包括：
+SakuraEDL 支持高通 (Qualcomm) 设备的 EDL (Emergency Download) 模式刷机，包括：
 
 - **Sahara 协议**: V2/V3 版本支持
 - **Firehose 协议**: XML 命令刷写
@@ -127,7 +127,7 @@ fastboot reboot emergency
 
 ### 连接设备
 
-1. 打开 MultiFlash Tool
+1. 打开 SakuraEDL
 2. 切换到 **Qualcomm** 标签页
 3. 设备进入 9008 模式
 4. 程序自动检测设备

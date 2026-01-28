@@ -49,7 +49,7 @@ server {
     listen 80;
     server_name docs.sakuraedl.org;
     
-    root /www/wwwroot/multiflash-docs;
+    root /www/wwwroot/sakuraedl-docs;
     index index.html;
     
     location / {

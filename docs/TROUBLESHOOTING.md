@@ -1,6 +1,6 @@
 # 常见问题与故障排除
 
-> 本文档汇总 MultiFlash Tool 使用过程中的常见问题和解决方案
+> 本文档汇总 SakuraEDL 使用过程中的常见问题和解决方案
 
 ## 目录
 
@@ -336,7 +336,7 @@
 
 ### 社区支持
 
-- **QQ 群**: [MultiFlash TOOL](https://qm.qq.com/q/z3iVnkm22c)
+- **QQ 群**: [SakuraEDL](https://qm.qq.com/q/z3iVnkm22c)
 - **Telegram**: [OPFlashTool](https://t.me/OPFlashTool)
 
 ### 报告问题

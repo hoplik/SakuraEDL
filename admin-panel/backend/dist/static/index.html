@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MultiFlash Admin - Loader 管理后台</title>
+    <title>SakuraEDL Admin - Loader 管理后台</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
     <script src="https://unpkg.com/element-plus"></script>
     <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css">
@@ -429,7 +429,7 @@
         <!-- 登录页面 -->
         <div v-if="!isLoggedIn" class="login-container">
             <div class="login-box">
-                <h2 class="login-title"><span>MultiFlash</span> Admin</h2>
+                <h2 class="login-title"><span>SakuraEDL</span> Admin</h2>
                 <el-form :model="loginForm" @submit.prevent="handleLogin">
                     <el-form-item style="margin-bottom: 20px;">
                         <el-input v-model="loginForm.username" placeholder="管理员用户名" prefix-icon="User" size="large"></el-input>
@@ -444,7 +444,7 @@
                     </el-form-item>
                 </el-form>
                 <p style="text-align: center; color: rgba(255,255,255,0.4); font-size: 12px; margin-top: 24px;">
-                    MultiFlash Loader 云端管理系统 v3.0
+                    SakuraEDL Loader 云端管理系统 v3.0
                 </p>
             </div>
         </div>
@@ -455,7 +455,7 @@
             <aside class="sidebar">
                 <div class="sidebar-logo">
                     <div class="logo-icon">⚡</div>
-                    <span>MultiFlash</span>
+                    <span>SakuraEDL</span>
                 </div>
                 <ul class="sidebar-menu">
                     <li :class="{ active: currentPage === 'dashboard' }" @click="currentPage = 'dashboard'">
@@ -1115,7 +1115,7 @@
                                 <div style="display: flex; flex-direction: column; gap: 16px;">
                                     <div style="display: flex; justify-content: space-between; padding: 12px; background: #f8fafc; border-radius: 8px;">
                                         <span style="color: #64748b;">版本</span>
-                                        <span style="font-weight: 600; color: #1e293b;">MultiFlash Admin v3.0</span>
+                                        <span style="font-weight: 600; color: #1e293b;">SakuraEDL Admin v3.0</span>
                                     </div>
                                     <div style="display: flex; justify-content: space-between; padding: 12px; background: #f8fafc; border-radius: 8px;">
                                         <span style="color: #64748b;">后端地址</span>

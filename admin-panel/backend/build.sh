@@ -1,5 +1,5 @@
 #!/bin/bash
-# MultiFlash Admin 构建脚本
+# SakuraEDL Admin 构建脚本
 
 set -e
 
@@ -8,7 +8,7 @@ BUILD_TIME=$(date +%Y%m%d_%H%M%S)
 OUTPUT_DIR="./dist"
 
 echo "=========================================="
-echo "  MultiFlash Admin 构建脚本"
+echo "  SakuraEDL Admin 构建脚本"
 echo "  版本: $VERSION"
 echo "=========================================="
 
@@ -18,20 +18,20 @@ mkdir -p $OUTPUT_DIR
 # 编译 Linux AMD64
 echo ""
 echo "[1/4] 编译 Linux AMD64..."
-GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o $OUTPUT_DIR/multiflash-admin-linux-amd64 .
-echo "      完成: $OUTPUT_DIR/multiflash-admin-linux-amd64"
+GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o $OUTPUT_DIR/sakuraedl-admin-linux-amd64 .
+echo "      完成: $OUTPUT_DIR/sakuraedl-admin-linux-amd64"
 
 # 编译 Linux ARM64
 echo ""
 echo "[2/4] 编译 Linux ARM64..."
-GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o $OUTPUT_DIR/multiflash-admin-linux-arm64 .
-echo "      完成: $OUTPUT_DIR/multiflash-admin-linux-arm64"
+GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o $OUTPUT_DIR/sakuraedl-admin-linux-arm64 .
+echo "      完成: $OUTPUT_DIR/sakuraedl-admin-linux-arm64"
 
 # 编译 Windows
 echo ""
 echo "[3/4] 编译 Windows AMD64..."
-GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o $OUTPUT_DIR/multiflash-admin-windows-amd64.exe .
-echo "      完成: $OUTPUT_DIR/multiflash-admin-windows-amd64.exe"
+GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o $OUTPUT_DIR/sakuraedl-admin-windows-amd64.exe .
+echo "      完成: $OUTPUT_DIR/sakuraedl-admin-windows-amd64.exe"
 
 # 复制静态文件
 echo ""
@@ -46,15 +46,15 @@ echo "创建部署包..."
 cd $OUTPUT_DIR
 
 # Linux 部署包
-tar -czvf multiflash-admin-linux-amd64-$VERSION.tar.gz \
-    multiflash-admin-linux-amd64 static uploads data
+tar -czvf sakuraedl-admin-linux-amd64-$VERSION.tar.gz \
+    sakuraedl-admin-linux-amd64 static uploads data
 
-tar -czvf multiflash-admin-linux-arm64-$VERSION.tar.gz \
-    multiflash-admin-linux-arm64 static uploads data
+tar -czvf sakuraedl-admin-linux-arm64-$VERSION.tar.gz \
+    sakuraedl-admin-linux-arm64 static uploads data
 
 # Windows 部署包
-zip -r multiflash-admin-windows-$VERSION.zip \
-    multiflash-admin-windows-amd64.exe static uploads data
+zip -r sakuraedl-admin-windows-$VERSION.zip \
+    sakuraedl-admin-windows-amd64.exe static uploads data
 
 cd ..
 

@@ -1,6 +1,6 @@
 # 展讯 (SPD/Unisoc) 刷机教程
 
-> 本文档详细介绍如何使用 MultiFlash Tool 对展讯/紫光展锐设备进行刷机操作
+> 本文档详细介绍如何使用 SakuraEDL 对展讯/紫光展锐设备进行刷机操作
 
 ## 目录
 
@@ -17,7 +17,7 @@
 
 ## 概述
 
-MultiFlash Tool 支持展讯 (Spreadtrum) / 紫光展锐 (Unisoc) 设备的刷机操作，包括：
+SakuraEDL 支持展讯 (Spreadtrum) / 紫光展锐 (Unisoc) 设备的刷机操作，包括：
 
 - **FDL 下载协议**: 标准的展讯下载协议
 - **HDLC 帧编码**: 数据链路层编码
@@ -121,7 +121,7 @@ adb reboot bootloader
 
 ### 选择芯片型号
 
-1. 打开 MultiFlash Tool
+1. 打开 SakuraEDL
 2. 切换到 **SPD** 标签页
 3. 从下拉列表选择芯片型号
 4. 地址配置会自动填充

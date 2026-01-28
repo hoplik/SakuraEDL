@@ -1,6 +1,6 @@
-# MultiFlash Tool 快速参考
+# SakuraEDL 快速参考
 
-> 本文档提供 MultiFlash Tool 的快速使用指南
+> 本文档提供 SakuraEDL 的快速使用指南
 
 ## 目录
 

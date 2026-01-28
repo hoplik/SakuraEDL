@@ -1,4 +1,4 @@
-# MultiFlash Admin Panel
+# SakuraEDL Admin Panel
 
 后台管理面板，用于管理 Loader 文件和查看设备匹配日志。
 
@@ -42,15 +42,15 @@ go run main.go
 
 默认登录账号:
 - 用户名: `admin`
-- 密码: `multiflash2024`
+- 密码: `sakuraedl2024`
 
 ## 环境变量配置
 
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
 | `ADMIN_USER` | admin | 管理员用户名 |
-| `ADMIN_PASS` | multiflash2024 | 管理员密码 |
-| `ADMIN_TOKEN` | multiflash-admin-2024 | API Token |
+| `ADMIN_PASS` | sakuraedl2024 | 管理员密码 |
+| `ADMIN_TOKEN` | sakuraedl-admin-2024 | API Token |
 
 ## API 接口
 
@@ -93,7 +93,7 @@ POST /api/loaders/match
 **上传 Loader (VIP 类型):**
 ```bash
 curl -X POST http://localhost:8081/api/admin/loaders/upload \
-  -H "X-Admin-Token: multiflash-admin-2024" \
+  -H "X-Admin-Token: sakuraedl-admin-2024" \
   -F "loader=@prog_firehose.elf" \
   -F "digest=@loader.digest" \
   -F "sign=@loader.sign" \
@@ -111,7 +111,7 @@ admin-panel/
 ├── backend/
 │   ├── main.go          # Go 后端主程序
 │   ├── go.mod           # Go 模块配置
-│   ├── multiflash.db    # SQLite 数据库 (运行后生成)
+│   ├── sakuraedl.db     # SQLite 数据库 (运行后生成)
 │   ├── uploads/         # 上传文件目录 (运行后生成)
 │   │   ├── loaders/     # Loader 文件
 │   │   ├── digest/      # Digest 文件
@@ -162,7 +162,7 @@ admin-panel/
 
 1. 编译 Go 程序:
 ```bash
-CGO_ENABLED=1 go build -o multiflash-admin main.go
+CGO_ENABLED=1 go build -o sakuraedl-admin main.go
 ```
 
 2. 设置环境变量:
