@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - 高通芯片数据库
+// SakuraEDL - 高通芯片数据库
 // Qualcomm Chipset Database - 设备识别信息库
 // ============================================================================
 // 模块: Qualcomm.Database
@@ -8,7 +8,7 @@
 
 using System.Collections.Generic;
 
-namespace LoveAlways.Qualcomm.Database
+namespace SakuraEDL.Qualcomm.Database
 {
     /// <summary>
     /// 存储类型枚举

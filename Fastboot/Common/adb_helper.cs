@@ -4,7 +4,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace LoveAlways.Fastboot.Common
+namespace SakuraEDL.Fastboot.Common
 {
     /// <summary>
     /// ADB 命令执行辅助类

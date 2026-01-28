@@ -1,4 +1,4 @@
-namespace LoveAlways
+namespace SakuraEDL
 {
     partial class SplashForm
     {
@@ -31,6 +31,7 @@ namespace LoveAlways
             this.uiProcessBar1 = new Sunny.UI.UIProcessBar();
             this.uiLabelStatus = new Sunny.UI.UILabel();
             this.uiLedLabel1 = new Sunny.UI.UILedLabel();
+            this.uiLabelFree = new Sunny.UI.UILabel();
             this.SuspendLayout();
             // 
             // uiProcessBar1
@@ -70,7 +71,19 @@ namespace LoveAlways
             this.uiLedLabel1.Name = "uiLedLabel1";
             this.uiLedLabel1.Size = new System.Drawing.Size(522, 298);
             this.uiLedLabel1.TabIndex = 2;
-            this.uiLedLabel1.Text = "MultiFlash";
+            this.uiLedLabel1.Text = "SakuraEDL";
+            // 
+            // uiLabelFree
+            // 
+            this.uiLabelFree.BackColor = System.Drawing.Color.Transparent;
+            this.uiLabelFree.Font = new System.Drawing.Font("微软雅黑", 14F, System.Drawing.FontStyle.Bold);
+            this.uiLabelFree.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(0)))), ((int)(((byte)(150)))), ((int)(((byte)(136)))));
+            this.uiLabelFree.Location = new System.Drawing.Point(12, 195);
+            this.uiLabelFree.Name = "uiLabelFree";
+            this.uiLabelFree.Size = new System.Drawing.Size(496, 32);
+            this.uiLabelFree.TabIndex = 3;
+            this.uiLabelFree.Text = "永久免费 · 开源工具";
+            this.uiLabelFree.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
             // SplashForm
             // 
@@ -79,6 +92,7 @@ namespace LoveAlways
             this.ClientSize = new System.Drawing.Size(520, 310);
             this.Controls.Add(this.uiProcessBar1);
             this.Controls.Add(this.uiLabelStatus);
+            this.Controls.Add(this.uiLabelFree);
             this.Controls.Add(this.uiLedLabel1);
             this.Font = new System.Drawing.Font("微软雅黑", 9F);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
@@ -97,5 +111,6 @@ namespace LoveAlways
         private Sunny.UI.UIProcessBar uiProcessBar1;
         private Sunny.UI.UILabel uiLabelStatus;
         private Sunny.UI.UILedLabel uiLedLabel1;
+        private Sunny.UI.UILabel uiLabelFree;
     }
 }

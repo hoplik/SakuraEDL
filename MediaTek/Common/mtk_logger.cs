@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - MediaTek 日志管理系统
+// SakuraEDL - MediaTek 日志管理系统
 // MediaTek Logging System with Formatting
 // ============================================================================
 // 统一的日志格式化输出，支持多种日志级别和样式
@@ -9,7 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace LoveAlways.MediaTek.Common
+namespace SakuraEDL.MediaTek.Common
 {
     /// <summary>
     /// 日志级别

@@ -3,7 +3,7 @@ using System.Drawing;
 using System.Windows.Forms;
 using Sunny.UI;
 
-namespace LoveAlways
+namespace SakuraEDL
 {
     public partial class MultiInstanceForm : UIForm
     {

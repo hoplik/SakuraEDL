@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - 展讯设备端口检测
+// SakuraEDL - 展讯设备端口检测
 // Spreadtrum/Unisoc USB Port Detector
 // ============================================================================
 
@@ -9,9 +9,9 @@ using System.Management;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using LoveAlways.Spreadtrum.Protocol;
+using SakuraEDL.Spreadtrum.Protocol;
 
-namespace LoveAlways.Spreadtrum.Common
+namespace SakuraEDL.Spreadtrum.Common
 {
     /// <summary>
     /// 展讯设备端口检测器

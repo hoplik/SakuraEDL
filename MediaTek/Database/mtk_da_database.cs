@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - MediaTek DA 数据库
+// SakuraEDL - MediaTek DA 数据库
 // MediaTek Download Agent Database
 // ============================================================================
 // DA 加载器数据库管理
@@ -9,10 +9,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using LoveAlways.MediaTek.Models;
-using LoveAlways.MediaTek.Protocol;
+using SakuraEDL.MediaTek.Models;
+using SakuraEDL.MediaTek.Protocol;
 
-namespace LoveAlways.MediaTek.Database
+namespace SakuraEDL.MediaTek.Database
 {
     /// <summary>
     /// DA 记录

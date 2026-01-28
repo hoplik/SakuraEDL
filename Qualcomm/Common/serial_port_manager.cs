@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - 串口管理器
+// SakuraEDL - 串口管理器
 // Serial Port Manager - 线程安全的串口资源管理
 // ============================================================================
 // 模块: Qualcomm.Common
@@ -13,7 +13,7 @@ using System.IO.Ports;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace LoveAlways.Qualcomm.Common
+namespace SakuraEDL.Qualcomm.Common
 {
     /// <summary>
     /// 串口管理器 - 线程安全的资源管理

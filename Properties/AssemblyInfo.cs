@@ -5,13 +5,13 @@ using System.Runtime.InteropServices;
 // 有关程序集的一般信息由以下
 // 控制。更改这些特性值可修改
 // 与程序集关联的信息。
-[assembly: AssemblyTitle("MultiFlash TOOL")]
-[assembly: AssemblyDescription("多模式刷机工具 - Multi-Mode Flashing Tool (EDL/Fastboot)")]
+[assembly: AssemblyTitle("SakuraEDL")]
+[assembly: AssemblyDescription("多功能安卓刷机工具 - 支持高通/联发科/展讯")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("xiri")]
-[assembly: AssemblyProduct("MultiFlash TOOL")]
+[assembly: AssemblyProduct("SakuraEDL")]
 [assembly: AssemblyCopyright("Copyright © xiri 2025-2026. All Rights Reserved.")]
-[assembly: AssemblyTrademark("MultiFlash™")]
+[assembly: AssemblyTrademark("SakuraEDL™")]
 [assembly: AssemblyCulture("")]
 
 // 将 ComVisible 设置为 false 会使此程序集中的类型

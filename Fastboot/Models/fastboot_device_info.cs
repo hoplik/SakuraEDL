@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace LoveAlways.Fastboot.Models
+namespace SakuraEDL.Fastboot.Models
 {
     /// <summary>
     /// Fastboot 设备信息

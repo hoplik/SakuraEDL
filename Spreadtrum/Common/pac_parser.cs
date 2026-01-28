@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - 展讯 PAC 固件包解析器
+// SakuraEDL - 展讯 PAC 固件包解析器
 // Spreadtrum/Unisoc PAC Firmware Package Parser
 // ============================================================================
 
@@ -10,7 +10,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace LoveAlways.Spreadtrum.Common
+namespace SakuraEDL.Spreadtrum.Common
 {
     /// <summary>
     /// PAC 固件包解析器

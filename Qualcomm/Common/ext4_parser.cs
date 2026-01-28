@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - EXT4 文件系统解析器
+// SakuraEDL - EXT4 文件系统解析器
 // 基于 SharpExt4 项目移植 - 纯 C# 实现
 // ============================================================================
 // 模块: Qualcomm.Common
@@ -12,7 +12,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace LoveAlways.Qualcomm.Common
+namespace SakuraEDL.Qualcomm.Common
 {
     /// <summary>
     /// EXT4 SuperBlock 结构 (1024 字节)

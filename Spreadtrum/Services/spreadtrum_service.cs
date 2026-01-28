@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - 展讯刷机服务
+// SakuraEDL - 展讯刷机服务
 // Spreadtrum/Unisoc Flashing Service
 // ============================================================================
 
@@ -11,12 +11,12 @@ using System.IO.Ports;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using LoveAlways.Common;
-using LoveAlways.Spreadtrum.Common;
-using LoveAlways.Spreadtrum.Exploit;
-using LoveAlways.Spreadtrum.Protocol;
+using SakuraEDL.Common;
+using SakuraEDL.Spreadtrum.Common;
+using SakuraEDL.Spreadtrum.Exploit;
+using SakuraEDL.Spreadtrum.Protocol;
 
-namespace LoveAlways.Spreadtrum.Services
+namespace SakuraEDL.Spreadtrum.Services
 {
     /// <summary>
     /// 展讯刷机服务 - 主服务类

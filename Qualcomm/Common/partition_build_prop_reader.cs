@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - 高效分区 Build.prop 读取器
+// SakuraEDL - 高效分区 Build.prop 读取器
 // 针对 EDL 模式优化的按需读取实现
 // ============================================================================
 // 模块: Qualcomm.Common
@@ -12,7 +12,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace LoveAlways.Qualcomm.Common
+namespace SakuraEDL.Qualcomm.Common
 {
     /// <summary>
     /// build.prop 搜索路径配置

@@ -6,7 +6,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace LoveAlways.Qualcomm.Common
+namespace SakuraEDL.Qualcomm.Common
 {
     /// <summary>
     /// Android Logical Partition (LP) Metadata Parser

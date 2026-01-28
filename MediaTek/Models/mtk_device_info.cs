@@ -1,11 +1,11 @@
 // ============================================================================
-// LoveAlways - MediaTek 设备信息模型
+// SakuraEDL - MediaTek 设备信息模型
 // MediaTek Device Information Models
 // ============================================================================
 
 using System;
 
-namespace LoveAlways.MediaTek.Models
+namespace SakuraEDL.MediaTek.Models
 {
     /// <summary>
     /// MTK 芯片信息

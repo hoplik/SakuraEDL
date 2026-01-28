@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 
-namespace LoveAlways.Fastboot.Image
+namespace SakuraEDL.Fastboot.Image
 {
     /// <summary>
     /// Android Sparse 镜像解析器

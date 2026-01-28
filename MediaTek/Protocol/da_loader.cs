@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - MediaTek DA 加载器
+// SakuraEDL - MediaTek DA 加载器
 // MediaTek Download Agent Loader
 // ============================================================================
 // 参考: mtkclient 项目 mtk_daloader.py
@@ -10,10 +10,10 @@ using System.IO;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
-using LoveAlways.MediaTek.Common;
-using DaEntry = LoveAlways.MediaTek.Models.DaEntry;
+using SakuraEDL.MediaTek.Common;
+using DaEntry = SakuraEDL.MediaTek.Models.DaEntry;
 
-namespace LoveAlways.MediaTek.Protocol
+namespace SakuraEDL.MediaTek.Protocol
 {
     /// <summary>
     /// DA 加载器 - 负责解析和加载 DA 文件

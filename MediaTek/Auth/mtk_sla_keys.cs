@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - MediaTek SLA 密钥数据库
+// SakuraEDL - MediaTek SLA 密钥数据库
 // MediaTek SLA Key Database
 // ============================================================================
 // 参考: mtkclient 项目 sla_keys.py
@@ -9,7 +9,7 @@
 using System.Collections.Generic;
 using System.Numerics;
 
-namespace LoveAlways.MediaTek.Auth
+namespace SakuraEDL.MediaTek.Auth
 {
     /// <summary>
     /// SLA 密钥记录

@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - 展讯资源包读取器
+// SakuraEDL - 展讯资源包读取器
 // 从外部资源包 (sprd_resources.pak) 加载 Exploit/FDL 等资源
 // 支持 SPAK v1 格式
 // ============================================================================
@@ -10,7 +10,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Text;
 
-namespace LoveAlways.Spreadtrum.Resources
+namespace SakuraEDL.Spreadtrum.Resources
 {
     /// <summary>
     /// 展讯资源包读取器 (SPAK 格式)

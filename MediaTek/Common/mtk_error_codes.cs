@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - MediaTek 错误码解析与格式化
+// SakuraEDL - MediaTek 错误码解析与格式化
 // MediaTek Error Code Parser and Formatter
 // ============================================================================
 // 参考: Penumbra 项目 https://shomy.is-a.dev/penumbra/
@@ -8,7 +8,7 @@
 
 using System.Collections.Generic;
 
-namespace LoveAlways.MediaTek.Common
+namespace SakuraEDL.MediaTek.Common
 {
     /// <summary>
     /// 错误严重性级别

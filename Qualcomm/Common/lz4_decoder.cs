@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - LZ4 解码器
+// SakuraEDL - LZ4 解码器
 // 纯 C# 实现，高效解压 EROFS 压缩数据
 // ============================================================================
 
@@ -7,7 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 
-namespace LoveAlways.Qualcomm.Common
+namespace SakuraEDL.Qualcomm.Common
 {
     /// <summary>
     /// 纯 C# LZ4 解码器

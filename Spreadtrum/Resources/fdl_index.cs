@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - FDL 索引管理器
+// SakuraEDL - FDL 索引管理器
 // 管理 FDL 文件与设备型号的对应关系
 // ============================================================================
 
@@ -10,7 +10,7 @@ using System.Linq;
 using System.Text;
 using System.Web.Script.Serialization;
 
-namespace LoveAlways.Spreadtrum.Resources
+namespace SakuraEDL.Spreadtrum.Resources
 {
     /// <summary>
     /// FDL 索引管理器 - 管理 FDL 与设备型号的对应关系

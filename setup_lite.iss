@@ -1,11 +1,11 @@
-; MultiFlash TOOL 精简版安装脚本 (不含资源包)
+; SakuraEDL 精简版安装脚本 (不含资源包)
 ; 使用 Inno Setup 编译: https://jrsoftware.org/isinfo.php
 
-#define MyAppName "MultiFlash TOOL"
-#define MyAppVersion "2.2.0"
+#define MyAppName "SakuraEDL"
+#define MyAppVersion "3.0.0"
 #define MyAppPublisher "xiri"
-#define MyAppURL "https://github.com/xiriovo/edltool"
-#define MyAppExeName "MultiFlash.exe"
+#define MyAppURL "https://github.com/xiriovo/SakuraEDL"
+#define MyAppExeName "SakuraEDL.exe"
 
 [Setup]
 AppId={{A578AA98-3A86-41DC-8F5B-E9B54EBE1AE6}
@@ -23,7 +23,7 @@ DisableProgramGroupPage=yes
 
 ; 输出设置
 OutputDir=installer
-OutputBaseFilename=MultiFlash_Setup_v{#MyAppVersion}_Lite
+OutputBaseFilename=SakuraEDL_Setup_v{#MyAppVersion}_Lite
 SetupIconFile=MultiFlash TOOL.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 
@@ -89,8 +89,8 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 
 [Files]
 ; 主程序
-Source: "bin\Release\MultiFlash.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "bin\Release\MultiFlash.exe.config"; DestDir: "{app}"; Flags: ignoreversion
+Source: "bin\Release\SakuraEDL.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "bin\Release\SakuraEDL.exe.config"; DestDir: "{app}"; Flags: ignoreversion
 
 ; UI 库
 Source: "bin\Release\AntdUI.dll"; DestDir: "{app}"; Flags: ignoreversion

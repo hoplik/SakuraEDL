@@ -1,13 +1,13 @@
 // ============================================================================
-// LoveAlways - 认证策略接口
+// SakuraEDL - 认证策略接口
 // IAuthStrategy - 用于处理不同厂商的特殊认证逻辑
 // ============================================================================
 
 using System.Threading;
 using System.Threading.Tasks;
-using LoveAlways.Qualcomm.Protocol;
+using SakuraEDL.Qualcomm.Protocol;
 
-namespace LoveAlways.Qualcomm.Authentication
+namespace SakuraEDL.Qualcomm.Authentication
 {
     /// <summary>
     /// 认证策略接口

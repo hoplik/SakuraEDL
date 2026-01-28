@@ -1,12 +1,12 @@
 // ============================================================================
-// LoveAlways - LZMA 解码器
+// SakuraEDL - LZMA 解码器
 // 纯 C# 实现，基于 7-Zip LZMA SDK
 // ============================================================================
 
 using System;
 using System.IO;
 
-namespace LoveAlways.Qualcomm.Common
+namespace SakuraEDL.Qualcomm.Common
 {
     /// <summary>
     /// 纯 C# LZMA 解码器

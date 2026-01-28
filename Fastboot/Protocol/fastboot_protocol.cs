@@ -1,7 +1,7 @@
 using System;
 using System.Text;
 
-namespace LoveAlways.Fastboot.Protocol
+namespace SakuraEDL.Fastboot.Protocol
 {
     /// <summary>
     /// Fastboot 协议定义

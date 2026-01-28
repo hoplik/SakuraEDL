@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - MediaTek XFlash 二进制协议客户端
+// SakuraEDL - MediaTek XFlash 二进制协议客户端
 // 参考: mtkclient/Library/DA/xflash/xflash_lib.py
 // ============================================================================
 
@@ -9,10 +9,10 @@ using System.IO;
 using System.IO.Ports;
 using System.Threading;
 using System.Threading.Tasks;
-using LoveAlways.MediaTek.Common;
-using LoveAlways.MediaTek.Models;
+using SakuraEDL.MediaTek.Common;
+using SakuraEDL.MediaTek.Models;
 
-namespace LoveAlways.MediaTek.Protocol
+namespace SakuraEDL.MediaTek.Protocol
 {
     /// <summary>
     /// XFlash 二进制协议客户端

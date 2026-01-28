@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - MediaTek DA Extensions 加载器
+// SakuraEDL - MediaTek DA Extensions 加载器
 // MediaTek Download Agent Extensions Loader
 // ============================================================================
 // 从mtk-payloads项目加载和上传DA Extensions到设备
@@ -9,11 +9,11 @@
 using System;
 using System.IO;
 using System.Threading.Tasks;
-using LoveAlways.MediaTek.Common;
-using LoveAlways.MediaTek.Models;
-using LoveAlways.MediaTek.Protocol;
+using SakuraEDL.MediaTek.Common;
+using SakuraEDL.MediaTek.Models;
+using SakuraEDL.MediaTek.Protocol;
 
-namespace LoveAlways.MediaTek.DA
+namespace SakuraEDL.MediaTek.DA
 {
     /// <summary>
     /// DA Extensions 加载器

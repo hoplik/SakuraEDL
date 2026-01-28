@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - GPT 分区表解析器 (借鉴 gpttool 逻辑)
+// SakuraEDL - GPT 分区表解析器 (借鉴 gpttool 逻辑)
 // GPT Partition Table Parser - Enhanced version based on gpttool
 // ============================================================================
 // 模块: Qualcomm.Common
@@ -11,9 +11,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using LoveAlways.Qualcomm.Models;
+using SakuraEDL.Qualcomm.Models;
 
-namespace LoveAlways.Qualcomm.Common
+namespace SakuraEDL.Qualcomm.Common
 {
     /// <summary>
     /// GPT Header 信息

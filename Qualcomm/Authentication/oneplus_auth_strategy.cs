@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - OnePlus 动态认证策略
+// SakuraEDL - OnePlus 动态认证策略
 // 支持 OnePlus 5/5T/6/6T/7/7Pro/7T/8/8Pro/8T/9/9Pro/Nord/N10/N100
 // ============================================================================
 
@@ -9,9 +9,9 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using LoveAlways.Qualcomm.Protocol;
+using SakuraEDL.Qualcomm.Protocol;
 
-namespace LoveAlways.Qualcomm.Authentication
+namespace SakuraEDL.Qualcomm.Authentication
 {
     public class OnePlusAuthStrategy : IAuthStrategy
     {

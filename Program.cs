@@ -4,9 +4,9 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using LoveAlways.Spreadtrum.Resources;
+using SakuraEDL.Spreadtrum.Resources;
 
-namespace LoveAlways
+namespace SakuraEDL
 {
     internal static class Program
     {
@@ -247,10 +247,10 @@ namespace LoveAlways
 
         private static void ShowHelp()
         {
-            Console.WriteLine("LoveAlways - 展讯/高通多功能刷机工具");
+            Console.WriteLine("SakuraEDL - 多功能安卓刷机工具 (高通/联发科/展讯)");
             Console.WriteLine();
             Console.WriteLine("用法:");
-            Console.WriteLine("  MultiFlash.exe                        启动图形界面");
+            Console.WriteLine("  SakuraEDL.exe                         启动图形界面");
             Console.WriteLine();
             Console.WriteLine("资源包命令:");
             Console.WriteLine("  --build-pak <源目录> <输出文件> [--no-compress]");
@@ -273,10 +273,10 @@ namespace LoveAlways
             Console.WriteLine("      显示帮助");
             Console.WriteLine();
             Console.WriteLine("示例:");
-            Console.WriteLine("  MultiFlash.exe --build-pak SprdResources\\sprd_fdls SprdResources\\sprd.pak");
-            Console.WriteLine("  MultiFlash.exe --export-index fdl_index.json");
-            Console.WriteLine("  MultiFlash.exe --list-devices Samsung");
-            Console.WriteLine("  MultiFlash.exe --list-devices SC8541E");
+            Console.WriteLine("  SakuraEDL.exe --build-pak SprdResources\\sprd_fdls SprdResources\\sprd.pak");
+            Console.WriteLine("  SakuraEDL.exe --export-index fdl_index.json");
+            Console.WriteLine("  SakuraEDL.exe --list-devices Samsung");
+            Console.WriteLine("  SakuraEDL.exe --list-devices SC8541E");
         }
 
         private static string FormatSize(long bytes)

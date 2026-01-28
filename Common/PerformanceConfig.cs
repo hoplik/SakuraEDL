@@ -1,12 +1,12 @@
 // ============================================================================
-// LoveAlways - 性能配置管理器
+// SakuraEDL - 性能配置管理器
 // Performance Configuration - 用于优化低配电脑运行体验
 // ============================================================================
 
 using System;
 using System.Configuration;
 
-namespace LoveAlways.Common
+namespace SakuraEDL.Common
 {
     /// <summary>
     /// 性能配置管理器 - 统一管理性能相关配置

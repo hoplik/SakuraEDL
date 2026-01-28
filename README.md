@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="assets/logo.png" alt="MultiFlash Tool Logo" width="128">
+  <img src="assets/logo.png" alt="SakuraEDL Logo" width="128">
 </p>
 
-# MultiFlash Tool
+# SakuraEDL
 
 **一款开源的多功能安卓刷机工具**
 
@@ -10,9 +10,9 @@
 
 [![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](LICENSE)
 [![.NET](https://img.shields.io/badge/.NET-4.8-blue.svg)](https://dotnet.microsoft.com/)
-[![GitHub Stars](https://img.shields.io/github/stars/xiriovo/MultiFlash-Tool)](https://github.com/xiriovo/MultiFlash-Tool/stargazers)
-[![GitHub Forks](https://img.shields.io/github/forks/xiriovo/MultiFlash-Tool)](https://github.com/xiriovo/MultiFlash-Tool/network/members)
-[![GitHub Release](https://img.shields.io/github/v/release/xiriovo/MultiFlash-Tool)](https://github.com/xiriovo/MultiFlash-Tool/releases)
+[![GitHub Stars](https://img.shields.io/github/stars/xiriovo/SakuraEDL)](https://github.com/xiriovo/SakuraEDL/stargazers)
+[![GitHub Forks](https://img.shields.io/github/forks/xiriovo/SakuraEDL)](https://github.com/xiriovo/SakuraEDL/network/members)
+[![GitHub Release](https://img.shields.io/github/v/release/xiriovo/SakuraEDL)](https://github.com/xiriovo/SakuraEDL/releases)
 
 [中文文档](README.md) | [English](README_EN.md) | [快速参考](docs/QUICK_REFERENCE.md)
 
@@ -27,7 +27,7 @@
 ## 📸 界面预览
 
 <p align="center">
-  <img src="assets/screenshot.png" alt="MultiFlash Tool 界面截图" width="800">
+  <img src="assets/screenshot.png" alt="SakuraEDL 界面截图" width="800">
 </p>
 
 ---
@@ -145,7 +145,7 @@
 ### 安装步骤
 
 1. **下载程序**
-   - 从 [Releases](https://github.com/xiriovo/MultiFlash-Tool/releases) 下载最新版本
+   - 从 [Releases](https://github.com/xiriovo/SakuraEDL/releases) 下载最新版本
    - 解压到任意目录（建议英文路径）
 
 2. **安装驱动**
@@ -153,7 +153,7 @@
 
 3. **运行程序**
    ```
-   MultiFlash.exe
+   SakuraEDL.exe
    ```
 
 ### 使用示例
@@ -195,7 +195,7 @@
 ### 项目结构
 
 ```
-MultiFlash-Tool/
+SakuraEDL/
 ├── MediaTek/                   # 🆕 联发科模块
 │   ├── Protocol/
 │   │   ├── brom_client.cs      # BROM 客户端
@@ -294,9 +294,9 @@ MultiFlash-Tool/
 ## 📧 联系方式
 
 ### 社区交流
-- **QQ 群**: [MultiFlash TOOL](https://qm.qq.com/q/z3iVnkm22c)
+- **QQ 群**: [SakuraEDL](https://qm.qq.com/q/z3iVnkm22c)
 - **Telegram**: [OPFlashTool](https://t.me/OPFlashTool)
-- **Discord**: [加入服务器](https://discord.gg/multiflash)
+- **Discord**: [加入服务器](https://discord.gg/sakuraedl)
 
 ### 开发者
 - **GitHub**: [@xiriovo](https://github.com/xiriovo)
@@ -313,6 +313,6 @@ MultiFlash-Tool/
 ---
 
 <p align="center">
-  Made with ❤️ by MultiFlash Tool Team<br>
-  Copyright © 2025-2026 MultiFlash Tool. All rights reserved.
+  Made with ❤️ by SakuraEDL Team<br>
+  Copyright © 2025-2026 SakuraEDL. All rights reserved.
 </p>

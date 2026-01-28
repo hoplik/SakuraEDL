@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - 高通端口自动检测
+// SakuraEDL - 高通端口自动检测
 // PortDetector - 自动识别 9008/9006 EDL 端口
 // ============================================================================
 
@@ -9,7 +9,7 @@ using System.IO.Ports;
 using System.Management;
 using System.Text.RegularExpressions;
 
-namespace LoveAlways.Qualcomm.Common
+namespace SakuraEDL.Qualcomm.Common
 {
     public class DetectedPort
     {

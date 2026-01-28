@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - 高通刷写服务
+// SakuraEDL - 高通刷写服务
 // Qualcomm Flash Service - 整合 Sahara 和 Firehose 的高层 API
 // ============================================================================
 // 模块: Qualcomm.Services
@@ -12,14 +12,14 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using LoveAlways.Common;
-using LoveAlways.Qualcomm.Common;
-using LoveAlways.Qualcomm.Database;
-using LoveAlways.Qualcomm.Models;
-using LoveAlways.Qualcomm.Protocol;
-using LoveAlways.Qualcomm.Authentication;
+using SakuraEDL.Common;
+using SakuraEDL.Qualcomm.Common;
+using SakuraEDL.Qualcomm.Database;
+using SakuraEDL.Qualcomm.Models;
+using SakuraEDL.Qualcomm.Protocol;
+using SakuraEDL.Qualcomm.Authentication;
 
-namespace LoveAlways.Qualcomm.Services
+namespace SakuraEDL.Qualcomm.Services
 {
     /// <summary>
     /// 连接状态

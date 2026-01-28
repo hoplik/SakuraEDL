@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - MediaTek DA Extensions 管理器实现
+// SakuraEDL - MediaTek DA Extensions 管理器实现
 // MediaTek Download Agent Extensions Manager Implementation
 // ============================================================================
 // 实现IDaExtensionsManager接口，提供完整的Extensions功能
@@ -7,11 +7,11 @@
 
 using System;
 using System.Threading.Tasks;
-using LoveAlways.MediaTek.Common;
-using LoveAlways.MediaTek.Protocol;
-using LoveAlways.MediaTek.Models;
+using SakuraEDL.MediaTek.Common;
+using SakuraEDL.MediaTek.Protocol;
+using SakuraEDL.MediaTek.Models;
 
-namespace LoveAlways.MediaTek.DA
+namespace SakuraEDL.MediaTek.DA
 {
     /// <summary>
     /// V5 (XFlash) DA Extensions 管理器

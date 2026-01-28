@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - 展讯 FDL 资源包管理器
+// SakuraEDL - 展讯 FDL 资源包管理器
 // Spreadtrum FDL PAK Resource Manager
 // ============================================================================
 
@@ -11,7 +11,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace LoveAlways.Spreadtrum.Resources
+namespace SakuraEDL.Spreadtrum.Resources
 {
     /// <summary>
     /// FDL 资源包管理器 - 打包/解包/加载 FDL 文件

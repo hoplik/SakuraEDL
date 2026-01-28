@@ -1,11 +1,11 @@
 // ============================================================================
-// LoveAlways - MediaTek XFlash 协议命令定义
+// SakuraEDL - MediaTek XFlash 协议命令定义
 // 参考: mtkclient/Library/DA/xflash/xflash_param.py
 // ============================================================================
 
 using System;
 
-namespace LoveAlways.MediaTek.Protocol
+namespace SakuraEDL.MediaTek.Protocol
 {
     /// <summary>
     /// XFlash 协议命令码

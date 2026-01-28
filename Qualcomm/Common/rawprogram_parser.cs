@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - Rawprogram XML 解析器 (优化版)
+// SakuraEDL - Rawprogram XML 解析器 (优化版)
 // 支持: rawprogram*.xml, patch*.xml, erase, zeroout, 负扇区, 槽位感知
 // ============================================================================
 
@@ -9,7 +9,7 @@ using System.IO;
 using System.Linq;
 using System.Xml.Linq;
 
-namespace LoveAlways.Qualcomm.Common
+namespace SakuraEDL.Qualcomm.Common
 {
     public class FlashTask
     {

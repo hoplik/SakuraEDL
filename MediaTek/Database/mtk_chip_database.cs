@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - MediaTek 芯片数据库
+// SakuraEDL - MediaTek 芯片数据库
 // MediaTek Chip Information Database
 // ============================================================================
 // 参考: mtkclient 项目 brom_config.py
@@ -8,10 +8,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using LoveAlways.MediaTek.Models;
-using LoveAlways.MediaTek.Protocol;
+using SakuraEDL.MediaTek.Models;
+using SakuraEDL.MediaTek.Protocol;
 
-namespace LoveAlways.MediaTek.Database
+namespace SakuraEDL.MediaTek.Database
 {
     /// <summary>
     /// MTK 芯片信息记录

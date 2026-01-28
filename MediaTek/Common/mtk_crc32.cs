@@ -1,11 +1,11 @@
 // ============================================================================
-// LoveAlways - CRC32 计算工具
+// SakuraEDL - CRC32 计算工具
 // 参考: mtkclient 校验和实现
 // ============================================================================
 
 using System;
 
-namespace LoveAlways.MediaTek.Common
+namespace SakuraEDL.MediaTek.Common
 {
     /// <summary>
     /// CRC32 计算工具 (与 MTK DA 兼容)

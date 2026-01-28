@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - Sahara 协议完整实现
+// SakuraEDL - Sahara 协议完整实现
 // Sahara Protocol - 高通 EDL 模式第一阶段引导协议
 // ============================================================================
 // 模块: Qualcomm.Protocol
@@ -13,11 +13,11 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
-using LoveAlways.Common;
-using LoveAlways.Qualcomm.Common;
-using LoveAlways.Qualcomm.Database;
+using SakuraEDL.Common;
+using SakuraEDL.Qualcomm.Common;
+using SakuraEDL.Qualcomm.Database;
 
-namespace LoveAlways.Qualcomm.Protocol
+namespace SakuraEDL.Qualcomm.Protocol
 {
     #region 协议枚举定义
 

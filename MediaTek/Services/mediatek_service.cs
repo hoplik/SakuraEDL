@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - MediaTek 刷机服务
+// SakuraEDL - MediaTek 刷机服务
 // MediaTek Flashing Service
 // ============================================================================
 
@@ -9,14 +9,14 @@ using System.Drawing;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using LoveAlways.MediaTek.Common;
-using LoveAlways.MediaTek.Database;
-using LoveAlways.MediaTek.Exploit;
-using LoveAlways.MediaTek.Models;
-using LoveAlways.MediaTek.Protocol;
-using DaEntry = LoveAlways.MediaTek.Models.DaEntry;
+using SakuraEDL.MediaTek.Common;
+using SakuraEDL.MediaTek.Database;
+using SakuraEDL.MediaTek.Exploit;
+using SakuraEDL.MediaTek.Models;
+using SakuraEDL.MediaTek.Protocol;
+using DaEntry = SakuraEDL.MediaTek.Models.DaEntry;
 
-namespace LoveAlways.MediaTek.Services
+namespace SakuraEDL.MediaTek.Services
 {
     /// <summary>
     /// 协议类型

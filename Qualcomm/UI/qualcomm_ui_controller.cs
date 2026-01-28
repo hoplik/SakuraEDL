@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - 高通 UI 控制器
+// SakuraEDL - 高通 UI 控制器
 // ============================================================================
 
 using System;
@@ -12,12 +12,12 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using LoveAlways.Qualcomm.Common;
-using LoveAlways.Qualcomm.Database;
-using LoveAlways.Qualcomm.Models;
-using LoveAlways.Qualcomm.Services;
+using SakuraEDL.Qualcomm.Common;
+using SakuraEDL.Qualcomm.Database;
+using SakuraEDL.Qualcomm.Models;
+using SakuraEDL.Qualcomm.Services;
 
-namespace LoveAlways.Qualcomm.UI
+namespace SakuraEDL.Qualcomm.UI
 {
     public class QualcommUIController : IDisposable
     {
@@ -411,7 +411,7 @@ namespace LoveAlways.Qualcomm.UI
         /// 仅获取 Sahara 设备信息 (用于云端自动匹配)
         /// </summary>
         /// <returns>设备信息对象，失败返回 null</returns>
-        public async Task<LoveAlways.Qualcomm.Services.SaharaDeviceInfo> GetSaharaDeviceInfoAsync()
+        public async Task<SakuraEDL.Qualcomm.Services.SaharaDeviceInfo> GetSaharaDeviceInfoAsync()
         {
             if (IsBusy) { Log("操作进行中", Color.Orange); return null; }
 
@@ -438,7 +438,7 @@ namespace LoveAlways.Qualcomm.UI
                 }
 
                 // 转换为 SaharaDeviceInfo
-                return new LoveAlways.Qualcomm.Services.SaharaDeviceInfo
+                return new SakuraEDL.Qualcomm.Services.SaharaDeviceInfo
                 {
                     MsmId = chipInfo.MsmId.ToString("X8"),
                     PkHash = chipInfo.PkHash ?? "",
@@ -3472,7 +3472,7 @@ namespace LoveAlways.Qualcomm.UI
                 
                 string nvId = _currentDeviceInfo?.OplusNvId ?? "";
                 
-                var tasks = await new LoveAlways.Qualcomm.Services.OplusSuperFlashManager(s => Log(s, Color.Gray)).PrepareSuperTasksAsync(
+                var tasks = await new SakuraEDL.Qualcomm.Services.OplusSuperFlashManager(s => Log(s, Color.Gray)).PrepareSuperTasksAsync(
                     firmwareRoot, superPart.StartSector, (int)superPart.SectorSize, activeSlot, nvId);
 
                 if (tasks.Count == 0)

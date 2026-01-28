@@ -4,10 +4,10 @@ using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using LoveAlways.Fastboot.Image;
-using LoveAlways.Fastboot.Transport;
+using SakuraEDL.Fastboot.Image;
+using SakuraEDL.Fastboot.Transport;
 
-namespace LoveAlways.Fastboot.Protocol
+namespace SakuraEDL.Fastboot.Protocol
 {
     /// <summary>
     /// Fastboot 客户端核心类

@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - 展讯统一资源包管理器
+// SakuraEDL - 展讯统一资源包管理器
 // 整合 Exploit、FDL、配置等资源的打包/加载
 // 支持 SPAK v2 格式
 // ============================================================================
@@ -12,7 +12,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 
-namespace LoveAlways.Spreadtrum.Resources
+namespace SakuraEDL.Spreadtrum.Resources
 {
     /// <summary>
     /// 展讯统一资源包管理器
@@ -367,7 +367,7 @@ namespace LoveAlways.Spreadtrum.Resources
         /// </summary>
         private static byte[] LoadEmbeddedResource(string resourceName)
         {
-            string prefix = "LoveAlways.Spreadtrum.Resources.";
+            string prefix = "SakuraEDL.Spreadtrum.Resources.";
             try
             {
                 using (var stream = _assembly.GetManifestResourceStream(prefix + resourceName))

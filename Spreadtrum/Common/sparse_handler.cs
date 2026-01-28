@@ -1,12 +1,12 @@
 // ============================================================================
-// LoveAlways - Sparse Image 处理器
+// SakuraEDL - Sparse Image 处理器
 // Android Sparse Image Handler for Spreadtrum
 // ============================================================================
 
 using System;
 using System.IO;
 
-namespace LoveAlways.Spreadtrum.Common
+namespace SakuraEDL.Spreadtrum.Common
 {
     /// <summary>
     /// Sparse Image 处理器

@@ -1,0 +1,13 @@
+{
+  "name": "multiflash-docs",
+  "version": "3.0.0",
+  "description": "MultiFlash Tool 官方文档",
+  "scripts": {
+    "dev": "vitepress dev",
+    "build": "vitepress build",
+    "preview": "vitepress preview"
+  },
+  "devDependencies": {
+    "vitepress": "^1.0.0"
+  }
+}

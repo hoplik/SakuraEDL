@@ -2,7 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace LoveAlways.Fastboot.Transport
+namespace SakuraEDL.Fastboot.Transport
 {
     /// <summary>
     /// Fastboot 传输层接口

@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - 展讯 HDLC 协议实现
+// SakuraEDL - 展讯 HDLC 协议实现
 // Spreadtrum/Unisoc HDLC Frame Protocol
 // ============================================================================
 
@@ -7,7 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 
-namespace LoveAlways.Spreadtrum.Protocol
+namespace SakuraEDL.Spreadtrum.Protocol
 {
     /// <summary>
     /// 展讯 HDLC 协议实现

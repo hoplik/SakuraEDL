@@ -4,12 +4,12 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using LoveAlways.Fastboot.Image;
-using LoveAlways.Fastboot.Models;
-using LoveAlways.Fastboot.Protocol;
-using LoveAlways.Fastboot.Transport;
+using SakuraEDL.Fastboot.Image;
+using SakuraEDL.Fastboot.Models;
+using SakuraEDL.Fastboot.Protocol;
+using SakuraEDL.Fastboot.Transport;
 
-namespace LoveAlways.Fastboot.Services
+namespace SakuraEDL.Fastboot.Services
 {
     /// <summary>
     /// Fastboot 原生服务

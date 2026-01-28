@@ -7,7 +7,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace LoveAlways.Fastboot.Payload
+namespace SakuraEDL.Fastboot.Payload
 {
     /// <summary>
     /// Android OTA Payload.bin 解析器

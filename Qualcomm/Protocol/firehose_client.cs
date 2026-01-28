@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - Firehose 协议完整实现
+// SakuraEDL - Firehose 协议完整实现
 // Firehose Protocol - 高通 EDL 模式 XML 刷写协议
 // ============================================================================
 // 模块: Qualcomm.Protocol
@@ -17,10 +17,10 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
-using LoveAlways.Qualcomm.Common;
-using LoveAlways.Qualcomm.Models;
+using SakuraEDL.Qualcomm.Common;
+using SakuraEDL.Qualcomm.Models;
 
-namespace LoveAlways.Qualcomm.Protocol
+namespace SakuraEDL.Qualcomm.Protocol
 {
     #region 错误处理
 

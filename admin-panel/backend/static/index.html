@@ -1,0 +1,1724 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MultiFlash Admin - Loader 管理后台</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="https://unpkg.com/element-plus"></script>
+    <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css">
+    <script src="https://unpkg.com/@element-plus/icons-vue"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif; background: #0f0f23; }
+        
+        .login-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #1a1a2e 0%, #0f0f23 50%, #16213e 100%);
+            position: relative;
+            overflow: hidden;
+        }
+        .login-container::before {
+            content: '';
+            position: absolute;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(102,126,234,0.3) 0%, transparent 70%);
+            top: -100px;
+            right: -100px;
+            animation: pulse 4s ease-in-out infinite;
+        }
+        .login-container::after {
+            content: '';
+            position: absolute;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(118,75,162,0.3) 0%, transparent 70%);
+            bottom: -50px;
+            left: -50px;
+            animation: pulse 4s ease-in-out infinite 2s;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
+        .login-box {
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(20px);
+            padding: 48px 40px;
+            border-radius: 24px;
+            box-shadow: 0 25px 80px rgba(0,0,0,0.5);
+            width: 420px;
+            border: 1px solid rgba(255,255,255,0.1);
+            position: relative;
+            z-index: 1;
+        }
+        .login-title {
+            text-align: center;
+            margin-bottom: 36px;
+            font-size: 28px;
+            color: #fff;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+        .login-title span { 
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .login-box .el-input__wrapper {
+            background: rgba(255,255,255,0.08) !important;
+            border: 1px solid rgba(255,255,255,0.15) !important;
+            box-shadow: none !important;
+        }
+        .login-box .el-input__inner {
+            color: #fff !important;
+        }
+        .login-box .el-input__inner::placeholder {
+            color: rgba(255,255,255,0.5) !important;
+        }
+        .login-box .el-input__prefix {
+            color: rgba(255,255,255,0.6) !important;
+        }
+        
+        .admin-container { display: flex; min-height: 100vh; }
+        
+        .sidebar {
+            width: 260px;
+            background: linear-gradient(180deg, #1a1a2e 0%, #0f0f23 100%);
+            color: white;
+            padding: 0;
+            flex-shrink: 0;
+            border-right: 1px solid rgba(255,255,255,0.05);
+        }
+        .sidebar-logo {
+            padding: 28px 24px;
+            font-size: 22px;
+            font-weight: 700;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .sidebar-logo .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+        .sidebar-menu { list-style: none; padding: 16px 0; }
+        .sidebar-menu li {
+            padding: 14px 24px;
+            margin: 4px 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            border-radius: 12px;
+            color: rgba(255,255,255,0.6);
+            font-size: 14px;
+        }
+        .sidebar-menu li:hover {
+            background: rgba(102,126,234,0.15);
+            color: #fff;
+        }
+        .sidebar-menu li.active {
+            background: linear-gradient(135deg, rgba(102,126,234,0.3), rgba(118,75,162,0.3));
+            color: #fff;
+            font-weight: 500;
+        }
+        .sidebar-menu li .el-icon { font-size: 18px; }
+        .sidebar-menu .divider {
+            height: 1px;
+            background: rgba(255,255,255,0.05);
+            margin: 12px 24px;
+        }
+        
+        .main-content {
+            flex: 1;
+            padding: 28px;
+            overflow-y: auto;
+            background: #f8fafc;
+        }
+        
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 28px;
+        }
+        .page-title {
+            font-size: 26px;
+            font-weight: 700;
+            color: #1a1a2e;
+        }
+        .page-subtitle {
+            font-size: 14px;
+            color: #666;
+            margin-top: 4px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 24px;
+            margin-bottom: 28px;
+        }
+        .stat-card {
+            background: white;
+            padding: 24px;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+        }
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+        }
+        .stat-card.primary::before { background: linear-gradient(90deg, #667eea, #764ba2); }
+        .stat-card.success::before { background: linear-gradient(90deg, #10b981, #34d399); }
+        .stat-card.warning::before { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+        .stat-card.danger::before { background: linear-gradient(90deg, #ef4444, #f87171); }
+        
+        .stat-card .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin-bottom: 16px;
+        }
+        .stat-card.primary .stat-icon { background: rgba(102,126,234,0.1); color: #667eea; }
+        .stat-card.success .stat-icon { background: rgba(16,185,129,0.1); color: #10b981; }
+        .stat-card.warning .stat-icon { background: rgba(245,158,11,0.1); color: #f59e0b; }
+        .stat-card.danger .stat-icon { background: rgba(239,68,68,0.1); color: #ef4444; }
+        
+        .stat-card h3 {
+            font-size: 13px;
+            color: #64748b;
+            margin-bottom: 8px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .stat-card .value {
+            font-size: 36px;
+            font-weight: 800;
+            color: #1e293b;
+            line-height: 1;
+        }
+        .stat-card .trend {
+            font-size: 12px;
+            margin-top: 8px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .stat-card .trend.up { color: #10b981; }
+        .stat-card .trend.down { color: #ef4444; }
+        
+        .card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+            margin-bottom: 24px;
+            overflow: hidden;
+        }
+        .card-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid #f1f5f9;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1e293b;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .card-body { padding: 24px; }
+        
+        .auth-tag {
+            display: inline-flex;
+            align-items: center;
+            padding: 5px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            gap: 4px;
+        }
+        .auth-tag.none { background: #f1f5f9; color: #64748b; }
+        .auth-tag.miauth { background: linear-gradient(135deg, #ff9500, #ffb347); color: white; }
+        .auth-tag.demacia { background: linear-gradient(135deg, #e74c3c, #ff6b6b); color: white; }
+        .auth-tag.vip { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
+        
+        .upload-area {
+            border: 2px dashed #e2e8f0;
+            border-radius: 16px;
+            padding: 48px;
+            text-align: center;
+            transition: all 0.3s;
+            margin-bottom: 24px;
+            background: #fafbfc;
+            cursor: pointer;
+        }
+        .upload-area:hover, .upload-area.dragover {
+            border-color: #667eea;
+            background: rgba(102,126,234,0.05);
+        }
+        .upload-area .upload-icon {
+            width: 72px;
+            height: 72px;
+            margin: 0 auto 16px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 28px;
+        }
+        .upload-area h4 { font-size: 16px; color: #1e293b; margin-bottom: 8px; }
+        .upload-area p { color: #64748b; font-size: 13px; }
+        .upload-area .file-selected {
+            color: #10b981;
+            font-weight: 500;
+        }
+        
+        .vip-files {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 24px;
+        }
+        .vip-file-box {
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            background: #fafbfc;
+        }
+        .vip-file-box h4 {
+            font-size: 14px;
+            color: #1e293b;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .el-table { font-size: 13px; }
+        .el-table th { background: #f8fafc !important; font-weight: 600; }
+        .el-table td { padding: 16px 12px !important; }
+        
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .status-badge.enabled { background: rgba(16,185,129,0.1); color: #10b981; }
+        .status-badge.disabled { background: rgba(100,116,139,0.1); color: #64748b; }
+        .status-badge .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+        
+        .vendor-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            background: #f1f5f9;
+            color: #475569;
+        }
+        .vendor-badge.xiaomi { background: #fff3e0; color: #ff6f00; }
+        .vendor-badge.oplus, .vendor-badge.oneplus { background: #ffebee; color: #d32f2f; }
+        .vendor-badge.samsung { background: #e3f2fd; color: #1565c0; }
+        .vendor-badge.huawei { background: #fff8e1; color: #f57f17; }
+        
+        /* Dark mode dialog */
+        .el-dialog {
+            border-radius: 16px !important;
+        }
+        .el-dialog__header {
+            border-bottom: 1px solid #f1f5f9;
+            padding: 20px 24px !important;
+        }
+        .el-dialog__body {
+            padding: 24px !important;
+        }
+        
+        /* Quick actions */
+        .quick-actions {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        .quick-action-btn {
+            flex: 1;
+            padding: 16px 20px;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .quick-action-btn:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 12px rgba(102,126,234,0.15);
+        }
+        .quick-action-btn .icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+        .quick-action-btn .text h4 { font-size: 14px; color: #1e293b; }
+        .quick-action-btn .text p { font-size: 12px; color: #64748b; margin-top: 2px; }
+        
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 768px) {
+            .sidebar { width: 70px; }
+            .sidebar-logo span, .sidebar-menu li span { display: none; }
+            .stats-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- 登录页面 -->
+        <div v-if="!isLoggedIn" class="login-container">
+            <div class="login-box">
+                <h2 class="login-title"><span>MultiFlash</span> Admin</h2>
+                <el-form :model="loginForm" @submit.prevent="handleLogin">
+                    <el-form-item style="margin-bottom: 20px;">
+                        <el-input v-model="loginForm.username" placeholder="管理员用户名" prefix-icon="User" size="large"></el-input>
+                    </el-form-item>
+                    <el-form-item style="margin-bottom: 28px;">
+                        <el-input v-model="loginForm.password" type="password" placeholder="密码" prefix-icon="Lock" size="large" show-password @keyup.enter="handleLogin"></el-input>
+                    </el-form-item>
+                    <el-form-item>
+                        <el-button type="primary" @click="handleLogin" :loading="loginLoading" style="width: 100%; height: 48px; font-size: 16px; border-radius: 12px; background: linear-gradient(135deg, #667eea, #764ba2); border: none;" size="large">
+                            {{ loginLoading ? '登录中...' : '登 录' }}
+                        </el-button>
+                    </el-form-item>
+                </el-form>
+                <p style="text-align: center; color: rgba(255,255,255,0.4); font-size: 12px; margin-top: 24px;">
+                    MultiFlash Loader 云端管理系统 v3.0
+                </p>
+            </div>
+        </div>
+
+        <!-- 管理后台 -->
+        <div v-else class="admin-container">
+            <!-- 侧边栏 -->
+            <aside class="sidebar">
+                <div class="sidebar-logo">
+                    <div class="logo-icon">⚡</div>
+                    <span>MultiFlash</span>
+                </div>
+                <ul class="sidebar-menu">
+                    <li :class="{ active: currentPage === 'dashboard' }" @click="currentPage = 'dashboard'">
+                        <el-icon><DataAnalysis /></el-icon> <span>仪表盘</span>
+                    </li>
+                    <li :class="{ active: currentPage === 'loaders' }" @click="currentPage = 'loaders'">
+                        <el-icon><Folder /></el-icon> <span>Loader 管理</span>
+                    </li>
+                    <li :class="{ active: currentPage === 'upload' }" @click="currentPage = 'upload'">
+                        <el-icon><Upload /></el-icon> <span>上传 Loader</span>
+                    </li>
+                    <div class="divider"></div>
+                    <li :class="{ active: currentPage === 'logs' }" @click="currentPage = 'logs'">
+                        <el-icon><Document /></el-icon> <span>设备日志</span>
+                    </li>
+                    <li :class="{ active: currentPage === 'settings' }" @click="currentPage = 'settings'">
+                        <el-icon><Setting /></el-icon> <span>系统设置</span>
+                    </li>
+                    <div class="divider"></div>
+                    <li @click="handleLogout" style="color: rgba(239,68,68,0.8);">
+                        <el-icon><SwitchButton /></el-icon> <span>退出登录</span>
+                    </li>
+                </ul>
+            </aside>
+
+            <!-- 主内容区 -->
+            <main class="main-content">
+                <!-- 仪表盘 -->
+                <div v-if="currentPage === 'dashboard'">
+                    <div class="page-header">
+                        <div>
+                            <h1 class="page-title">仪表盘</h1>
+                            <p class="page-subtitle">Loader 云端管理系统概览</p>
+                        </div>
+                        <el-button @click="loadStats" :loading="statsLoading" round>
+                            <el-icon><Refresh /></el-icon> 刷新数据
+                        </el-button>
+                    </div>
+
+                    <div class="stats-grid">
+                        <div class="stat-card primary">
+                            <div class="stat-icon"><el-icon><Folder /></el-icon></div>
+                            <h3>Loader 总数</h3>
+                            <div class="value">{{ stats.total_loaders || 0 }}</div>
+                            <div class="trend up" v-if="stats.total_loaders > 0">
+                                <el-icon><Top /></el-icon> 活跃
+                            </div>
+                        </div>
+                        <div class="stat-card success">
+                            <div class="stat-icon"><el-icon><CircleCheck /></el-icon></div>
+                            <h3>已启用</h3>
+                            <div class="value">{{ stats.enabled_loaders || 0 }}</div>
+                            <div class="trend up">
+                                <el-icon><Top /></el-icon> {{ Math.round((stats.enabled_loaders || 0) / (stats.total_loaders || 1) * 100) }}% 启用率
+                            </div>
+                        </div>
+                        <div class="stat-card warning">
+                            <div class="stat-icon"><el-icon><Download /></el-icon></div>
+                            <h3>总下载次数</h3>
+                            <div class="value">{{ formatNumber(stats.total_downloads || 0) }}</div>
+                            <div class="trend up">累计下载</div>
+                        </div>
+                        <div class="stat-card danger">
+                            <div class="stat-icon"><el-icon><Connection /></el-icon></div>
+                            <h3>总匹配次数</h3>
+                            <div class="value">{{ formatNumber(stats.total_matches || 0) }}</div>
+                            <div class="trend up">设备匹配</div>
+                        </div>
+                    </div>
+
+                    <!-- 快捷操作 -->
+                    <div class="quick-actions">
+                        <div class="quick-action-btn" @click="currentPage = 'upload'">
+                            <div class="icon" style="background: rgba(102,126,234,0.1); color: #667eea;">
+                                <el-icon><Upload /></el-icon>
+                            </div>
+                            <div class="text">
+                                <h4>上传 Loader</h4>
+                                <p>添加新的 Loader 文件</p>
+                            </div>
+                        </div>
+                        <div class="quick-action-btn" @click="currentPage = 'loaders'">
+                            <div class="icon" style="background: rgba(16,185,129,0.1); color: #10b981;">
+                                <el-icon><Setting /></el-icon>
+                            </div>
+                            <div class="text">
+                                <h4>管理 Loader</h4>
+                                <p>编辑或删除现有 Loader</p>
+                            </div>
+                        </div>
+                        <div class="quick-action-btn" @click="currentPage = 'logs'">
+                            <div class="icon" style="background: rgba(245,158,11,0.1); color: #f59e0b;">
+                                <el-icon><Document /></el-icon>
+                            </div>
+                            <div class="text">
+                                <h4>查看日志</h4>
+                                <p>设备匹配记录</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+                        <div class="card">
+                            <div class="card-header">
+                                <span class="card-title"><el-icon><PieChart /></el-icon> 验证类型分布</span>
+                            </div>
+                            <div class="card-body">
+                                <div style="display: flex; gap: 24px; flex-wrap: wrap;">
+                                    <div v-for="(count, type) in stats.auth_type_stats" :key="type" style="text-align: center; flex: 1; min-width: 80px;">
+                                        <span class="auth-tag" :class="type">{{ getAuthTypeLabel(type) }}</span>
+                                        <div style="font-size: 28px; font-weight: 700; margin-top: 12px; color: #1e293b;">{{ count }}</div>
+                                        <div style="font-size: 12px; color: #64748b;">个 Loader</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header">
+                                <span class="card-title"><el-icon><TrendCharts /></el-icon> 厂商分布</span>
+                            </div>
+                            <div class="card-body">
+                                <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                                    <div v-for="(count, vendor) in stats.vendor_stats" :key="vendor" 
+                                         class="vendor-badge" :class="vendor.toLowerCase()">
+                                        {{ vendor }}: {{ count }}
+                                    </div>
+                                    <div v-if="!stats.vendor_stats || Object.keys(stats.vendor_stats).length === 0" 
+                                         style="color: #64748b; font-size: 13px;">
+                                        暂无数据
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card" style="margin-top: 24px;">
+                        <div class="card-header">
+                            <span class="card-title"><el-icon><Clock /></el-icon> 最近匹配的设备</span>
+                            <el-button text @click="loadStats">查看全部</el-button>
+                        </div>
+                        <div class="card-body" style="padding: 0;">
+                            <el-table :data="stats.recent_devices" stripe :show-header="true">
+                                <el-table-column prop="msm_id" label="MSM ID" width="120">
+                                    <template #default="{ row }">
+                                        <span style="font-family: 'SF Mono', monospace; font-size: 13px; color: #667eea;">{{ row.msm_id }}</span>
+                                    </template>
+                                </el-table-column>
+                                <el-table-column prop="pk_hash" label="PK Hash" show-overflow-tooltip>
+                                    <template #default="{ row }">
+                                        <el-tooltip :content="row.pk_hash" placement="top">
+                                            <span style="font-family: 'SF Mono', monospace; font-size: 11px; color: #64748b;">
+                                                {{ row.pk_hash?.substring(0, 40) }}...
+                                            </span>
+                                        </el-tooltip>
+                                    </template>
+                                </el-table-column>
+                                <el-table-column prop="storage_type" label="存储" width="80">
+                                    <template #default="{ row }">
+                                        <el-tag size="small" type="info">{{ row.storage_type?.toUpperCase() }}</el-tag>
+                                    </template>
+                                </el-table-column>
+                                <el-table-column prop="match_result" label="匹配结果" width="100">
+                                    <template #default="{ row }">
+                                        <el-tag :type="row.match_result === 'matched' ? 'success' : 'danger'" size="small" effect="dark">
+                                            {{ row.match_result === 'matched' ? '成功' : '失败' }}
+                                        </el-tag>
+                                    </template>
+                                </el-table-column>
+                                <el-table-column prop="created_at" label="时间" width="180">
+                                    <template #default="{ row }">
+                                        <span style="color: #64748b; font-size: 12px;">{{ row.created_at }}</span>
+                                    </template>
+                                </el-table-column>
+                            </el-table>
+                            <div v-if="!stats.recent_devices || stats.recent_devices.length === 0" 
+                                 style="text-align: center; padding: 40px; color: #64748b;">
+                                <el-icon style="font-size: 48px; margin-bottom: 12px;"><DocumentDelete /></el-icon>
+                                <p>暂无匹配记录</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Loader 管理 -->
+                <div v-if="currentPage === 'loaders'">
+                    <div class="page-header">
+                        <div>
+                            <h1 class="page-title">Loader 管理</h1>
+                            <p class="page-subtitle">管理所有已上传的 Loader 文件</p>
+                        </div>
+                        <div style="display: flex; gap: 12px;">
+                            <el-input v-model="loaderSearch" placeholder="搜索文件名、芯片..." style="width: 220px" @keyup.enter="loadLoaders" clearable>
+                                <template #prefix><el-icon><Search /></el-icon></template>
+                            </el-input>
+                            <el-select v-model="loaderAuthFilter" placeholder="验证类型" style="width: 130px" @change="loadLoaders" clearable>
+                                <el-option label="全部类型" value=""></el-option>
+                                <el-option label="无验证" value="none"></el-option>
+                                <el-option label="小米验证" value="miauth"></el-option>
+                                <el-option label="一加验证" value="demacia"></el-option>
+                                <el-option label="VIP 验证" value="vip"></el-option>
+                            </el-select>
+                            <el-button type="primary" @click="currentPage = 'upload'" round>
+                                <el-icon><Plus /></el-icon> 上传新 Loader
+                            </el-button>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-body" style="padding: 0;">
+                            <el-table :data="loaders" v-loading="loadersLoading" stripe style="width: 100%;">
+                                <el-table-column prop="id" label="ID" width="70" align="center">
+                                    <template #default="{ row }">
+                                        <span style="font-weight: 600; color: #64748b;">#{{ row.id }}</span>
+                                    </template>
+                                </el-table-column>
+                                <el-table-column prop="filename" label="文件信息" min-width="280">
+                                    <template #default="{ row }">
+                                        <div style="display: flex; flex-direction: column; gap: 4px;">
+                                            <span style="font-weight: 600; color: #1e293b;">{{ row.filename }}</span>
+                                            <div style="display: flex; gap: 8px; align-items: center;">
+                                                <span class="vendor-badge" :class="getVendorClass(row.vendor)">{{ row.vendor || '未知' }}</span>
+                                                <span style="color: #64748b; font-size: 12px;">{{ row.chip }}</span>
+                                                <span style="color: #94a3b8; font-size: 11px;">{{ formatSize(row.file_size) }}</span>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </el-table-column>
+                                <el-table-column prop="hw_id" label="HW ID" width="110">
+                                    <template #default="{ row }">
+                                        <span style="font-family: 'SF Mono', monospace; font-size: 12px; color: #64748b;">{{ row.hw_id || '-' }}</span>
+                                    </template>
+                                </el-table-column>
+                                <el-table-column prop="auth_type" label="验证" width="100" align="center">
+                                    <template #default="{ row }">
+                                        <span class="auth-tag" :class="row.auth_type">{{ getAuthTypeLabel(row.auth_type) }}</span>
+                                    </template>
+                                </el-table-column>
+                                <el-table-column prop="storage_type" label="存储" width="80" align="center">
+                                    <template #default="{ row }">
+                                        <el-tag size="small" type="info" effect="plain">{{ row.storage_type?.toUpperCase() }}</el-tag>
+                                    </template>
+                                </el-table-column>
+                                <el-table-column label="VIP" width="80" align="center">
+                                    <template #default="{ row }">
+                                        <div v-if="row.auth_type === 'vip'" style="display: flex; gap: 4px; justify-content: center;">
+                                            <el-tooltip content="Digest 文件" placement="top">
+                                                <el-tag size="small" :type="row.has_digest ? 'success' : 'danger'" effect="dark">D</el-tag>
+                                            </el-tooltip>
+                                            <el-tooltip content="Sign 文件" placement="top">
+                                                <el-tag size="small" :type="row.has_sign ? 'success' : 'danger'" effect="dark">S</el-tag>
+                                            </el-tooltip>
+                                        </div>
+                                        <span v-else style="color: #cbd5e1;">-</span>
+                                    </template>
+                                </el-table-column>
+                                <el-table-column prop="is_enabled" label="状态" width="90" align="center">
+                                    <template #default="{ row }">
+                                        <span class="status-badge" :class="row.is_enabled ? 'enabled' : 'disabled'">
+                                            <span class="dot"></span>
+                                            {{ row.is_enabled ? '启用' : '禁用' }}
+                                        </span>
+                                    </template>
+                                </el-table-column>
+                                <el-table-column label="统计" width="100" align="center">
+                                    <template #default="{ row }">
+                                        <div style="font-size: 12px; color: #64748b;">
+                                            <el-tooltip content="下载次数" placement="top">
+                                                <span><el-icon><Download /></el-icon> {{ row.downloads || 0 }}</span>
+                                            </el-tooltip>
+                                            <span style="margin: 0 6px; color: #e2e8f0;">|</span>
+                                            <el-tooltip content="匹配次数" placement="top">
+                                                <span><el-icon><Connection /></el-icon> {{ row.match_count || 0 }}</span>
+                                            </el-tooltip>
+                                        </div>
+                                    </template>
+                                </el-table-column>
+                                <el-table-column label="操作" width="200" fixed="right" align="center">
+                                    <template #default="{ row }">
+                                        <el-button size="small" @click="editLoader(row)" text type="primary">
+                                            <el-icon><Edit /></el-icon> 编辑
+                                        </el-button>
+                                        <el-button v-if="row.is_enabled" size="small" @click="toggleLoader(row, false)" text type="warning">
+                                            <el-icon><VideoPause /></el-icon> 禁用
+                                        </el-button>
+                                        <el-button v-else size="small" @click="toggleLoader(row, true)" text type="success">
+                                            <el-icon><VideoPlay /></el-icon> 启用
+                                        </el-button>
+                                        <el-button size="small" @click="deleteLoader(row)" text type="danger">
+                                            <el-icon><Delete /></el-icon>
+                                        </el-button>
+                                    </template>
+                                </el-table-column>
+                            </el-table>
+                        </div>
+                        <div class="card-body" style="border-top: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 13px; color: #64748b;">
+                                共 {{ loaderTotal }} 条记录
+                            </span>
+                            <el-pagination
+                                v-model:current-page="loaderPage"
+                                v-model:page-size="loaderPageSize"
+                                :total="loaderTotal"
+                                :page-sizes="[20, 50, 100]"
+                                layout="sizes, prev, pager, next, jumper"
+                                @size-change="loadLoaders"
+                                @current-change="loadLoaders"
+                            ></el-pagination>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 上传 Loader -->
+                <div v-if="currentPage === 'upload'">
+                    <div class="page-header">
+                        <div>
+                            <h1 class="page-title">上传 Loader</h1>
+                            <p class="page-subtitle">添加新的 Firehose Loader 文件到云端</p>
+                        </div>
+                        <el-button @click="currentPage = 'loaders'" round>
+                            <el-icon><Back /></el-icon> 返回列表
+                        </el-button>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-title"><el-icon><Upload /></el-icon> Loader 文件信息</span>
+                        </div>
+                        <div class="card-body">
+                            <el-form :model="uploadForm" label-width="120px" label-position="left">
+                                <!-- Loader 文件上传 -->
+                                <el-form-item label="Loader 文件" required>
+                                    <div class="upload-area" 
+                                         @drop.prevent="handleFileDrop($event, 'loader')"
+                                         @dragover.prevent="$event.currentTarget.classList.add('dragover')"
+                                         @dragleave.prevent="$event.currentTarget.classList.remove('dragover')"
+                                         @click="$refs.loaderInput.click()">
+                                        <div class="upload-icon"><el-icon><Upload /></el-icon></div>
+                                        <div v-if="!uploadForm.loaderFile">
+                                            <h4>拖拽文件到此处，或点击上传</h4>
+                                            <p>支持 .bin, .elf, .mbn, .melf 格式</p>
+                                        </div>
+                                        <div v-else class="file-selected">
+                                            <h4>✓ {{ uploadForm.loaderFile.name }}</h4>
+                                            <p>文件大小: {{ formatSize(uploadForm.loaderFile.size) }}</p>
+                                        </div>
+                                    </div>
+                                    <input ref="loaderInput" type="file" hidden @change="handleFileSelect($event, 'loader')" accept=".bin,.elf,.mbn,.melf">
+                                </el-form-item>
+
+                                <!-- 基本信息 -->
+                                <el-row :gutter="20">
+                                    <el-col :span="12">
+                                        <el-form-item label="厂商">
+                                            <el-select v-model="uploadForm.vendor" filterable allow-create placeholder="选择或输入厂商" style="width: 100%;">
+                                                <el-option-group label="常用厂商">
+                                                    <el-option label="Xiaomi (小米)" value="xiaomi"></el-option>
+                                                    <el-option label="Redmi (红米)" value="redmi"></el-option>
+                                                    <el-option label="POCO" value="poco"></el-option>
+                                                    <el-option label="OPLUS (欧加)" value="oplus"></el-option>
+                                                    <el-option label="OnePlus (一加)" value="oneplus"></el-option>
+                                                    <el-option label="OPPO" value="oppo"></el-option>
+                                                    <el-option label="Realme (真我)" value="realme"></el-option>
+                                                    <el-option label="Vivo" value="vivo"></el-option>
+                                                    <el-option label="iQOO" value="iqoo"></el-option>
+                                                </el-option-group>
+                                                <el-option-group label="其他厂商">
+                                                    <el-option label="Samsung (三星)" value="samsung"></el-option>
+                                                    <el-option label="Huawei (华为)" value="huawei"></el-option>
+                                                    <el-option label="Honor (荣耀)" value="honor"></el-option>
+                                                    <el-option label="ZTE (中兴)" value="zte"></el-option>
+                                                    <el-option label="Lenovo (联想)" value="lenovo"></el-option>
+                                                    <el-option label="Meizu (魅族)" value="meizu"></el-option>
+                                                    <el-option label="Nubia (努比亚)" value="nubia"></el-option>
+                                                    <el-option label="Motorola (摩托罗拉)" value="motorola"></el-option>
+                                                    <el-option label="Google" value="google"></el-option>
+                                                    <el-option label="LG" value="lg"></el-option>
+                                                    <el-option label="Sony" value="sony"></el-option>
+                                                    <el-option label="Nokia" value="nokia"></el-option>
+                                                </el-option-group>
+                                            </el-select>
+                                        </el-form-item>
+                                    </el-col>
+                                    <el-col :span="12">
+                                        <el-form-item label="芯片型号">
+                                            <el-select v-model="uploadForm.chip" filterable allow-create placeholder="选择或输入芯片" style="width: 100%;">
+                                                <el-option-group label="高通 Snapdragon 8 系列">
+                                                    <el-option label="SM8750 (Snapdragon 8 Elite)" value="SM8750"></el-option>
+                                                    <el-option label="SM8650 (Snapdragon 8 Gen 3)" value="SM8650"></el-option>
+                                                    <el-option label="SM8550 (Snapdragon 8 Gen 2)" value="SM8550"></el-option>
+                                                    <el-option label="SM8475 (Snapdragon 8+ Gen 1)" value="SM8475"></el-option>
+                                                    <el-option label="SM8450 (Snapdragon 8 Gen 1)" value="SM8450"></el-option>
+                                                    <el-option label="SM8350 (Snapdragon 888)" value="SM8350"></el-option>
+                                                    <el-option label="SM8250 (Snapdragon 865)" value="SM8250"></el-option>
+                                                    <el-option label="SM8150 (Snapdragon 855)" value="SM8150"></el-option>
+                                                </el-option-group>
+                                                <el-option-group label="高通 Snapdragon 7/6 系列">
+                                                    <el-option label="SM7550 (Snapdragon 7 Gen 3)" value="SM7550"></el-option>
+                                                    <el-option label="SM7475 (Snapdragon 7+ Gen 2)" value="SM7475"></el-option>
+                                                    <el-option label="SM7450 (Snapdragon 7 Gen 1)" value="SM7450"></el-option>
+                                                    <el-option label="SM6450 (Snapdragon 6 Gen 1)" value="SM6450"></el-option>
+                                                    <el-option label="SM6375 (Snapdragon 695)" value="SM6375"></el-option>
+                                                    <el-option label="SM6350 (Snapdragon 690)" value="SM6350"></el-option>
+                                                </el-option-group>
+                                                <el-option-group label="高通 Snapdragon 4 系列">
+                                                    <el-option label="SM4450 (Snapdragon 4 Gen 2)" value="SM4450"></el-option>
+                                                    <el-option label="SM4375 (Snapdragon 4 Gen 1)" value="SM4375"></el-option>
+                                                </el-option-group>
+                                            </el-select>
+                                        </el-form-item>
+                                    </el-col>
+                                </el-row>
+
+                                <el-row :gutter="20">
+                                    <el-col :span="12">
+                                        <el-form-item label="HW ID">
+                                            <el-input v-model="uploadForm.hw_id" placeholder="如: 009600E1"></el-input>
+                                        </el-form-item>
+                                    </el-col>
+                                    <el-col :span="12">
+                                        <el-form-item label="OEM ID">
+                                            <el-input v-model="uploadForm.oem_id" placeholder="如: 0x0001"></el-input>
+                                        </el-form-item>
+                                    </el-col>
+                                </el-row>
+
+                                <el-form-item label="PK Hash">
+                                    <el-input v-model="uploadForm.pk_hash" placeholder="64 位十六进制字符串 (可选，用于精确匹配)"></el-input>
+                                </el-form-item>
+
+                                <el-row :gutter="20">
+                                    <el-col :span="12">
+                                        <el-form-item label="存储类型">
+                                            <el-radio-group v-model="uploadForm.storage_type">
+                                                <el-radio value="ufs">UFS</el-radio>
+                                                <el-radio value="emmc">eMMC</el-radio>
+                                            </el-radio-group>
+                                        </el-form-item>
+                                    </el-col>
+                                    <el-col :span="12">
+                                        <el-form-item label="验证类型" required>
+                                            <el-radio-group v-model="uploadForm.auth_type">
+                                                <el-radio value="none">无验证</el-radio>
+                                                <el-radio value="miauth">小米验证</el-radio>
+                                                <el-radio value="demacia">一加验证</el-radio>
+                                                <el-radio value="vip">VIP 验证</el-radio>
+                                            </el-radio-group>
+                                        </el-form-item>
+                                    </el-col>
+                                </el-row>
+
+                                <!-- VIP 验证文件 -->
+                                <div v-if="uploadForm.auth_type === 'vip'" class="vip-files">
+                                    <div class="vip-file-box">
+                                        <h4>📄 Digest 文件 (必需)</h4>
+                                        <div class="upload-area" style="padding: 20px;"
+                                             @drop.prevent="handleFileDrop($event, 'digest')"
+                                             @dragover.prevent="$event.currentTarget.classList.add('dragover')"
+                                             @dragleave.prevent="$event.currentTarget.classList.remove('dragover')"
+                                             @click="$refs.digestInput.click()">
+                                            <p v-if="!uploadForm.digestFile">点击或拖拽上传 digest 文件</p>
+                                            <p v-else style="color: #67c23a;">✓ {{ uploadForm.digestFile.name }}</p>
+                                        </div>
+                                        <input ref="digestInput" type="file" hidden @change="handleFileSelect($event, 'digest')">
+                                    </div>
+                                    <div class="vip-file-box">
+                                        <h4>🔐 Sign 文件 (必需)</h4>
+                                        <div class="upload-area" style="padding: 20px;"
+                                             @drop.prevent="handleFileDrop($event, 'sign')"
+                                             @dragover.prevent="$event.currentTarget.classList.add('dragover')"
+                                             @dragleave.prevent="$event.currentTarget.classList.remove('dragover')"
+                                             @click="$refs.signInput.click()">
+                                            <p v-if="!uploadForm.signFile">点击或拖拽上传 sign 文件</p>
+                                            <p v-else style="color: #67c23a;">✓ {{ uploadForm.signFile.name }}</p>
+                                        </div>
+                                        <input ref="signInput" type="file" hidden @change="handleFileSelect($event, 'sign')">
+                                    </div>
+                                </div>
+
+                                <el-form-item label="备注">
+                                    <el-input v-model="uploadForm.notes" type="textarea" rows="3" placeholder="可选备注信息"></el-input>
+                                </el-form-item>
+
+                                <el-form-item>
+                                    <el-button type="primary" @click="handleUpload" :loading="uploadLoading" size="large">
+                                        <el-icon><Upload /></el-icon> 上传 Loader
+                                    </el-button>
+                                    <el-button @click="resetUploadForm" size="large">重置</el-button>
+                                </el-form-item>
+                            </el-form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 设备日志 -->
+                <div v-if="currentPage === 'logs'">
+                    <div class="page-header">
+                        <div>
+                            <h1 class="page-title">设备日志</h1>
+                            <p class="page-subtitle">查看设备匹配和下载记录</p>
+                        </div>
+                        <div style="display: flex; gap: 12px;">
+                            <el-input v-model="logSearch" placeholder="搜索 MSM ID / PK Hash..." style="width: 240px" @keyup.enter="loadLogs" clearable>
+                                <template #prefix><el-icon><Search /></el-icon></template>
+                            </el-input>
+                            <el-select v-model="logResultFilter" placeholder="匹配结果" style="width: 130px" @change="loadLogs" clearable>
+                                <el-option label="全部结果" value=""></el-option>
+                                <el-option label="匹配成功" value="matched"></el-option>
+                                <el-option label="未找到" value="not_found"></el-option>
+                                <el-option label="失败" value="failed"></el-option>
+                            </el-select>
+                            <el-button @click="loadLogs" :loading="logsLoading" round>
+                                <el-icon><Refresh /></el-icon> 刷新
+                            </el-button>
+                            <el-button @click="exportLogs" round>
+                                <el-icon><Download /></el-icon> 导出
+                            </el-button>
+                        </div>
+                    </div>
+
+                    <!-- 日志统计卡片 -->
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px;">
+                        <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(102,126,234,0.1); display: flex; align-items: center; justify-content: center; color: #667eea;">
+                                    <el-icon size="20"><Document /></el-icon>
+                                </div>
+                                <div>
+                                    <div style="font-size: 12px; color: #64748b;">总请求数</div>
+                                    <div style="font-size: 24px; font-weight: 700; color: #1e293b;">{{ logTotal }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(16,185,129,0.1); display: flex; align-items: center; justify-content: center; color: #10b981;">
+                                    <el-icon size="20"><CircleCheck /></el-icon>
+                                </div>
+                                <div>
+                                    <div style="font-size: 12px; color: #64748b;">匹配成功</div>
+                                    <div style="font-size: 24px; font-weight: 700; color: #10b981;">{{ logStats.matched || 0 }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(245,158,11,0.1); display: flex; align-items: center; justify-content: center; color: #f59e0b;">
+                                    <el-icon size="20"><Warning /></el-icon>
+                                </div>
+                                <div>
+                                    <div style="font-size: 12px; color: #64748b;">未找到</div>
+                                    <div style="font-size: 24px; font-weight: 700; color: #f59e0b;">{{ logStats.not_found || 0 }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(239,68,68,0.1); display: flex; align-items: center; justify-content: center; color: #ef4444;">
+                                    <el-icon size="20"><CircleClose /></el-icon>
+                                </div>
+                                <div>
+                                    <div style="font-size: 12px; color: #64748b;">今日请求</div>
+                                    <div style="font-size: 24px; font-weight: 700; color: #ef4444;">{{ logStats.today || 0 }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-body" style="padding: 0;">
+                            <el-table :data="logs" v-loading="logsLoading" stripe style="width: 100%;">
+                                <el-table-column prop="id" label="ID" width="70" align="center">
+                                    <template #default="{ row }">
+                                        <span style="font-weight: 600; color: #64748b;">#{{ row.id }}</span>
+                                    </template>
+                                </el-table-column>
+                                <el-table-column prop="platform" label="平台" width="90" align="center">
+                                    <template #default="{ row }">
+                                        <el-tag size="small" type="info" effect="plain">{{ row.platform || 'EDL' }}</el-tag>
+                                    </template>
+                                </el-table-column>
+                                <el-table-column prop="msm_id" label="MSM ID" width="120">
+                                    <template #default="{ row }">
+                                        <span style="font-family: 'SF Mono', monospace; font-size: 13px; color: #667eea; font-weight: 500;">{{ row.msm_id }}</span>
+                                    </template>
+                                </el-table-column>
+                                <el-table-column prop="pk_hash" label="PK Hash" min-width="280">
+                                    <template #default="{ row }">
+                                        <el-tooltip :content="row.pk_hash" placement="top" :show-after="500">
+                                            <span style="font-family: 'SF Mono', monospace; font-size: 11px; color: #64748b; cursor: pointer;" @click="copyToClipboard(row.pk_hash)">
+                                                {{ row.pk_hash?.substring(0, 48) }}...
+                                            </span>
+                                        </el-tooltip>
+                                    </template>
+                                </el-table-column>
+                                <el-table-column prop="storage_type" label="存储" width="80" align="center">
+                                    <template #default="{ row }">
+                                        <el-tag size="small" type="info" effect="plain">{{ row.storage_type?.toUpperCase() || '-' }}</el-tag>
+                                    </template>
+                                </el-table-column>
+                                <el-table-column prop="match_result" label="结果" width="100" align="center">
+                                    <template #default="{ row }">
+                                        <el-tag :type="getMatchResultType(row.match_result)" size="small" effect="dark">
+                                            {{ getMatchResultLabel(row.match_result) }}
+                                        </el-tag>
+                                    </template>
+                                </el-table-column>
+                                <el-table-column prop="client_ip" label="客户端 IP" width="130">
+                                    <template #default="{ row }">
+                                        <span style="font-family: 'SF Mono', monospace; font-size: 12px; color: #64748b;">{{ row.client_ip || '-' }}</span>
+                                    </template>
+                                </el-table-column>
+                                <el-table-column prop="created_at" label="时间" width="170">
+                                    <template #default="{ row }">
+                                        <span style="color: #64748b; font-size: 12px;">{{ formatDateTime(row.created_at) }}</span>
+                                    </template>
+                                </el-table-column>
+                            </el-table>
+                            <div v-if="logs.length === 0 && !logsLoading" style="text-align: center; padding: 60px; color: #64748b;">
+                                <el-icon style="font-size: 56px; margin-bottom: 16px; color: #cbd5e1;"><DocumentDelete /></el-icon>
+                                <p style="font-size: 15px;">暂无日志记录</p>
+                                <p style="font-size: 13px; color: #94a3b8; margin-top: 8px;">设备匹配请求将显示在这里</p>
+                            </div>
+                        </div>
+                        <div class="card-body" style="border-top: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 13px; color: #64748b;">
+                                共 {{ logTotal }} 条记录
+                            </span>
+                            <el-pagination
+                                v-model:current-page="logPage"
+                                v-model:page-size="logPageSize"
+                                :total="logTotal"
+                                :page-sizes="[50, 100, 200]"
+                                layout="sizes, prev, pager, next, jumper"
+                                @size-change="loadLogs"
+                                @current-change="loadLogs"
+                            ></el-pagination>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 系统设置 -->
+                <div v-if="currentPage === 'settings'">
+                    <div class="page-header">
+                        <div>
+                            <h1 class="page-title">系统设置</h1>
+                            <p class="page-subtitle">配置管理后台相关选项</p>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+                        <div class="card">
+                            <div class="card-header">
+                                <span class="card-title"><el-icon><InfoFilled /></el-icon> 系统信息</span>
+                            </div>
+                            <div class="card-body">
+                                <div style="display: flex; flex-direction: column; gap: 16px;">
+                                    <div style="display: flex; justify-content: space-between; padding: 12px; background: #f8fafc; border-radius: 8px;">
+                                        <span style="color: #64748b;">版本</span>
+                                        <span style="font-weight: 600; color: #1e293b;">MultiFlash Admin v3.0</span>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; padding: 12px; background: #f8fafc; border-radius: 8px;">
+                                        <span style="color: #64748b;">后端地址</span>
+                                        <span style="font-family: monospace; color: #667eea;">{{ window.location.origin }}/api</span>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; padding: 12px; background: #f8fafc; border-radius: 8px;">
+                                        <span style="color: #64748b;">存储类型</span>
+                                        <span style="font-weight: 600; color: #1e293b;">SQLite</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header">
+                                <span class="card-title"><el-icon><Link /></el-icon> API 端点</span>
+                            </div>
+                            <div class="card-body">
+                                <div style="display: flex; flex-direction: column; gap: 12px; font-size: 13px;">
+                                    <div style="display: flex; gap: 12px; align-items: center;">
+                                        <el-tag size="small" type="success">GET</el-tag>
+                                        <code style="flex: 1; color: #64748b;">/api/loaders/list</code>
+                                        <span style="color: #94a3b8;">获取 Loader 列表</span>
+                                    </div>
+                                    <div style="display: flex; gap: 12px; align-items: center;">
+                                        <el-tag size="small" type="success">GET</el-tag>
+                                        <code style="flex: 1; color: #64748b;">/api/loaders/{id}/download</code>
+                                        <span style="color: #94a3b8;">下载 Loader</span>
+                                    </div>
+                                    <div style="display: flex; gap: 12px; align-items: center;">
+                                        <el-tag size="small" type="success">GET</el-tag>
+                                        <code style="flex: 1; color: #64748b;">/api/loaders/{id}/digest</code>
+                                        <span style="color: #94a3b8;">下载 Digest</span>
+                                    </div>
+                                    <div style="display: flex; gap: 12px; align-items: center;">
+                                        <el-tag size="small" type="success">GET</el-tag>
+                                        <code style="flex: 1; color: #64748b;">/api/loaders/{id}/sign</code>
+                                        <span style="color: #94a3b8;">下载 Sign</span>
+                                    </div>
+                                    <div style="display: flex; gap: 12px; align-items: center;">
+                                        <el-tag size="small" type="warning">POST</el-tag>
+                                        <code style="flex: 1; color: #64748b;">/api/loaders/match</code>
+                                        <span style="color: #94a3b8;">匹配 Loader</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card" style="margin-top: 24px;">
+                        <div class="card-header">
+                            <span class="card-title"><el-icon><Warning /></el-icon> 危险操作</span>
+                        </div>
+                        <div class="card-body">
+                            <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px; background: #fef2f2; border-radius: 8px; border: 1px solid #fecaca;">
+                                <div>
+                                    <h4 style="color: #dc2626; margin-bottom: 4px;">清空所有日志</h4>
+                                    <p style="color: #f87171; font-size: 13px;">此操作将删除所有设备匹配日志，无法恢复</p>
+                                </div>
+                                <el-button type="danger" plain disabled>
+                                    <el-icon><Delete /></el-icon> 清空日志
+                                </el-button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- 编辑对话框 -->
+        <el-dialog v-model="editDialogVisible" title="编辑 Loader" width="600px">
+            <el-form :model="editForm" label-width="100px">
+                <el-form-item label="文件名">
+                    <el-input v-model="editForm.filename" disabled></el-input>
+                </el-form-item>
+                <el-row :gutter="20">
+                    <el-col :span="12">
+                        <el-form-item label="厂商">
+                            <el-input v-model="editForm.vendor"></el-input>
+                        </el-form-item>
+                    </el-col>
+                    <el-col :span="12">
+                        <el-form-item label="芯片">
+                            <el-input v-model="editForm.chip"></el-input>
+                        </el-form-item>
+                    </el-col>
+                </el-row>
+                <el-row :gutter="20">
+                    <el-col :span="12">
+                        <el-form-item label="HW ID">
+                            <el-input v-model="editForm.hw_id"></el-input>
+                        </el-form-item>
+                    </el-col>
+                    <el-col :span="12">
+                        <el-form-item label="OEM ID">
+                            <el-input v-model="editForm.oem_id"></el-input>
+                        </el-form-item>
+                    </el-col>
+                </el-row>
+                <el-form-item label="PK Hash">
+                    <el-input v-model="editForm.pk_hash"></el-input>
+                </el-form-item>
+                <el-row :gutter="20">
+                    <el-col :span="12">
+                        <el-form-item label="验证类型">
+                            <el-select v-model="editForm.auth_type" style="width: 100%;">
+                                <el-option label="无验证" value="none"></el-option>
+                                <el-option label="小米验证" value="miauth"></el-option>
+                                <el-option label="一加验证" value="demacia"></el-option>
+                                <el-option label="VIP 验证" value="vip"></el-option>
+                            </el-select>
+                        </el-form-item>
+                    </el-col>
+                    <el-col :span="12">
+                        <el-form-item label="存储类型">
+                            <el-select v-model="editForm.storage_type" style="width: 100%;">
+                                <el-option label="UFS" value="ufs"></el-option>
+                                <el-option label="eMMC" value="emmc"></el-option>
+                            </el-select>
+                        </el-form-item>
+                    </el-col>
+                </el-row>
+                <el-form-item label="备注">
+                    <el-input v-model="editForm.notes" type="textarea" rows="2"></el-input>
+                </el-form-item>
+            </el-form>
+            <template #footer>
+                <el-button @click="editDialogVisible = false">取消</el-button>
+                <el-button type="primary" @click="saveEdit" :loading="editLoading">保存</el-button>
+            </template>
+        </el-dialog>
+    </div>
+
+    <script>
+        const { createApp, ref, reactive, onMounted, watch } = Vue;
+        const { ElMessage, ElMessageBox } = ElementPlus;
+
+        const app = createApp({
+            setup() {
+                const API_BASE = '/api';
+                
+                // 登录状态
+                const isLoggedIn = ref(false);
+                const token = ref('');
+                const loginLoading = ref(false);
+                const loginForm = reactive({ username: '', password: '' });
+
+                // 页面状态
+                const currentPage = ref('dashboard');
+
+                // 统计数据
+                const stats = ref({});
+                const statsLoading = ref(false);
+
+                // Loader 列表
+                const loaders = ref([]);
+                const loadersLoading = ref(false);
+                const loaderSearch = ref('');
+                const loaderAuthFilter = ref('');
+                const loaderPage = ref(1);
+                const loaderPageSize = ref(20);
+                const loaderTotal = ref(0);
+
+                // 上传表单
+                const uploadForm = reactive({
+                    loaderFile: null,
+                    digestFile: null,
+                    signFile: null,
+                    vendor: '',
+                    chip: '',
+                    hw_id: '',
+                    pk_hash: '',
+                    oem_id: '',
+                    auth_type: 'none',
+                    storage_type: 'ufs',
+                    notes: ''
+                });
+                const uploadLoading = ref(false);
+
+                // 编辑对话框
+                const editDialogVisible = ref(false);
+                const editForm = reactive({});
+                const editLoading = ref(false);
+
+                // 设备日志
+                const logs = ref([]);
+                const logsLoading = ref(false);
+                const logPage = ref(1);
+                const logPageSize = ref(50);
+                const logTotal = ref(0);
+                const logSearch = ref('');
+                const logResultFilter = ref('');
+                const logStats = ref({ matched: 0, not_found: 0, failed: 0, today: 0 });
+
+                // 检查登录状态
+                onMounted(() => {
+                    const savedToken = localStorage.getItem('admin_token');
+                    if (savedToken) {
+                        token.value = savedToken;
+                        isLoggedIn.value = true;
+                        loadStats();
+                        loadLoaders();
+                    }
+                });
+
+                // 登录
+                const handleLogin = async () => {
+                    if (!loginForm.username || !loginForm.password) {
+                        ElMessage.warning('请输入用户名和密码');
+                        return;
+                    }
+                    loginLoading.value = true;
+                    try {
+                        const res = await fetch(`${API_BASE}/admin/login`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(loginForm)
+                        });
+                        const data = await res.json();
+                        if (data.code === 0) {
+                            token.value = data.data.token;
+                            localStorage.setItem('admin_token', data.data.token);
+                            isLoggedIn.value = true;
+                            ElMessage.success('登录成功');
+                            loadStats();
+                            loadLoaders();
+                        } else {
+                            ElMessage.error(data.message || '登录失败');
+                        }
+                    } catch (e) {
+                        ElMessage.error('网络错误');
+                    }
+                    loginLoading.value = false;
+                };
+
+                // 退出登录
+                const handleLogout = () => {
+                    localStorage.removeItem('admin_token');
+                    isLoggedIn.value = false;
+                    token.value = '';
+                };
+
+                // 加载统计数据
+                const loadStats = async () => {
+                    statsLoading.value = true;
+                    try {
+                        const res = await fetch(`${API_BASE}/admin/stats`, {
+                            headers: { 'X-Admin-Token': token.value }
+                        });
+                        const data = await res.json();
+                        if (data.code === 0) {
+                            stats.value = data.data;
+                        }
+                    } catch (e) {
+                        console.error('加载统计失败', e);
+                    }
+                    statsLoading.value = false;
+                };
+
+                // 加载 Loader 列表
+                const loadLoaders = async () => {
+                    loadersLoading.value = true;
+                    try {
+                        const params = new URLSearchParams({
+                            page: loaderPage.value,
+                            page_size: loaderPageSize.value
+                        });
+                        if (loaderSearch.value) params.append('keyword', loaderSearch.value);
+                        if (loaderAuthFilter.value) params.append('auth_type', loaderAuthFilter.value);
+
+                        const res = await fetch(`${API_BASE}/admin/loaders?${params}`, {
+                            headers: { 'X-Admin-Token': token.value }
+                        });
+                        const data = await res.json();
+                        if (data.code === 0) {
+                            loaders.value = data.data.list || [];
+                            loaderTotal.value = data.data.total || 0;
+                        }
+                    } catch (e) {
+                        console.error('加载列表失败', e);
+                    }
+                    loadersLoading.value = false;
+                };
+
+                // 文件选择
+                const handleFileSelect = (e, type) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        if (type === 'loader') uploadForm.loaderFile = file;
+                        else if (type === 'digest') uploadForm.digestFile = file;
+                        else if (type === 'sign') uploadForm.signFile = file;
+                    }
+                };
+
+                // 文件拖拽
+                const handleFileDrop = (e, type) => {
+                    const file = e.dataTransfer.files[0];
+                    if (file) {
+                        if (type === 'loader') uploadForm.loaderFile = file;
+                        else if (type === 'digest') uploadForm.digestFile = file;
+                        else if (type === 'sign') uploadForm.signFile = file;
+                    }
+                    e.currentTarget.classList.remove('dragover');
+                };
+
+                // 上传
+                const handleUpload = async () => {
+                    if (!uploadForm.loaderFile) {
+                        ElMessage.warning('请选择 Loader 文件');
+                        return;
+                    }
+                    if (uploadForm.auth_type === 'vip') {
+                        if (!uploadForm.digestFile) {
+                            ElMessage.warning('VIP 类型需要上传 Digest 文件');
+                            return;
+                        }
+                        if (!uploadForm.signFile) {
+                            ElMessage.warning('VIP 类型需要上传 Sign 文件');
+                            return;
+                        }
+                    }
+
+                    uploadLoading.value = true;
+                    try {
+                        const formData = new FormData();
+                        formData.append('loader', uploadForm.loaderFile);
+                        formData.append('vendor', uploadForm.vendor);
+                        formData.append('chip', uploadForm.chip);
+                        formData.append('hw_id', uploadForm.hw_id);
+                        formData.append('pk_hash', uploadForm.pk_hash);
+                        formData.append('oem_id', uploadForm.oem_id);
+                        formData.append('auth_type', uploadForm.auth_type);
+                        formData.append('storage_type', uploadForm.storage_type);
+                        formData.append('notes', uploadForm.notes);
+
+                        if (uploadForm.auth_type === 'vip') {
+                            formData.append('digest', uploadForm.digestFile);
+                            formData.append('sign', uploadForm.signFile);
+                        }
+
+                        const res = await fetch(`${API_BASE}/admin/loaders/upload`, {
+                            method: 'POST',
+                            headers: { 'X-Admin-Token': token.value },
+                            body: formData
+                        });
+                        const data = await res.json();
+                        if (data.code === 0) {
+                            ElMessage.success('上传成功');
+                            resetUploadForm();
+                            currentPage.value = 'loaders';
+                            loadLoaders();
+                        } else {
+                            ElMessage.error(data.message || '上传失败');
+                        }
+                    } catch (e) {
+                        ElMessage.error('上传失败: ' + e.message);
+                    }
+                    uploadLoading.value = false;
+                };
+
+                // 重置上传表单
+                const resetUploadForm = () => {
+                    uploadForm.loaderFile = null;
+                    uploadForm.digestFile = null;
+                    uploadForm.signFile = null;
+                    uploadForm.vendor = '';
+                    uploadForm.chip = '';
+                    uploadForm.hw_id = '';
+                    uploadForm.pk_hash = '';
+                    uploadForm.oem_id = '';
+                    uploadForm.auth_type = 'none';
+                    uploadForm.storage_type = 'ufs';
+                    uploadForm.notes = '';
+                };
+
+                // 编辑 Loader
+                const editLoader = (row) => {
+                    Object.assign(editForm, row);
+                    editDialogVisible.value = true;
+                };
+
+                // 保存编辑
+                const saveEdit = async () => {
+                    editLoading.value = true;
+                    try {
+                        const res = await fetch(`${API_BASE}/admin/loaders/${editForm.id}`, {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-Admin-Token': token.value
+                            },
+                            body: JSON.stringify(editForm)
+                        });
+                        const data = await res.json();
+                        if (data.code === 0) {
+                            ElMessage.success('保存成功');
+                            editDialogVisible.value = false;
+                            loadLoaders();
+                        } else {
+                            ElMessage.error(data.message || '保存失败');
+                        }
+                    } catch (e) {
+                        ElMessage.error('保存失败');
+                    }
+                    editLoading.value = false;
+                };
+
+                // 切换启用/禁用
+                const toggleLoader = async (row, enable) => {
+                    try {
+                        const action = enable ? 'enable' : 'disable';
+                        const res = await fetch(`${API_BASE}/admin/loaders/${row.id}/${action}`, {
+                            method: 'POST',
+                            headers: { 'X-Admin-Token': token.value }
+                        });
+                        const data = await res.json();
+                        if (data.code === 0) {
+                            ElMessage.success(enable ? '已启用' : '已禁用');
+                            loadLoaders();
+                        }
+                    } catch (e) {
+                        ElMessage.error('操作失败');
+                    }
+                };
+
+                // 删除 Loader
+                const deleteLoader = async (row) => {
+                    try {
+                        await ElMessageBox.confirm(
+                            `确定要删除 "${row.filename}" 吗？此操作不可恢复。`,
+                            '确认删除',
+                            { type: 'warning' }
+                        );
+                        const res = await fetch(`${API_BASE}/admin/loaders/${row.id}`, {
+                            method: 'DELETE',
+                            headers: { 'X-Admin-Token': token.value }
+                        });
+                        const data = await res.json();
+                        if (data.code === 0) {
+                            ElMessage.success('删除成功');
+                            loadLoaders();
+                        } else {
+                            ElMessage.error(data.message || '删除失败');
+                        }
+                    } catch (e) {
+                        if (e !== 'cancel') ElMessage.error('删除失败');
+                    }
+                };
+
+                // 加载日志
+                const loadLogs = async () => {
+                    logsLoading.value = true;
+                    try {
+                        const params = new URLSearchParams({
+                            page: logPage.value,
+                            page_size: logPageSize.value
+                        });
+                        if (logSearch.value) params.append('keyword', logSearch.value);
+                        if (logResultFilter.value) params.append('result', logResultFilter.value);
+
+                        const res = await fetch(`${API_BASE}/admin/logs?${params}`, {
+                            headers: { 'X-Admin-Token': token.value }
+                        });
+                        const data = await res.json();
+                        if (data.code === 0) {
+                            logs.value = data.data.list || [];
+                            logTotal.value = data.data.total || 0;
+                            // 更新统计
+                            if (data.data.stats) {
+                                logStats.value = data.data.stats;
+                            }
+                        }
+                    } catch (e) {
+                        console.error('加载日志失败', e);
+                    }
+                    logsLoading.value = false;
+                };
+
+                // 辅助函数
+                const getAuthTypeLabel = (type) => {
+                    const labels = {
+                        'none': '无验证',
+                        'miauth': '小米',
+                        'demacia': '一加',
+                        'vip': 'VIP'
+                    };
+                    return labels[type] || type;
+                };
+
+                const getMatchResultType = (result) => {
+                    if (result === 'matched' || result === 'success') return 'success';
+                    if (result === 'not_found') return 'warning';
+                    if (result === 'failed') return 'danger';
+                    return 'info';
+                };
+
+                const formatSize = (bytes) => {
+                    if (bytes < 1024) return bytes + ' B';
+                    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+                    return (bytes / 1024 / 1024).toFixed(2) + ' MB';
+                };
+
+                const formatNumber = (num) => {
+                    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+                    if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+                    return num.toString();
+                };
+
+                const getVendorClass = (vendor) => {
+                    if (!vendor) return '';
+                    const v = vendor.toLowerCase();
+                    if (v.includes('xiaomi') || v.includes('redmi') || v.includes('poco')) return 'xiaomi';
+                    if (v.includes('oplus') || v.includes('oneplus') || v.includes('oppo') || v.includes('realme')) return 'oplus';
+                    if (v.includes('samsung')) return 'samsung';
+                    if (v.includes('huawei') || v.includes('honor')) return 'huawei';
+                    return '';
+                };
+
+                const getMatchResultLabel = (result) => {
+                    const labels = {
+                        'matched': '成功',
+                        'not_found': '未找到',
+                        'failed': '失败',
+                        'success': '成功'
+                    };
+                    return labels[result] || result;
+                };
+
+                const formatDateTime = (dateStr) => {
+                    if (!dateStr) return '-';
+                    try {
+                        const date = new Date(dateStr);
+                        return date.toLocaleString('zh-CN', { 
+                            year: 'numeric', month: '2-digit', day: '2-digit',
+                            hour: '2-digit', minute: '2-digit', second: '2-digit'
+                        });
+                    } catch (e) {
+                        return dateStr;
+                    }
+                };
+
+                const copyToClipboard = async (text) => {
+                    try {
+                        await navigator.clipboard.writeText(text);
+                        ElMessage.success('已复制到剪贴板');
+                    } catch (e) {
+                        ElMessage.error('复制失败');
+                    }
+                };
+
+                const exportLogs = () => {
+                    if (logs.value.length === 0) {
+                        ElMessage.warning('暂无数据可导出');
+                        return;
+                    }
+                    const headers = ['ID', '平台', 'MSM ID', 'PK Hash', '存储类型', '结果', 'IP', '时间'];
+                    const rows = logs.value.map(log => [
+                        log.id, log.platform || '', log.msm_id || '', log.pk_hash || '',
+                        log.storage_type || '', log.match_result || '', log.client_ip || '', log.created_at || ''
+                    ]);
+                    const csvContent = [headers, ...rows].map(r => r.map(c => `"${c}"`).join(',')).join('\n');
+                    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = `device_logs_${new Date().toISOString().slice(0,10)}.csv`;
+                    link.click();
+                    ElMessage.success('导出成功');
+                };
+
+                // 页面切换时加载数据
+                watch(currentPage, (page) => {
+                    if (page === 'dashboard') loadStats();
+                    else if (page === 'loaders') loadLoaders();
+                    else if (page === 'logs') loadLogs();
+                });
+
+                return {
+                    // 状态
+                    isLoggedIn, token, loginLoading, loginForm,
+                    currentPage,
+                    stats, statsLoading,
+                    loaders, loadersLoading, loaderSearch, loaderAuthFilter, loaderPage, loaderPageSize, loaderTotal,
+                    uploadForm, uploadLoading,
+                    editDialogVisible, editForm, editLoading,
+                    logs, logsLoading, logPage, logPageSize, logTotal, logSearch, logResultFilter, logStats,
+                    // 方法
+                    handleLogin, handleLogout,
+                    loadStats, loadLoaders, loadLogs,
+                    handleFileSelect, handleFileDrop, handleUpload, resetUploadForm,
+                    editLoader, saveEdit, toggleLoader, deleteLoader,
+                    getAuthTypeLabel, getMatchResultType, formatSize, formatNumber, getVendorClass,
+                    getMatchResultLabel, formatDateTime, copyToClipboard, exportLogs
+                };
+            }
+        });
+
+        // 注册 Element Plus 图标
+        for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
+            app.component(key, component);
+        }
+
+        app.use(ElementPlus);
+        app.mount('#app');
+    </script>
+</body>
+</html>

@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using LoveAlways.Qualcomm.Database;
+using SakuraEDL.Qualcomm.Database;
 using OPFlashTool.Services;
 
-namespace LoveAlways
+namespace SakuraEDL
 {
     /// <summary>
     /// 预加载管理器 - 优化版，支持懒加载模式减少内存占用

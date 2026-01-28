@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - 分区信息模型
+// SakuraEDL - 分区信息模型
 // Partition Info Model - GPT 分区数据结构
 // ============================================================================
 // 模块: Qualcomm.Models
@@ -10,7 +10,7 @@ using System;
 using System.ComponentModel;
 using System.IO;
 
-namespace LoveAlways.Qualcomm.Models
+namespace SakuraEDL.Qualcomm.Models
 {
     /// <summary>
     /// 分区信息模型

@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - MediaTek XML DA 协议客户端
+// SakuraEDL - MediaTek XML DA 协议客户端
 // MediaTek XML Download Agent Protocol Client (V6)
 // ============================================================================
 // 参考: mtkclient 项目 xml_cmd.py, xml_lib.py
@@ -12,11 +12,11 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml;
-using LoveAlways.MediaTek.Common;
-using LoveAlways.MediaTek.Models;
-using DaEntry = LoveAlways.MediaTek.Models.DaEntry;
+using SakuraEDL.MediaTek.Common;
+using SakuraEDL.MediaTek.Models;
+using DaEntry = SakuraEDL.MediaTek.Models.DaEntry;
 
-namespace LoveAlways.MediaTek.Protocol
+namespace SakuraEDL.MediaTek.Protocol
 {
     /// <summary>
     /// XML DA 协议客户端 (V6)

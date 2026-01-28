@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using System.Reflection;
 
-namespace LoveAlways
+namespace SakuraEDL
 {
     /// <summary>
     /// 嵌入式资源提取器 - 将嵌入的 ADB/Fastboot 工具提取到运行目录
@@ -80,14 +80,14 @@ namespace LoveAlways
         private static void ExtractResource(Assembly assembly, string fileName, string targetPath)
         {
             // 资源名称格式: {命名空间}.Resources.{文件名}
-            string resourceName = $"LoveAlways.Resources.{fileName.Replace("-", "_")}";
+            string resourceName = $"SakuraEDL.Resources.{fileName.Replace("-", "_")}";
             
             // 尝试不同的资源名称格式
             string[] possibleNames = new string[]
             {
                 resourceName,
-                $"LoveAlways.{fileName}",
-                $"LoveAlways.Tools.{fileName}",
+                $"SakuraEDL.{fileName}",
+                $"SakuraEDL.Tools.{fileName}",
                 fileName
             };
 

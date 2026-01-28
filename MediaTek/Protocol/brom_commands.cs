@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - MediaTek BROM 命令定义
+// SakuraEDL - MediaTek BROM 命令定义
 // MediaTek Boot ROM (BROM) Protocol Commands
 // ============================================================================
 // 参考: mtkclient 项目 mtk_preloader.py
@@ -7,7 +7,7 @@
 
 using System;
 
-namespace LoveAlways.MediaTek.Protocol
+namespace SakuraEDL.MediaTek.Protocol
 {
     /// <summary>
     /// BROM 握手序列

@@ -8,13 +8,13 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using LoveAlways.Fastboot.Common;
-using LoveAlways.Fastboot.Models;
-using LoveAlways.Fastboot.Payload;
-using LoveAlways.Fastboot.Services;
-using LoveAlways.Qualcomm.Common;
+using SakuraEDL.Fastboot.Common;
+using SakuraEDL.Fastboot.Models;
+using SakuraEDL.Fastboot.Payload;
+using SakuraEDL.Fastboot.Services;
+using SakuraEDL.Qualcomm.Common;
 
-namespace LoveAlways.Fastboot.UI
+namespace SakuraEDL.Fastboot.UI
 {
     /// <summary>
     /// Fastboot UI 控制器

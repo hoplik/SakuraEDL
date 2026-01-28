@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - MediaTek SLA 认证
+// SakuraEDL - MediaTek SLA 认证
 // MediaTek Secure Boot Authentication (SLA)
 // ============================================================================
 // 参考: mtkclient 项目 sla.py
@@ -12,7 +12,7 @@ using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace LoveAlways.MediaTek.Common
+namespace SakuraEDL.MediaTek.Common
 {
     /// <summary>
     /// SLA 认证状态

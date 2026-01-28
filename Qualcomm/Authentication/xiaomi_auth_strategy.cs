@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - 小米认证策略
+// SakuraEDL - 小米认证策略
 // Xiaomi MiAuth - 支持小米设备免授权绕过
 // ============================================================================
 
@@ -7,9 +7,9 @@ using System;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using LoveAlways.Qualcomm.Protocol;
+using SakuraEDL.Qualcomm.Protocol;
 
-namespace LoveAlways.Qualcomm.Authentication
+namespace SakuraEDL.Qualcomm.Authentication
 {
     public class XiaomiAuthStrategy : IAuthStrategy
     {

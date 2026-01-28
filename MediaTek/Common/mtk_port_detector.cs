@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - MediaTek 端口检测器
+// SakuraEDL - MediaTek 端口检测器
 // MediaTek Port Detector
 // ============================================================================
 // 自动检测 MTK 设备 USB 端口
@@ -15,7 +15,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace LoveAlways.MediaTek.Common
+namespace SakuraEDL.MediaTek.Common
 {
     /// <summary>
     /// MTK 端口检测器

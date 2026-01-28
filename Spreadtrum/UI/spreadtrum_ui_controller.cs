@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - 展讯 UI 控制器
+// SakuraEDL - 展讯 UI 控制器
 // Spreadtrum/Unisoc UI Controller
 // ============================================================================
 
@@ -10,13 +10,13 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using LoveAlways.Spreadtrum.Common;
-using LoveAlways.Spreadtrum.Database;
-using LoveAlways.Spreadtrum.Exploit;
-using LoveAlways.Spreadtrum.Protocol;
-using LoveAlways.Spreadtrum.Services;
+using SakuraEDL.Spreadtrum.Common;
+using SakuraEDL.Spreadtrum.Database;
+using SakuraEDL.Spreadtrum.Exploit;
+using SakuraEDL.Spreadtrum.Protocol;
+using SakuraEDL.Spreadtrum.Services;
 
-namespace LoveAlways.Spreadtrum.UI
+namespace SakuraEDL.Spreadtrum.UI
 {
     /// <summary>
     /// 展讯 UI 控制器

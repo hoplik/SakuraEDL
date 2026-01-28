@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - 文件系统工厂
+// SakuraEDL - 文件系统工厂
 // 统一接口访问 EXT4/EROFS 文件系统
 // ============================================================================
 // 模块: Qualcomm.Common
@@ -11,7 +11,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
-namespace LoveAlways.Qualcomm.Common
+namespace SakuraEDL.Qualcomm.Common
 {
     /// <summary>
     /// 文件系统类型

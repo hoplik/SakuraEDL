@@ -3,9 +3,9 @@ using System.Drawing;
 using System.Windows.Forms;
 using System.Diagnostics;
 using Sunny.UI;
-using LoveAlways.Common;
+using SakuraEDL.Common;
 
-namespace LoveAlways
+namespace SakuraEDL
 {
     public partial class SplashForm : Form
     {

@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - MediaTek 校验和计算
+// SakuraEDL - MediaTek 校验和计算
 // MediaTek Checksum Utilities
 // ============================================================================
 // 参考: mtkclient 项目校验和算法
@@ -7,7 +7,7 @@
 
 using System;
 
-namespace LoveAlways.MediaTek.Common
+namespace SakuraEDL.MediaTek.Common
 {
     /// <summary>
     /// MTK 校验和计算工具类

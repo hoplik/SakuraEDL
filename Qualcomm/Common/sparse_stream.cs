@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - Android Sparse 镜像透明读取流
+// SakuraEDL - Android Sparse 镜像透明读取流
 // SparseStream - 将 Sparse 格式镜像转换为 Raw 流
 // ============================================================================
 // 模块: Qualcomm.Common
@@ -22,7 +22,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
-namespace LoveAlways.Qualcomm.Common
+namespace SakuraEDL.Qualcomm.Common
 {
     /// <summary>
     /// Sparse 镜像透明读取流

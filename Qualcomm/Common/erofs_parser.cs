@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - EROFS 文件系统解析器
+// SakuraEDL - EROFS 文件系统解析器
 // 基于 erofs_extract 项目移植 - 纯 C# 实现
 // ============================================================================
 // 模块: Qualcomm.Common
@@ -12,7 +12,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace LoveAlways.Qualcomm.Common
+namespace SakuraEDL.Qualcomm.Common
 {
     /// <summary>
     /// EROFS SuperBlock 结构 (128 字节)

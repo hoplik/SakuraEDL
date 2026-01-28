@@ -6,11 +6,11 @@
 using System;
 using System.Drawing;
 using System.Threading.Tasks;
-using LoveAlways.Qualcomm.Database;
-using LoveAlways.Qualcomm.Services;
-using LoveAlways.Qualcomm.UI;
+using SakuraEDL.Qualcomm.Database;
+using SakuraEDL.Qualcomm.Services;
+using SakuraEDL.Qualcomm.UI;
 
-namespace LoveAlways.Qualcomm.Services
+namespace SakuraEDL.Qualcomm.Services
 {
     /// <summary>
     /// 云端 Loader 集成帮助类
@@ -173,8 +173,8 @@ namespace LoveAlways.Qualcomm.Services
 ================================================================================
 
 1. 在 Form1.cs 顶部添加引用：
-   using LoveAlways.Qualcomm.Services;
-   using LoveAlways.Qualcomm.Integration;
+   using SakuraEDL.Qualcomm.Services;
+   using SakuraEDL.Qualcomm.Integration;
 
 2. 在 Form1 构造函数中初始化云端服务：
    

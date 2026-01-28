@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - MediaTek UI 控制器
+// SakuraEDL - MediaTek UI 控制器
 // MediaTek UI Controller
 // ============================================================================
 
@@ -10,14 +10,14 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using LoveAlways.MediaTek.Common;
-using LoveAlways.MediaTek.Database;
-using LoveAlways.MediaTek.Exploit;
-using LoveAlways.MediaTek.Models;
-using LoveAlways.MediaTek.Protocol;
-using LoveAlways.MediaTek.Services;
+using SakuraEDL.MediaTek.Common;
+using SakuraEDL.MediaTek.Database;
+using SakuraEDL.MediaTek.Exploit;
+using SakuraEDL.MediaTek.Models;
+using SakuraEDL.MediaTek.Protocol;
+using SakuraEDL.MediaTek.Services;
 
-namespace LoveAlways.MediaTek.UI
+namespace SakuraEDL.MediaTek.UI
 {
     /// <summary>
     /// MediaTek UI 控制器

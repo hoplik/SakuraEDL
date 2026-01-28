@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - UFS/eMMC Provisioning Service
+// SakuraEDL - UFS/eMMC Provisioning Service
 // 高通设备存储配置服务 - 解析和生成 provision.xml
 // ============================================================================
 // 警告: Provisioning 操作不可逆，会永久改变设备存储布局！
@@ -12,7 +12,7 @@ using System.Linq;
 using System.Text;
 using System.Xml.Linq;
 
-namespace LoveAlways.Qualcomm.Services
+namespace SakuraEDL.Qualcomm.Services
 {
     #region 数据模型
 

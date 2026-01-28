@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - MediaTek EMI (External Memory Interface) 配置
+// SakuraEDL - MediaTek EMI (External Memory Interface) 配置
 // MediaTek DRAM Initialization Configuration
 // ============================================================================
 // 参考: mtkclient 项目 emi_config.py
@@ -9,9 +9,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
-using LoveAlways.MediaTek.Models;
+using SakuraEDL.MediaTek.Models;
 
-namespace LoveAlways.MediaTek.Common
+namespace SakuraEDL.MediaTek.Common
 {
     /// <summary>
     /// DRAM 类型

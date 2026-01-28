@@ -1,11 +1,11 @@
 // ============================================================================
-// LoveAlways - 展讯 BSL/FDL 命令定义
+// SakuraEDL - 展讯 BSL/FDL 命令定义
 // Spreadtrum/Unisoc BSL (Boot Second Loader) Commands
 // ============================================================================
 
 using System;
 
-namespace LoveAlways.Spreadtrum.Protocol
+namespace SakuraEDL.Spreadtrum.Protocol
 {
     /// <summary>
     /// BSL 命令类型 (参考 spd_cmd.h)

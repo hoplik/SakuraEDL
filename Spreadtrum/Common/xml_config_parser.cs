@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - 展讯 XML 配置解析器
+// SakuraEDL - 展讯 XML 配置解析器
 // Spreadtrum/Unisoc XML Configuration Parser
 // ============================================================================
 
@@ -10,7 +10,7 @@ using System.Linq;
 using System.Xml;
 using System.Xml.Linq;
 
-namespace LoveAlways.Spreadtrum.Common
+namespace SakuraEDL.Spreadtrum.Common
 {
     /// <summary>
     /// 展讯 XML 配置解析器

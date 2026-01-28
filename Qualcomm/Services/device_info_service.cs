@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - 设备信息服务
+// SakuraEDL - 设备信息服务
 // 支持从 Sahara、Firehose、Super 分区、build.prop 等多种来源获取设备信息
 // ============================================================================
 
@@ -11,11 +11,11 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using LoveAlways.Qualcomm.Common;
-using LoveAlways.Qualcomm.Database;
-using LoveAlways.Qualcomm.Models;
+using SakuraEDL.Qualcomm.Common;
+using SakuraEDL.Qualcomm.Database;
+using SakuraEDL.Qualcomm.Models;
 
-namespace LoveAlways.Qualcomm.Services
+namespace SakuraEDL.Qualcomm.Services
 {
     #region 数据模型
 

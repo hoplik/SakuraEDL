@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - Form1 展讯模块部分类
+// SakuraEDL - Form1 展讯模块部分类
 // Spreadtrum/Unisoc Module Partial Class
 // ============================================================================
 
@@ -10,12 +10,12 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using LoveAlways.Spreadtrum.UI;
-using LoveAlways.Spreadtrum.Common;
-using LoveAlways.Spreadtrum.Protocol;
-using LoveAlways.Spreadtrum.Exploit;
+using SakuraEDL.Spreadtrum.UI;
+using SakuraEDL.Spreadtrum.Common;
+using SakuraEDL.Spreadtrum.Protocol;
+using SakuraEDL.Spreadtrum.Exploit;
 
-namespace LoveAlways
+namespace SakuraEDL
 {
     public partial class Form1
     {
@@ -50,7 +50,7 @@ namespace LoveAlways
         
         // 检测到的设备
         private string _detectedSprdPort = null;
-        private LoveAlways.Spreadtrum.Common.SprdDeviceMode _detectedSprdMode = LoveAlways.Spreadtrum.Common.SprdDeviceMode.Unknown;
+        private SakuraEDL.Spreadtrum.Common.SprdDeviceMode _detectedSprdMode = SakuraEDL.Spreadtrum.Common.SprdDeviceMode.Unknown;
 
         // 芯片列表 - 从数据库动态加载
         private static Dictionary<string, uint> _sprdChipList;
@@ -64,7 +64,7 @@ namespace LoveAlways
                     _sprdChipList.Add("自动检测", 0);
                     
                     // 从数据库按系列加载芯片
-                    var chipsBySeries = LoveAlways.Spreadtrum.Database.SprdFdlDatabase.GetChipsBySeries();
+                    var chipsBySeries = SakuraEDL.Spreadtrum.Database.SprdFdlDatabase.GetChipsBySeries();
                     foreach (var series in chipsBySeries.OrderBy(s => s.Key))
                     {
                         // 添加系列分隔符
@@ -415,7 +415,7 @@ namespace LoveAlways
                     if (chipId > 0)
                     {
                         // 从数据库获取芯片详细信息
-                        var chipInfo = LoveAlways.Spreadtrum.Database.SprdFdlDatabase.GetChipById(chipId);
+                        var chipInfo = SakuraEDL.Spreadtrum.Database.SprdFdlDatabase.GetChipById(chipId);
                         if (chipInfo != null)
                         {
                             string exploitInfo = chipInfo.HasExploit ? $" [Exploit: {chipInfo.ExploitId}]" : "";
@@ -655,7 +655,7 @@ namespace LoveAlways
                     // 更新右侧信息面板
                     UpdateSprdInfoPanel();
                     
-                    if (dev.Mode == LoveAlways.Spreadtrum.Common.SprdDeviceMode.Download)
+                    if (dev.Mode == SakuraEDL.Spreadtrum.Common.SprdDeviceMode.Download)
                     {
                         AppendLog($"[展讯] 设备已进入下载模式", Color.Cyan);
                         AppendLog("[展讯] 请选择芯片型号或加载 PAC，然后点击[读取分区表]", Color.Yellow);
@@ -671,7 +671,7 @@ namespace LoveAlways
                     
                     // 清空检测到的端口
                     _detectedSprdPort = null;
-                    _detectedSprdMode = LoveAlways.Spreadtrum.Common.SprdDeviceMode.Unknown;
+                    _detectedSprdMode = SakuraEDL.Spreadtrum.Common.SprdDeviceMode.Unknown;
                     
                     // 更新右侧信息面板
                     UpdateSprdInfoPanel();
@@ -1304,7 +1304,7 @@ namespace LoveAlways
                     // 如果选择了芯片，使用芯片的地址配置
                     if (_selectedChipId > 0 && _selectedChipId != 0xFFFF)
                     {
-                        var chipInfo = LoveAlways.Spreadtrum.Database.SprdFdlDatabase.GetChipById(_selectedChipId);
+                        var chipInfo = SakuraEDL.Spreadtrum.Database.SprdFdlDatabase.GetChipById(_selectedChipId);
                         if (chipInfo != null)
                         {
                             AppendLog($"[展讯] 使用芯片地址配置: {chipInfo.ChipName}", Color.Gray);
@@ -1327,22 +1327,22 @@ namespace LoveAlways
                 // 方式3：数据库芯片配置 (第三优先级)
                 else if (_selectedChipId > 0 && _selectedChipId != 0xFFFF)
                 {
-                    var chipInfo = LoveAlways.Spreadtrum.Database.SprdFdlDatabase.GetChipById(_selectedChipId);
+                    var chipInfo = SakuraEDL.Spreadtrum.Database.SprdFdlDatabase.GetChipById(_selectedChipId);
                     if (chipInfo != null)
                     {
                         AppendLog($"[展讯] 使用芯片配置: {chipInfo.ChipName}", Color.Cyan);
                         AppendLog($"[展讯] FDL1 地址: {chipInfo.Fdl1AddressHex}, FDL2 地址: {chipInfo.Fdl2AddressHex}", Color.Gray);
                         
                         // 检查是否有该芯片的设备 FDL 文件
-                        var devices = LoveAlways.Spreadtrum.Database.SprdFdlDatabase.GetDeviceNames(chipInfo.ChipName);
+                        var devices = SakuraEDL.Spreadtrum.Database.SprdFdlDatabase.GetDeviceNames(chipInfo.ChipName);
                         if (devices.Length > 0)
                         {
                             // 使用第一个设备的 FDL（或让用户选择）
-                            var deviceFdl = LoveAlways.Spreadtrum.Database.SprdFdlDatabase.GetDeviceFdlsByChip(chipInfo.ChipName).FirstOrDefault();
+                            var deviceFdl = SakuraEDL.Spreadtrum.Database.SprdFdlDatabase.GetDeviceFdlsByChip(chipInfo.ChipName).FirstOrDefault();
                             if (deviceFdl != null)
                             {
-                                string fdl1Path = LoveAlways.Spreadtrum.Database.SprdFdlDatabase.GetFdlPath(deviceFdl, true);
-                                string fdl2Path = LoveAlways.Spreadtrum.Database.SprdFdlDatabase.GetFdlPath(deviceFdl, false);
+                                string fdl1Path = SakuraEDL.Spreadtrum.Database.SprdFdlDatabase.GetFdlPath(deviceFdl, true);
+                                string fdl2Path = SakuraEDL.Spreadtrum.Database.SprdFdlDatabase.GetFdlPath(deviceFdl, false);
                                 
                                 if (System.IO.File.Exists(fdl1Path) && System.IO.File.Exists(fdl2Path))
                                 {
@@ -1786,7 +1786,7 @@ namespace LoveAlways
                 uint chipId = _spreadtrumController.GetChipId();
                 if (chipId > 0)
                 {
-                    chipName = LoveAlways.Spreadtrum.Protocol.SprdPlatform.GetPlatformName(chipId);
+                    chipName = SakuraEDL.Spreadtrum.Protocol.SprdPlatform.GetPlatformName(chipId);
                 }
                 
                 string stageStr = _spreadtrumController.CurrentStage.ToString();
@@ -2016,12 +2016,12 @@ namespace LoveAlways
 
             // 显示 NV 操作选择菜单
             var menu = new ContextMenuStrip();
-            menu.Items.Add("读取蓝牙地址", null, async (s, e) => await SprdReadNvAsync(LoveAlways.Spreadtrum.Protocol.SprdNvItems.NV_BT_ADDR, "蓝牙地址"));
-            menu.Items.Add("读取WiFi地址", null, async (s, e) => await SprdReadNvAsync(LoveAlways.Spreadtrum.Protocol.SprdNvItems.NV_WIFI_ADDR, "WiFi地址"));
-            menu.Items.Add("读取序列号", null, async (s, e) => await SprdReadNvAsync(LoveAlways.Spreadtrum.Protocol.SprdNvItems.NV_SERIAL_NUMBER, "序列号"));
+            menu.Items.Add("读取蓝牙地址", null, async (s, e) => await SprdReadNvAsync(SakuraEDL.Spreadtrum.Protocol.SprdNvItems.NV_BT_ADDR, "蓝牙地址"));
+            menu.Items.Add("读取WiFi地址", null, async (s, e) => await SprdReadNvAsync(SakuraEDL.Spreadtrum.Protocol.SprdNvItems.NV_WIFI_ADDR, "WiFi地址"));
+            menu.Items.Add("读取序列号", null, async (s, e) => await SprdReadNvAsync(SakuraEDL.Spreadtrum.Protocol.SprdNvItems.NV_SERIAL_NUMBER, "序列号"));
             menu.Items.Add("-");
-            menu.Items.Add("写入蓝牙地址...", null, async (s, e) => await SprdWriteNvAsync(LoveAlways.Spreadtrum.Protocol.SprdNvItems.NV_BT_ADDR, "蓝牙地址", 6));
-            menu.Items.Add("写入WiFi地址...", null, async (s, e) => await SprdWriteNvAsync(LoveAlways.Spreadtrum.Protocol.SprdNvItems.NV_WIFI_ADDR, "WiFi地址", 6));
+            menu.Items.Add("写入蓝牙地址...", null, async (s, e) => await SprdWriteNvAsync(SakuraEDL.Spreadtrum.Protocol.SprdNvItems.NV_BT_ADDR, "蓝牙地址", 6));
+            menu.Items.Add("写入WiFi地址...", null, async (s, e) => await SprdWriteNvAsync(SakuraEDL.Spreadtrum.Protocol.SprdNvItems.NV_WIFI_ADDR, "WiFi地址", 6));
             menu.Items.Add("-");
             menu.Items.Add("读取自定义NV项...", null, async (s, e) => await SprdReadCustomNvAsync());
             menu.Items.Add("写入自定义NV项...", null, async (s, e) => await SprdWriteCustomNvAsync());

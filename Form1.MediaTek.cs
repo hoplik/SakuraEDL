@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - Form1.MediaTek.cs
+// SakuraEDL - Form1.MediaTek.cs
 // MediaTek 平台 UI 集成
 // ============================================================================
 
@@ -11,14 +11,14 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using LoveAlways.MediaTek.Common;
-using LoveAlways.MediaTek.Database;
-using LoveAlways.MediaTek.Models;
-using LoveAlways.MediaTek.Protocol;
-using LoveAlways.MediaTek.Services;
-using LoveAlways.MediaTek.UI;
+using SakuraEDL.MediaTek.Common;
+using SakuraEDL.MediaTek.Database;
+using SakuraEDL.MediaTek.Models;
+using SakuraEDL.MediaTek.Protocol;
+using SakuraEDL.MediaTek.Services;
+using SakuraEDL.MediaTek.UI;
 
-namespace LoveAlways
+namespace SakuraEDL
 {
     public partial class Form1
     {

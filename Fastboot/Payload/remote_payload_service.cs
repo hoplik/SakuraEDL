@@ -8,7 +8,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace LoveAlways.Fastboot.Payload
+namespace SakuraEDL.Fastboot.Payload
 {
     /// <summary>
     /// 云端 Payload 服务
@@ -96,7 +96,7 @@ namespace LoveAlways.Fastboot.Payload
             _httpClient.DefaultRequestHeaders.Clear();
             
             string ua = string.IsNullOrEmpty(userAgent)
-                ? "LoveAlways/1.0 (Payload Extractor)"
+                ? "SakuraEDL/1.0 (Payload Extractor)"
                 : userAgent;
             
             _httpClient.DefaultRequestHeaders.Add("User-Agent", ua);

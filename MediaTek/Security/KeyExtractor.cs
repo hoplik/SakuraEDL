@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - MediaTek Key Extractor
+// SakuraEDL - MediaTek Key Extractor
 // 提取设备密钥信息 (seccfg, efuse, rpmb keys)
 // ============================================================================
 // 参考: mtkclient keys.py, seccfg parser
@@ -12,7 +12,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace LoveAlways.MediaTek.Security
+namespace SakuraEDL.MediaTek.Security
 {
     /// <summary>
     /// 密钥类型

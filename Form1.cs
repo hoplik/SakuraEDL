@@ -13,16 +13,16 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.VisualBasic;
-using LoveAlways.Qualcomm.UI;
-using LoveAlways.Qualcomm.Common;
-using LoveAlways.Qualcomm.Models;
-using LoveAlways.Qualcomm.Services;
-using LoveAlways.Fastboot.UI;
-using LoveAlways.Fastboot.Common;
-using LoveAlways.Qualcomm.Database;
-using LoveAlways.Common;
+using SakuraEDL.Qualcomm.UI;
+using SakuraEDL.Qualcomm.Common;
+using SakuraEDL.Qualcomm.Models;
+using SakuraEDL.Qualcomm.Services;
+using SakuraEDL.Fastboot.UI;
+using SakuraEDL.Fastboot.Common;
+using SakuraEDL.Qualcomm.Database;
+using SakuraEDL.Common;
 
-namespace LoveAlways
+namespace SakuraEDL
 {
     public partial class Form1 : AntdUI.Window
     {
@@ -37,6 +37,9 @@ namespace LoveAlways
         // 图片预览缓存
         private List<Image> previewImages = new List<Image>();
         private const int MAX_PREVIEW_IMAGES = 5; // 最多保存5个预览
+
+        // 系统信息（用于恢复 uiLabel4）
+        private string _systemInfoText = "计算机：未知";
 
         // 原始控件位置和大小
         private Point originalinput6Location;
@@ -60,6 +63,10 @@ namespace LoveAlways
         // Fastboot UI 控制器
         private FastbootUIController _fastbootController;
 
+        // 云端 Loader 列表
+        private List<SakuraEDL.Qualcomm.Services.CloudLoaderInfo> _cloudLoaders = new List<SakuraEDL.Qualcomm.Services.CloudLoaderInfo>();
+        private bool _cloudLoadersLoaded = false;
+
         public Form1()
         {
             InitializeComponent();
@@ -79,17 +86,21 @@ namespace LoveAlways
             checkbox14.Checked = true;
             radio3.Checked = true;
             // 加载系统信息（使用预加载数据）
-            this.Load += (sender, e) =>
+            this.Load += async (sender, e) =>
             {
                 try
                 {
                     // 使用预加载的系统信息
                     string sysInfo = PreloadManager.SystemInfo ?? "未知";
-                    uiLabel4.Text = $"计算机：{sysInfo}";
+                    _systemInfoText = $"计算机：{sysInfo}";
+                    uiLabel4.Text = _systemInfoText;
                     
                     // 写入系统信息到日志头部
                     WriteLogHeader(sysInfo);
-                    AppendLog("加载中...OK", Color.Green);
+                    AppendLog("加载完成", Color.Green);
+                    
+                    // 加载一言
+                    await LoadHitokotoAsync();
                 }
                 catch (Exception ex)
                 {
@@ -307,8 +318,8 @@ namespace LoveAlways
                     return;
 
                 // 获取当前端口列表用于变化检测
-                var ports = LoveAlways.Qualcomm.Common.PortDetector.DetectAllPorts();
-                var edlPorts = LoveAlways.Qualcomm.Common.PortDetector.DetectEdlPorts();
+                var ports = SakuraEDL.Qualcomm.Common.PortDetector.DetectAllPorts();
+                var edlPorts = SakuraEDL.Qualcomm.Common.PortDetector.DetectEdlPorts();
                 string currentPortList = string.Join(",", ports.ConvertAll(p => p.PortName));
                 
                 // 只有端口列表变化时才刷新
@@ -810,7 +821,7 @@ namespace LoveAlways
             }
             
             // 2. 调用云端 API 匹配
-            var cloudService = LoveAlways.Qualcomm.Services.CloudLoaderService.Instance;
+            var cloudService = SakuraEDL.Qualcomm.Services.CloudLoaderService.Instance;
             var result = await cloudService.MatchLoaderAsync(
                 deviceInfo.MsmId,
                 deviceInfo.PkHash,
@@ -902,7 +913,7 @@ namespace LoveAlways
                     if (fbd.ShowDialog() == DialogResult.OK)
                     {
                         string saveDir = fbd.SelectedPath;
-                        var parser = new LoveAlways.Qualcomm.Common.GptParser();
+                        var parser = new SakuraEDL.Qualcomm.Common.GptParser();
                         int sectorSize = _qualcommController.Partitions.Count > 0 
                             ? _qualcommController.Partitions[0].SectorSize 
                             : 4096;
@@ -959,7 +970,7 @@ namespace LoveAlways
                     return;
                 }
 
-                var parser = new LoveAlways.Qualcomm.Common.GptParser();
+                var parser = new SakuraEDL.Qualcomm.Common.GptParser();
                 int sectorSize = partitions[0].SectorSize > 0 ? partitions[0].SectorSize : 4096;
 
                 // 按 LUN 分组生成 rawprogram XML
@@ -974,7 +985,7 @@ namespace LoveAlways
                     var sb = new System.Text.StringBuilder();
                     sb.AppendLine("<?xml version=\"1.0\" ?>");
                     sb.AppendLine("<data>");
-                    sb.AppendLine("  <!-- 由 MultiFlash TOOL 生成 - 回读分区 -->");
+                    sb.AppendLine("  <!-- 由 SakuraEDL 生成 - 回读分区 -->");
                     
                     foreach (var p in lunPartitions)
                     {
@@ -1810,7 +1821,7 @@ namespace LoveAlways
             ClearImagePreview();
 
             // 释放看门狗管理器
-            LoveAlways.Common.WatchdogManager.DisposeAll();
+            SakuraEDL.Common.WatchdogManager.DisposeAll();
 
             // 优化的垃圾回收
             GC.Collect(0, GCCollectionMode.Optimized);
@@ -2088,7 +2099,7 @@ namespace LoveAlways
             {
                 System.Diagnostics.Debug.WriteLine($"日志初始化失败: {ex.Message}");
                 // 日志初始化失败时使用临时目录
-                logFilePath = Path.Combine(Path.GetTempPath(), $"MultiFlash_{DateTime.Now:yyyyMMdd_HHmmss}.log");
+                logFilePath = Path.Combine(Path.GetTempPath(), $"SakuraEDL_{DateTime.Now:yyyyMMdd_HHmmss}.log");
             }
         }
 
@@ -2134,6 +2145,76 @@ namespace LoveAlways
         }
 
         /// <summary>
+        /// 加载一言 (Hitokoto) API
+        /// </summary>
+        private async Task LoadHitokotoAsync()
+        {
+            try
+            {
+                using (var client = new HttpClient())
+                {
+                    client.Timeout = TimeSpan.FromSeconds(5);
+                    var response = await client.GetStringAsync("https://v1.hitokoto.cn/?c=a&c=b&c=c&c=d&c=k&encode=json");
+                    
+                    // 使用正则解析 JSON (避免引入额外依赖)
+                    var hitokotoMatch = System.Text.RegularExpressions.Regex.Match(response, "\"hitokoto\"\\s*:\\s*\"([^\"]+)\"");
+                    var fromMatch = System.Text.RegularExpressions.Regex.Match(response, "\"from\"\\s*:\\s*\"([^\"]+)\"");
+                    
+                    string hitokoto = hitokotoMatch.Success ? hitokotoMatch.Groups[1].Value : null;
+                    string from = fromMatch.Success ? fromMatch.Groups[1].Value : null;
+                    
+                    // 处理转义字符
+                    if (hitokoto != null)
+                    {
+                        hitokoto = hitokoto.Replace("\\n", " ").Replace("\\r", "").Replace("\\\"", "\"");
+                    }
+                    
+                    // 构建显示文本
+                    string displayText = hitokoto ?? "";
+                    
+                    // 限制显示长度
+                    if (displayText.Length > 35)
+                    {
+                        displayText = displayText.Substring(0, 32) + "...";
+                    }
+                    
+                    // 添加来源
+                    if (!string.IsNullOrEmpty(from) && displayText.Length + from.Length < 45)
+                    {
+                        displayText = $"「{displayText}」—— {from}";
+                    }
+                    else
+                    {
+                        displayText = $"「{displayText}」";
+                    }
+                    
+                    // 更新 UI
+                    if (InvokeRequired)
+                    {
+                        Invoke(new Action(() => uiLabel1.Text = displayText));
+                    }
+                    else
+                    {
+                        uiLabel1.Text = displayText;
+                    }
+                }
+            }
+            catch
+            {
+                // 一言加载失败，使用默认文本
+                string defaultText = "「愿你有前进一寸的勇气，也有后退一尺的从容」";
+                if (InvokeRequired)
+                {
+                    Invoke(new Action(() => uiLabel1.Text = defaultText));
+                }
+                else
+                {
+                    uiLabel1.Text = defaultText;
+                }
+            }
+        }
+
+        /// <summary>
         /// 查看日志菜单点击事件 - 打开日志文件夹并选中当前日志
         /// </summary>
         private void 查看日志ToolStripMenuItem_Click(object sender, EventArgs e)
@@ -2165,6 +2246,36 @@ namespace LoveAlways
             {
                 AppendLog($"打开日志失败: {ex.Message}", Color.Red);
                 MessageBox.Show($"无法打开日志文件夹: {ex.Message}", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        /// <summary>
+        /// GitHub 链接点击事件 - 打开项目主页
+        /// </summary>
+        private void linkLabelGithub_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        {
+            try
+            {
+                System.Diagnostics.Process.Start("https://github.com/xiriovo/SakuraEDL");
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"打开链接失败: {ex.Message}", Color.Red);
+            }
+        }
+
+        /// <summary>
+        /// 联系开发者链接点击事件 - 加QQ好友
+        /// </summary>
+        private void linkLabelDev_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        {
+            try
+            {
+                System.Diagnostics.Process.Start("https://qm.qq.com/q/8U3zucpCU2");
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"打开链接失败: {ex.Message}", Color.Red);
             }
         }
 
@@ -3127,9 +3238,16 @@ namespace LoveAlways
 
         private void Select3_SelectedIndexChanged(object sender, EventArgs e)
         {
-            string selectedItem = select3.Text;
+            string selectedItem = select3.Text;                                   
             bool isCloudMatch = selectedItem.Contains("云端自动匹配");
             bool isLocalSelect = selectedItem.Contains("本地选择");
+            bool isSeparator = selectedItem.StartsWith("──");
+            
+            // 忽略分隔符
+            if (isSeparator)
+            {
+                return;
+            }
             
             // 处理云端自动匹配模式
             if (isCloudMatch)
@@ -3167,7 +3285,75 @@ namespace LoveAlways
                 checkbox19.Checked = false;
                 _authMode = "none";
             }
+            // 处理云端 Loader 选择
+            else
+            {
+                var cloudLoader = GetSelectedCloudLoader();
+                if (cloudLoader != null)
+                {
+                    // 禁用自定义引导文件输入 (使用云端 Loader)
+                    input9.Enabled = false;
+                    input8.Enabled = false;
+                    input7.Enabled = false;
+                    
+                    // 显示选择的 Loader 信息
+                    input8.Text = string.Format("[云端] {0} - {1}", cloudLoader.Chip, cloudLoader.Filename);
+                    
+                    // 根据厂商和验证类型自动设置
+                    string vendorLower = (cloudLoader.Vendor ?? "").ToLower();
+                    bool isOplusVendor = vendorLower.Contains("oplus") || vendorLower.Contains("oneplus") || vendorLower.Contains("oppo") || vendorLower.Contains("realme");
+                    bool isXiaomiVendor = vendorLower.Contains("xiaomi") || vendorLower.Contains("redmi") || vendorLower.Contains("poco");
+                    
+                    // OPLUS/OnePlus 设备 (不管 auth_type 是 vip 还是 demacia)
+                    if (isOplusVendor || cloudLoader.IsOnePlus)
+                    {
+                        // 一加/OPPO 验证 - 自动勾选 oplus checkbox
+                        AppendLog(string.Format("[云端] 选择了 OPLUS Loader: {0}", cloudLoader.DisplayName), Color.FromArgb(255, 100, 100));
+                        checkbox19.Checked = true;  // oplus
+                        checkbox17.Checked = false;
+                        _authMode = cloudLoader.IsVip ? "vip" : "oplus";
+                        
+                        if (cloudLoader.IsVip)
+                        {
+                            AppendLog("[云端] OPLUS VIP 验证将在连接时自动执行", Color.Cyan);
+                        }
+                    }
+                    // 小米设备
+                    else if (isXiaomiVendor || cloudLoader.IsXiaomi)
+                    {
+                        // 小米验证 - 连接时自动执行认证
+                        AppendLog(string.Format("[云端] 选择了小米 Loader: {0}", cloudLoader.DisplayName), Color.FromArgb(255, 165, 0));
+                        AppendLog("[云端] 小米验证将在连接时自动执行", Color.Cyan);
+                        checkbox17.Checked = false;
+                        checkbox19.Checked = false;
+                        _authMode = "xiaomi";
+                    }
+                    // 纯 VIP 验证 (非 OPLUS/小米)
+                    else if (cloudLoader.IsVip)
+                    {
+                        AppendLog(string.Format("[云端] 选择了 VIP Loader: {0}", cloudLoader.DisplayName), Color.Orange);
+                        AppendLog("[云端] VIP 验证将在连接时自动执行", Color.Cyan);
+                        checkbox17.Checked = false;
+                        checkbox19.Checked = false;
+                        _authMode = "vip";
+                    }
+                    // 无验证
+                    else
+                    {
+                        AppendLog(string.Format("[云端] 选择了 Loader: {0}", cloudLoader.DisplayName), Color.Green);
+                        checkbox17.Checked = false;
+                        checkbox19.Checked = false;
+                        _authMode = "none";
+                    }
+                    
+                    // 存储选择的云端 Loader ID
+                    _selectedCloudLoaderId = cloudLoader.Id;
+                }
+            }
         }
+        
+        // 选择的云端 Loader ID
+        private int _selectedCloudLoaderId = 0;
         
         /// <summary>
         /// 从 EDL 选择项中提取 Loader ID
@@ -3262,13 +3448,134 @@ namespace LoveAlways
         /// </summary>
         private void InitializeCloudLoaderService()
         {
-            var cloudService = LoveAlways.Qualcomm.Services.CloudLoaderService.Instance;
+            var cloudService = SakuraEDL.Qualcomm.Services.CloudLoaderService.Instance;
             cloudService.SetLogger(
                 msg => AppendLog(msg, Color.Cyan),
                 msg => AppendLog(msg, Color.Gray)
             );
             // 配置 API 地址 (生产环境)
             // cloudService.ApiBase = "https://api.xiriacg.top/api";
+            
+            // 异步加载云端 Loader 列表
+            LoadCloudLoadersAsync();
+        }
+        
+        /// <summary>
+        /// 异步加载云端 Loader 列表
+        /// </summary>
+        private async void LoadCloudLoadersAsync()
+        {
+            try
+            {
+                if (_cloudLoadersLoaded) return;
+                
+                var cloudService = SakuraEDL.Qualcomm.Services.CloudLoaderService.Instance;
+                var loaders = await cloudService.GetLoaderListAsync();
+                
+                if (loaders != null && loaders.Count > 0)
+                {
+                    _cloudLoaders = loaders;
+                    _cloudLoadersLoaded = true;
+                    
+                    // 更新 UI (在 UI 线程执行)
+                    if (this.InvokeRequired)
+                    {
+                        this.BeginInvoke(new Action(() => UpdateCloudLoaderList()));
+                    }
+                    else
+                    {
+                        UpdateCloudLoaderList();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(string.Format("加载云端 Loader 列表失败: {0}", ex.Message));
+            }
+        }
+        
+        /// <summary>
+        /// 更新 select3 下拉框中的云端 Loader 列表
+        /// </summary>
+        private void UpdateCloudLoaderList()
+        {
+            try
+            {
+                // 保存当前选择
+                string currentSelection = select3.Text;
+                
+                // 清空并重建列表
+                select3.Items.Clear();
+                
+                // 添加默认选项
+                select3.Items.Add("自动识别或自选引导");
+                select3.Items.Add("── 本地选择 ──");
+                
+                // 添加云端 Loader (按厂商分组)
+                if (_cloudLoaders.Count > 0)
+                {
+                    select3.Items.Add("── 云端 Loader ──");
+                    
+                    // 按厂商分组
+                    var grouped = _cloudLoaders
+                        .GroupBy(l => l.Vendor ?? "其他")
+                        .OrderBy(g => g.Key);
+                    
+                    foreach (var group in grouped)
+                    {
+                        foreach (var loader in group.OrderBy(l => l.Chip))
+                        {
+                            // 格式: [厂商] 芯片 - 文件名 | auth_type
+                            string authTag = "";
+                            if (loader.IsVip) authTag = "[VIP]";
+                            else if (loader.IsOnePlus) authTag = "[OnePlus]";
+                            else if (loader.IsXiaomi) authTag = "[小米]";
+                            
+                            string displayName = string.Format("{0} [{1}] {2} - {3}", 
+                                authTag, loader.Vendor, loader.Chip, loader.Filename).Trim();
+                            
+                            select3.Items.Add(displayName);
+                        }
+                    }
+                }
+                
+                // 恢复选择或默认
+                if (!string.IsNullOrEmpty(currentSelection) && select3.Items.Contains(currentSelection))
+                {
+                    select3.Text = currentSelection;
+                }
+                else
+                {
+                    select3.SelectedIndex = 0;
+                }
+                
+                AppendLog(string.Format("[云端] 已加载 {0} 个 Loader", _cloudLoaders.Count), Color.Green);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(string.Format("更新云端 Loader 列表失败: {0}", ex.Message));
+            }
+        }
+        
+        /// <summary>
+        /// 根据选择的云端 Loader 获取 CloudLoaderInfo
+        /// </summary>
+        private SakuraEDL.Qualcomm.Services.CloudLoaderInfo GetSelectedCloudLoader()
+        {
+            string selected = select3.Text;
+            if (string.IsNullOrEmpty(selected)) return null;
+            
+            // 查找匹配的 Loader
+            foreach (var loader in _cloudLoaders)
+            {
+                if (selected.Contains(loader.Filename) && 
+                    selected.Contains(loader.Vendor) && 
+                    selected.Contains(loader.Chip))
+                {
+                    return loader;
+                }
+            }
+            return null;
         }
         
         /// <summary>
@@ -3476,15 +3783,7 @@ namespace LoveAlways
                         // 启动 Fastboot 设备监控
                         _fastbootController.StartDeviceMonitoring();
                         _fastbootController.UpdateDeviceInfoLabels();
-                        
-                        // 更新设备计数标签
-                        int deviceCount = _fastbootController.DeviceCount;
-                        if (deviceCount == 0)
-                            uiLabel4.Text = "FB设备：0";
-                        else if (deviceCount == 1)
-                            uiLabel4.Text = $"FB设备：已连接";
-                        else
-                            uiLabel4.Text = $"FB设备：{deviceCount}个";
+                        // Fastboot 设备数量在右侧信息面板显示，不覆盖系统信息
                     }
                 }
                 // tabPage2 是高通平台 (EDL)
@@ -3492,6 +3791,9 @@ namespace LoveAlways
                 {
                     // 切换到高通标签页
                     _isOnFastbootTab = false;
+                    
+                    // 恢复系统信息显示
+                    uiLabel4.Text = _systemInfoText;
                     
                     // 停止其他模块监控
                     _fastbootController?.StopDeviceMonitoring();
@@ -3527,6 +3829,9 @@ namespace LoveAlways
                     // 切换到 MTK 标签页
                     _isOnFastbootTab = false;
                     
+                    // 恢复系统信息显示
+                    uiLabel4.Text = _systemInfoText;
+                    
                     // 停止其他模块监控
                     _fastbootController?.StopDeviceMonitoring();
                     _portRefreshTimer?.Stop();
@@ -3544,6 +3849,9 @@ namespace LoveAlways
                     // 切换到展讯标签页
                     _isOnFastbootTab = false;
                     
+                    // 恢复系统信息显示
+                    uiLabel4.Text = _systemInfoText;
+                    
                     // 停止其他模块监控
                     _fastbootController?.StopDeviceMonitoring();
                     _portRefreshTimer?.Stop();
@@ -3559,6 +3867,10 @@ namespace LoveAlways
                 {
                     // 其他标签页
                     _isOnFastbootTab = false;
+                    
+                    // 恢复系统信息显示
+                    uiLabel4.Text = _systemInfoText;
+                    
                     // 停止所有模块监控
                     _fastbootController?.StopDeviceMonitoring();
                     _mtkController?.StopPortMonitoring();
@@ -3730,7 +4042,7 @@ namespace LoveAlways
                     AppendLog($"已选择 {partitions.Count} 个分区 (Payload: {payloadCount}, 文件: {fileCount})", Color.Blue);
 
                 // 构建刷写选项 (欧加模式默认使用 A 槽位)
-                var options = new LoveAlways.Fastboot.UI.FastbootUIController.OnePlusFlashOptions
+                var options = new SakuraEDL.Fastboot.UI.FastbootUIController.OnePlusFlashOptions
                 {
                     ABFlashMode = false,  // 不再使用 AB 通刷模式
                     PureFBDMode = usePureFbdMode,
@@ -4275,7 +4587,7 @@ namespace LoveAlways
             }
             
             // 备选 ADB
-            var result = await LoveAlways.Fastboot.Common.AdbHelper.RebootAsync();
+            var result = await SakuraEDL.Fastboot.Common.AdbHelper.RebootAsync();
             if (result.Success)
                 AppendLog("ADB: 重启成功", Color.Green);
             else
@@ -4301,7 +4613,7 @@ namespace LoveAlways
             }
             
             // 备选 ADB
-            var result = await LoveAlways.Fastboot.Common.AdbHelper.RebootBootloaderAsync();
+            var result = await SakuraEDL.Fastboot.Common.AdbHelper.RebootBootloaderAsync();
             if (result.Success)
                 AppendLog("ADB: 重启到 Bootloader 成功", Color.Green);
             else
@@ -4327,7 +4639,7 @@ namespace LoveAlways
             }
             
             // 备选 ADB
-            var result = await LoveAlways.Fastboot.Common.AdbHelper.RebootFastbootAsync();
+            var result = await SakuraEDL.Fastboot.Common.AdbHelper.RebootFastbootAsync();
             if (result.Success)
                 AppendLog("ADB: 重启到 Fastbootd 成功", Color.Green);
             else
@@ -4353,7 +4665,7 @@ namespace LoveAlways
             }
             
             // 备选 ADB
-            var result = await LoveAlways.Fastboot.Common.AdbHelper.RebootRecoveryAsync();
+            var result = await SakuraEDL.Fastboot.Common.AdbHelper.RebootRecoveryAsync();
             if (result.Success)
                 AppendLog("ADB: 重启到 Recovery 成功", Color.Green);
             else
@@ -4387,7 +4699,7 @@ namespace LoveAlways
         {
             AppendLog("执行: 联想/安卓踢EDL (adb reboot edl)...", Color.Cyan);
             
-            var result = await LoveAlways.Fastboot.Common.AdbHelper.RebootEdlAsync();
+            var result = await SakuraEDL.Fastboot.Common.AdbHelper.RebootEdlAsync();
             if (result.Success)
                 AppendLog("ADB: 踢EDL成功，设备将进入 EDL 模式", Color.Green);
             else

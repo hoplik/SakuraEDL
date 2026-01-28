@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - 展讯资源加载器
+// SakuraEDL - 展讯资源加载器
 // 优先从资源包 (sprd_resources.pak) 加载，后备使用嵌入资源
 // ============================================================================
 
@@ -7,7 +7,7 @@ using System;
 using System.IO;
 using System.Reflection;
 
-namespace LoveAlways.Spreadtrum.Resources
+namespace SakuraEDL.Spreadtrum.Resources
 {
     /// <summary>
     /// 展讯模块资源加载器
@@ -24,7 +24,7 @@ namespace LoveAlways.Spreadtrum.Resources
         private const string PAK_FILENAME = "sprd_resources.pak";
         
         // 嵌入资源名称前缀
-        private const string EMBEDDED_PREFIX = "LoveAlways.Spreadtrum.Resources.";
+        private const string EMBEDDED_PREFIX = "SakuraEDL.Spreadtrum.Resources.";
         
         /// <summary>
         /// Exploit payload 文件名
@@ -325,7 +325,7 @@ namespace LoveAlways.Spreadtrum.Resources
                 return null;
 
             string fileName = GetExploitFileName(exploitName);
-            string tempPath = Path.Combine(Path.GetTempPath(), "LoveAlways_Sprd", fileName);
+            string tempPath = Path.Combine(Path.GetTempPath(), "SakuraEDL_Sprd", fileName);
 
             try
             {
@@ -349,7 +349,7 @@ namespace LoveAlways.Spreadtrum.Resources
         {
             try
             {
-                string tempDir = Path.Combine(Path.GetTempPath(), "LoveAlways_Sprd");
+                string tempDir = Path.Combine(Path.GetTempPath(), "SakuraEDL_Sprd");
                 if (Directory.Exists(tempDir))
                 {
                     Directory.Delete(tempDir, true);

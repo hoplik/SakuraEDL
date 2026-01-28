@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - MediaTek BROM 协议客户端
+// SakuraEDL - MediaTek BROM 协议客户端
 // MediaTek Boot ROM Protocol Client
 // ============================================================================
 // 参考: mtkclient 项目 mtk_preloader.py
@@ -10,11 +10,11 @@ using System.IO;
 using System.IO.Ports;
 using System.Threading;
 using System.Threading.Tasks;
-using LoveAlways.MediaTek.Common;
-using LoveAlways.MediaTek.Models;
-using LoveAlways.MediaTek.DA;
+using SakuraEDL.MediaTek.Common;
+using SakuraEDL.MediaTek.Models;
+using SakuraEDL.MediaTek.DA;
 
-namespace LoveAlways.MediaTek.Protocol
+namespace SakuraEDL.MediaTek.Protocol
 {
     /// <summary>
     /// BROM 协议客户端 - 负责握手、设备信息读取和 DA 上传

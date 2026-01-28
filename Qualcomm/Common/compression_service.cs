@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - 统一压缩服务
+// SakuraEDL - 统一压缩服务
 // 支持 7z、ZIP、LZMA、LZ4 等多种格式
 // ============================================================================
 
@@ -9,7 +9,7 @@ using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 
-namespace LoveAlways.Qualcomm.Common
+namespace SakuraEDL.Qualcomm.Common
 {
     /// <summary>
     /// 统一压缩解压服务

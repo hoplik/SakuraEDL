@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - 展讯 FDL 刷机客户端
+// SakuraEDL - 展讯 FDL 刷机客户端
 // Spreadtrum/Unisoc FDL (Flash Download) Client - 纯 C# 实现
 // ============================================================================
 
@@ -12,7 +12,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace LoveAlways.Spreadtrum.Protocol
+namespace SakuraEDL.Spreadtrum.Protocol
 {
     /// <summary>
     /// FDL 刷机客户端 (纯 C# 实现，不依赖外部工具)

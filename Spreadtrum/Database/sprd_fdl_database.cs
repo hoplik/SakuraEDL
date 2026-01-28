@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - 展讯 FDL 数据库
+// SakuraEDL - 展讯 FDL 数据库
 // 包含芯片信息、FDL 地址、设备 FDL 映射
 // ============================================================================
 
@@ -7,9 +7,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using LoveAlways.Spreadtrum.Resources;
+using SakuraEDL.Spreadtrum.Resources;
 
-namespace LoveAlways.Spreadtrum.Database
+namespace SakuraEDL.Spreadtrum.Database
 {
     /// <summary>
     /// 芯片信息

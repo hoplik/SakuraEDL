@@ -1,4 +1,4 @@
-namespace LoveAlways
+namespace SakuraEDL
 {
     partial class MultiInstanceForm
     {

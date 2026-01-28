@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - 奇美拉签名数据库
+// SakuraEDL - 奇美拉签名数据库
 // Loader/Digest/Signature 全部从资源包 (firehose.pak) 加载
 // 仅支持 CPAK v2 格式 (Loader + Digest + Signature)
 // ============================================================================
@@ -10,7 +10,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Text;
 
-namespace LoveAlways.Qualcomm.Database
+namespace SakuraEDL.Qualcomm.Database
 {
     /// <summary>
     /// 奇美拉签名数据库
@@ -152,7 +152,7 @@ namespace LoveAlways.Qualcomm.Database
             try
             {
                 if (_tempDir == null)
-                    _tempDir = Path.Combine(Path.GetTempPath(), "LoveAlways_VipAuth");
+                    _tempDir = Path.Combine(Path.GetTempPath(), "SakuraEDL_VipAuth");
                 
                 if (!Directory.Exists(_tempDir))
                     Directory.CreateDirectory(_tempDir);

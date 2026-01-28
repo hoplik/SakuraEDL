@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - 看门狗机制
+// SakuraEDL - 看门狗机制
 // Watchdog Mechanism for Protocol Communication
 // ============================================================================
 
@@ -8,7 +8,7 @@ using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace LoveAlways.Common
+namespace SakuraEDL.Common
 {
     /// <summary>
     /// 看门狗状态

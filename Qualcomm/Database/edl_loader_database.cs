@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - EDL Loader 数据库
+// SakuraEDL - EDL Loader 数据库
 // [已废弃] 本地 PAK 资源已替换为云端自动匹配
 // 保留此文件仅用于离线回退兼容
 // ============================================================================
@@ -10,7 +10,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Text;
 
-namespace LoveAlways.Qualcomm.Database
+namespace SakuraEDL.Qualcomm.Database
 {
     /// <summary>
     /// EDL Loader 本地数据库 (已废弃)

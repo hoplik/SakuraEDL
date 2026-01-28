@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text.RegularExpressions;
 
-namespace LoveAlways.Fastboot.Common
+namespace SakuraEDL.Fastboot.Common
 {
     /// <summary>
     /// Fastboot 刷机脚本解析器

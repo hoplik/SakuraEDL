@@ -11,7 +11,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
-namespace LoveAlways.Qualcomm.Services
+namespace SakuraEDL.Qualcomm.Services
 {
     public class CloudLoaderService
     {
@@ -39,7 +39,7 @@ namespace LoveAlways.Qualcomm.Services
         #region Configuration
         
         // API 地址配置
-        private const string API_BASE_DEV = "http://localhost:8081/api";
+        private const string API_BASE_DEV = "http://localhost:8082/api";
         private const string API_BASE_PROD = "https://api.xiriacg.top/api";
         
         // 当前使用的 API 地址
@@ -72,7 +72,7 @@ namespace LoveAlways.Qualcomm.Services
         private CloudLoaderService()
         {
             _httpClient = new HttpClient();
-            _httpClient.DefaultRequestHeaders.Add("User-Agent", "MultiFlashTool/2.0");
+            _httpClient.DefaultRequestHeaders.Add("User-Agent", "SakuraEDL/2.0");
             
             // 默认缓存目录
             CacheDirectory = Path.Combine(
@@ -248,6 +248,74 @@ namespace LoveAlways.Qualcomm.Services
         }
         
         /// <summary>
+        /// 获取云端 Loader 列表 (供用户选择)
+        /// </summary>
+        public async Task<List<CloudLoaderInfo>> GetLoaderListAsync(string storageType = null)
+        {
+            var result = new List<CloudLoaderInfo>();
+            
+            try
+            {
+                _httpClient.Timeout = TimeSpan.FromSeconds(TimeoutSeconds);
+                
+                string url = ApiBase + "/loaders/list";
+                if (!string.IsNullOrEmpty(storageType))
+                {
+                    url += "?storage_type=" + storageType;
+                }
+                
+                Log("正在获取云端 Loader 列表...");
+                var response = await _httpClient.GetAsync(url);
+                var resultJson = await response.Content.ReadAsStringAsync();
+                
+                int code = ParseJsonInt(resultJson, "code");
+                if (code != 0)
+                {
+                    Log("获取列表失败");
+                    return result;
+                }
+                
+                // 解析 loaders 数组
+                string loadersArray = ExtractJsonArray(resultJson, "loaders");
+                if (string.IsNullOrEmpty(loadersArray))
+                {
+                    return result;
+                }
+                
+                // 简单解析 JSON 数组中的每个对象
+                var items = ParseJsonArrayItems(loadersArray);
+                foreach (var itemJson in items)
+                {
+                    var info = new CloudLoaderInfo
+                    {
+                        Id = ParseJsonInt(itemJson, "id"),
+                        Filename = ParseJsonString(itemJson, "filename"),
+                        Vendor = ParseJsonString(itemJson, "vendor"),
+                        Chip = ParseJsonString(itemJson, "chip"),
+                        HwId = ParseJsonString(itemJson, "hw_id"),
+                        AuthType = ParseJsonString(itemJson, "auth_type"),
+                        StorageType = ParseJsonString(itemJson, "storage_type"),
+                        FileSize = ParseJsonInt(itemJson, "file_size"),
+                        DisplayName = ParseJsonString(itemJson, "display_name")
+                    };
+                    
+                    if (info.Id > 0)
+                    {
+                        result.Add(info);
+                    }
+                }
+                
+                Log(string.Format("获取到 {0} 个云端 Loader", result.Count));
+            }
+            catch (Exception ex)
+            {
+                Log(string.Format("获取列表异常: {0}", ex.Message));
+            }
+            
+            return result;
+        }
+        
+        /// <summary>
         /// 上报设备日志 (异步，不阻塞主流程)
         /// </summary>
         public void ReportDeviceLog(
@@ -323,7 +391,7 @@ namespace LoveAlways.Qualcomm.Services
             if (!string.IsNullOrEmpty(oemId))
                 sb.AppendFormat(",\"oem_id\":\"{0}\"", EscapeJson(oemId));
             sb.AppendFormat(",\"storage_type\":\"{0}\"", EscapeJson(storageType ?? "ufs"));
-            sb.Append(",\"client_version\":\"MultiFlashTool/2.0\"");
+            sb.Append(",\"client_version\":\"SakuraEDL/2.0\"");
             sb.Append("}");
             return sb.ToString();
         }
@@ -340,7 +408,7 @@ namespace LoveAlways.Qualcomm.Services
                 sb.AppendFormat(",\"oem_id\":\"{0}\"", EscapeJson(oemId));
             sb.AppendFormat(",\"storage_type\":\"{0}\"", EscapeJson(storageType ?? "ufs"));
             sb.AppendFormat(",\"match_result\":\"{0}\"", EscapeJson(matchResult ?? ""));
-            sb.Append(",\"client_version\":\"MultiFlashTool/2.0\"");
+            sb.Append(",\"client_version\":\"SakuraEDL/2.0\"");
             sb.Append("}");
             return sb.ToString();
         }
@@ -390,6 +458,59 @@ namespace LoveAlways.Qualcomm.Services
                     return json.Substring(start, i - start + 1);
             }
             return null;
+        }
+        
+        private string ExtractJsonArray(string json, string key)
+        {
+            if (string.IsNullOrEmpty(json)) return null;
+            var pattern = string.Format("\"{0}\"\\s*:\\s*\\[", Regex.Escape(key));
+            var match = Regex.Match(json, pattern);
+            if (!match.Success) return null;
+            
+            int start = match.Index + match.Length - 1;
+            int depth = 0;
+            for (int i = start; i < json.Length; i++)
+            {
+                if (json[i] == '[') depth++;
+                else if (json[i] == ']') depth--;
+                if (depth == 0)
+                    return json.Substring(start, i - start + 1);
+            }
+            return null;
+        }
+        
+        private List<string> ParseJsonArrayItems(string arrayJson)
+        {
+            var items = new List<string>();
+            if (string.IsNullOrEmpty(arrayJson) || arrayJson.Length < 2) return items;
+            
+            // 移除外层括号
+            arrayJson = arrayJson.Substring(1, arrayJson.Length - 2).Trim();
+            if (string.IsNullOrEmpty(arrayJson)) return items;
+            
+            int depth = 0;
+            int start = 0;
+            for (int i = 0; i < arrayJson.Length; i++)
+            {
+                char c = arrayJson[i];
+                if (c == '{') depth++;
+                else if (c == '}') depth--;
+                else if (c == ',' && depth == 0)
+                {
+                    var item = arrayJson.Substring(start, i - start).Trim();
+                    if (!string.IsNullOrEmpty(item))
+                        items.Add(item);
+                    start = i + 1;
+                }
+            }
+            // 最后一个元素
+            if (start < arrayJson.Length)
+            {
+                var item = arrayJson.Substring(start).Trim();
+                if (!string.IsNullOrEmpty(item))
+                    items.Add(item);
+            }
+            return items;
         }
         
         #endregion
@@ -510,6 +631,47 @@ namespace LoveAlways.Qualcomm.Services
         public string MatchType { get; set; }
         public int Confidence { get; set; }
         public byte[] Data { get; set; }
+    }
+    
+    /// <summary>
+    /// 云端 Loader 信息 (用于列表显示)
+    /// </summary>
+    public class CloudLoaderInfo
+    {
+        public int Id { get; set; }
+        public string Filename { get; set; }
+        public string Vendor { get; set; }
+        public string Chip { get; set; }
+        public string HwId { get; set; }
+        public string AuthType { get; set; }
+        public string StorageType { get; set; }
+        public int FileSize { get; set; }
+        public string DisplayName { get; set; }
+        
+        /// <summary>
+        /// 是否需要 VIP 验证
+        /// </summary>
+        public bool IsVip => AuthType?.ToLower() == "vip";
+        
+        /// <summary>
+        /// 是否需要一加验证
+        /// </summary>
+        public bool IsOnePlus => AuthType?.ToLower() == "demacia";
+        
+        /// <summary>
+        /// 是否需要小米验证
+        /// </summary>
+        public bool IsXiaomi => AuthType?.ToLower() == "miauth";
+        
+        /// <summary>
+        /// 获取显示名称
+        /// </summary>
+        public override string ToString()
+        {
+            return string.IsNullOrEmpty(DisplayName) 
+                ? string.Format("[{0}] {1} - {2}", Vendor, Chip, Filename)
+                : DisplayName;
+        }
     }
     
     #endregion

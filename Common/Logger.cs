@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - 全局日志管理器
+// SakuraEDL - 全局日志管理器
 // Global Logger - 统一日志输出和管理
 // ============================================================================
 
@@ -8,7 +8,7 @@ using System.Drawing;
 using System.IO;
 using System.Text;
 
-namespace LoveAlways.Common
+namespace SakuraEDL.Common
 {
     /// <summary>
     /// 日志级别

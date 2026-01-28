@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - MediaTek DA Extensions 支持框架
+// SakuraEDL - MediaTek DA Extensions 支持框架
 // MediaTek Download Agent Extensions Support Framework
 // ============================================================================
 // 参考: Penumbra 文档 https://shomy.is-a.dev/penumbra/Mediatek/Common/DA/DA-Extensions
@@ -7,9 +7,9 @@
 // ============================================================================
 
 using System;
-using LoveAlways.MediaTek.Models;
+using SakuraEDL.MediaTek.Models;
 
-namespace LoveAlways.MediaTek.DA
+namespace SakuraEDL.MediaTek.DA
 {
     /// <summary>
     /// DA Extensions 配置

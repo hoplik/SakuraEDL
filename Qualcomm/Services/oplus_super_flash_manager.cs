@@ -5,10 +5,10 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Text.RegularExpressions;
-using LoveAlways.Qualcomm.Common;
-using LoveAlways.Qualcomm.Models;
+using SakuraEDL.Qualcomm.Common;
+using SakuraEDL.Qualcomm.Models;
 
-namespace LoveAlways.Qualcomm.Services
+namespace SakuraEDL.Qualcomm.Services
 {
     /// <summary>
     /// OPLUS (OPPO/Realme/OnePlus) Super 分区拆解写入管理器

@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - MediaTek DA 解析器
+// SakuraEDL - MediaTek DA 解析器
 // MediaTek Download Agent Parser
 // ============================================================================
 // 参考: Penumbra 项目 https://github.com/shomykohai/penumbra/blob/main/src/da/da.rs
@@ -10,7 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace LoveAlways.MediaTek.Common
+namespace SakuraEDL.MediaTek.Common
 {
     /// <summary>
     /// DA Region (DA段)

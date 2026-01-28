@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
-using LoveAlways.Fastboot.Protocol;
+using SakuraEDL.Fastboot.Protocol;
 
-namespace LoveAlways.Fastboot.Transport
+namespace SakuraEDL.Fastboot.Transport
 {
     /// <summary>
     /// USB 传输层实现

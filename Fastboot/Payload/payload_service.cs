@@ -5,7 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace LoveAlways.Fastboot.Payload
+namespace SakuraEDL.Fastboot.Payload
 {
     /// <summary>
     /// Payload 服务
