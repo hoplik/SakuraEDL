@@ -14,7 +14,7 @@
 [![GitHub Forks](https://img.shields.io/github/forks/xiriovo/SakuraEDL)](https://github.com/xiriovo/SakuraEDL/network/members)
 [![GitHub Release](https://img.shields.io/github/v/release/xiriovo/SakuraEDL)](https://github.com/xiriovo/SakuraEDL/releases)
 
-[中文文档](README.md) | [English](README_EN.md) | [快速参考](docs/QUICK_REFERENCE.md)
+[中文](README.md) | [English](README_EN.md) | [日本語](README_JA.md) | [한국어](README_KO.md) | [Русский](README_RU.md) | [Español](README_ES.md)
 
 ---
 
