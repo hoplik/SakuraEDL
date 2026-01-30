@@ -1,5 +1,14 @@
 // ============================================================================
-// SakuraEDL - 高通 UI 控制器
+// SakuraEDL - Qualcomm UI Controller | 高通 UI 控制器
+// ============================================================================
+// [ZH] 高通 UI 控制器 - 管理高通刷机界面交互
+// [EN] Qualcomm UI Controller - Manage Qualcomm flashing interface interactions
+// [JA] Qualcomm UIコントローラー - Qualcommフラッシュインターフェース管理
+// [KO] Qualcomm UI 컨트롤러 - Qualcomm 플래싱 인터페이스 관리
+// [RU] Контроллер UI Qualcomm - Управление интерфейсом прошивки Qualcomm
+// [ES] Controlador UI Qualcomm - Gestión de interfaz de flasheo Qualcomm
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 
 using System;

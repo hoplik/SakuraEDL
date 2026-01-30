@@ -1,9 +1,15 @@
 // ============================================================================
-// SakuraEDL - MediaTek DA 解析器
-// MediaTek Download Agent Parser
+// SakuraEDL - MediaTek DA Parser | 联发科 DA 解析器
 // ============================================================================
-// 参考: Penumbra 项目 https://github.com/shomykohai/penumbra/blob/main/src/da/da.rs
-// 支持多SoC DA文件解析，完整的DA结构提取
+// [ZH] DA 解析器 - 解析 Download Agent 文件结构
+// [EN] DA Parser - Parse Download Agent file structure
+// [JA] DA解析器 - Download Agentファイル構造を解析
+// [KO] DA 파서 - Download Agent 파일 구조 분석
+// [RU] Парсер DA - Разбор структуры файла Download Agent
+// [ES] Analizador DA - Analizar estructura de archivo Download Agent
+// ============================================================================
+// Reference: Penumbra project (da.rs)
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 
 using System;

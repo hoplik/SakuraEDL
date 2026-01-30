@@ -1,6 +1,15 @@
 // ============================================================================
-// SakuraEDL - MediaTek XFlash 协议命令定义
-// 参考: mtkclient/Library/DA/xflash/xflash_param.py
+// SakuraEDL - MediaTek XFlash Commands | 联发科 XFlash 命令
+// ============================================================================
+// [ZH] XFlash 命令定义 - MediaTek XFlash 协议命令常量
+// [EN] XFlash Commands - MediaTek XFlash protocol command constants
+// [JA] XFlashコマンド - MediaTek XFlashプロトコルコマンド定数
+// [KO] XFlash 명령어 - MediaTek XFlash 프로토콜 명령 상수
+// [RU] Команды XFlash - Константы команд протокола MediaTek XFlash
+// [ES] Comandos XFlash - Constantes de comandos de protocolo XFlash
+// ============================================================================
+// Reference: mtkclient (xflash_param.py)
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 
 using System;

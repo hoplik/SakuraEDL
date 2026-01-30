@@ -1,6 +1,15 @@
 // ============================================================================
-// SakuraEDL - MediaTek META 模式通信客户端
-// 基于 MTK META UTILITY 逆向分析
+// SakuraEDL - MediaTek META Client | 联发科 META 客户端
+// ============================================================================
+// [ZH] META 模式客户端 - 工程测试模式通信和设备信息读取
+// [EN] META Mode Client - Engineering test mode communication and device info
+// [JA] METAモードクライアント - エンジニアリングテストモード通信
+// [KO] META 모드 클라이언트 - 엔지니어링 테스트 모드 통신
+// [RU] Клиент режима META - Связь в режиме тестирования
+// [ES] Cliente de modo META - Comunicación de modo de prueba de ingeniería
+// ============================================================================
+// Based on MTK META UTILITY reverse engineering
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 // META 模式功能:
 // - 工程测试模式通信

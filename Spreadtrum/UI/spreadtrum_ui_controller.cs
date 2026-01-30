@@ -1,6 +1,14 @@
 // ============================================================================
-// SakuraEDL - 展讯 UI 控制器
-// Spreadtrum/Unisoc UI Controller
+// SakuraEDL - Spreadtrum UI Controller | 展讯 UI 控制器
+// ============================================================================
+// [ZH] 展讯 UI 控制器 - 管理展讯刷机界面交互
+// [EN] Spreadtrum UI Controller - Manage Spreadtrum flashing interface
+// [JA] Spreadtrum UIコントローラー - Spreadtrumフラッシュインターフェース管理
+// [KO] Spreadtrum UI 컨트롤러 - Spreadtrum 플래싱 인터페이스 관리
+// [RU] Контроллер UI Spreadtrum - Управление интерфейсом прошивки
+// [ES] Controlador UI Spreadtrum - Gestión de interfaz de flasheo
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 
 using System;

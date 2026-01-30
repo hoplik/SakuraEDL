@@ -1,9 +1,15 @@
 // ============================================================================
-// SakuraEDL - MediaTek BROM 命令定义
-// MediaTek Boot ROM (BROM) Protocol Commands
+// SakuraEDL - MediaTek BROM Commands | 联发科 BROM 命令
 // ============================================================================
-// 参考: mtkclient 项目 mtk_preloader.py
-// 来源: IDA Pro 逆向分析 SP_Flash_Tool V6 flash.dll
+// [ZH] BROM 命令定义 - MediaTek Boot ROM 协议命令常量
+// [EN] BROM Commands - MediaTek Boot ROM protocol command constants
+// [JA] BROMコマンド - MediaTek Boot ROMプロトコルコマンド定数
+// [KO] BROM 명령어 - MediaTek Boot ROM 프로토콜 명령 상수
+// [RU] Команды BROM - Константы команд протокола MediaTek Boot ROM
+// [ES] Comandos BROM - Constantes de comandos de protocolo Boot ROM
+// ============================================================================
+// Reference: mtkclient (mtk_preloader.py), SP_Flash_Tool V6 flash.dll
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 
 using System;

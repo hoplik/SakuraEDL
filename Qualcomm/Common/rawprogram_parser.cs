@@ -1,6 +1,15 @@
 // ============================================================================
-// SakuraEDL - Rawprogram XML 解析器 (优化版)
-// 支持: rawprogram*.xml, patch*.xml, erase, zeroout, 负扇区, 槽位感知
+// SakuraEDL - Rawprogram Parser | Rawprogram 解析器
+// ============================================================================
+// [ZH] Rawprogram XML 解析器 - 解析高通刷机配置文件
+// [EN] Rawprogram XML Parser - Parse Qualcomm flashing configuration files
+// [JA] Rawprogram XML解析器 - Qualcommフラッシュ設定ファイル解析
+// [KO] Rawprogram XML 파서 - Qualcomm 플래싱 구성 파일 분석
+// [RU] Парсер Rawprogram XML - Разбор конфигурации прошивки Qualcomm
+// [ES] Analizador Rawprogram XML - Análisis de configuración de flasheo
+// ============================================================================
+// Supports: rawprogram*.xml, patch*.xml, erase, zeroout, slot-aware
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 
 using System;

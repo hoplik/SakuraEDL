@@ -1,8 +1,15 @@
 // ============================================================================
-// SakuraEDL - MediaTek DA 加载器
-// MediaTek Download Agent Loader
+// SakuraEDL - MediaTek DA Loader | 联发科 DA 加载器
 // ============================================================================
-// 参考: mtkclient 项目 mtk_daloader.py
+// [ZH] DA 加载器 - 加载和传输 Download Agent 到设备
+// [EN] DA Loader - Load and transfer Download Agent to device
+// [JA] DAローダー - Download Agentをデバイスにロードして転送
+// [KO] DA 로더 - Download Agent를 기기로 로드 및 전송
+// [RU] Загрузчик DA - Загрузка и передача Download Agent на устройство
+// [ES] Cargador DA - Cargar y transferir Download Agent al dispositivo
+// ============================================================================
+// Reference: mtkclient project (mtk_daloader.py)
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 
 using System;

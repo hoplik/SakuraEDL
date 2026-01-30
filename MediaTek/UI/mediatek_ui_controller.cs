@@ -1,6 +1,14 @@
 // ============================================================================
-// SakuraEDL - MediaTek UI 控制器
-// MediaTek UI Controller
+// SakuraEDL - MediaTek UI Controller | 联发科 UI 控制器
+// ============================================================================
+// [ZH] MTK UI 控制器 - 管理联发科刷机界面交互
+// [EN] MTK UI Controller - Manage MediaTek flashing interface interactions
+// [JA] MTK UIコントローラー - MediaTekフラッシュインターフェース管理
+// [KO] MTK UI 컨트롤러 - MediaTek 플래싱 인터페이스 관리
+// [RU] Контроллер UI MTK - Управление интерфейсом прошивки MediaTek
+// [ES] Controlador UI MTK - Gestión de interfaz de flasheo MediaTek
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 
 using System;

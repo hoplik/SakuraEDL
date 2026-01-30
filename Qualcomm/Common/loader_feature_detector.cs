@@ -1,5 +1,15 @@
-// Qualcomm Firehose Loader 功能检测器
-// 检测 Loader 支持的功能特性
+// ============================================================================
+// SakuraEDL - Loader Feature Detector | Loader 功能检测器
+// ============================================================================
+// [ZH] Loader 功能检测 - 检测 Firehose Loader 支持的特性
+// [EN] Loader Feature Detector - Detect Firehose Loader supported features
+// [JA] Loader機能検出 - Firehose Loaderサポート機能の検出
+// [KO] Loader 기능 탐지 - Firehose Loader 지원 기능 감지
+// [RU] Детектор функций Loader - Обнаружение функций Firehose Loader
+// [ES] Detector de funciones Loader - Detectar funciones de Firehose Loader
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
+// ============================================================================
 
 using System;
 using System.Collections.Generic;

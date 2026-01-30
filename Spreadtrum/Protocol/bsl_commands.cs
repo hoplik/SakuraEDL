@@ -1,6 +1,14 @@
 // ============================================================================
-// SakuraEDL - 展讯 BSL/FDL 命令定义
-// Spreadtrum/Unisoc BSL (Boot Second Loader) Commands
+// SakuraEDL - Spreadtrum BSL Commands | 展讯 BSL 命令
+// ============================================================================
+// [ZH] BSL/FDL 命令定义 - 展讯下载协议命令常量
+// [EN] BSL/FDL Commands - Spreadtrum download protocol command constants
+// [JA] BSL/FDLコマンド - Spreadtrumダウンロードプロトコルコマンド
+// [KO] BSL/FDL 명령어 - Spreadtrum 다운로드 프로토콜 명령 상수
+// [RU] Команды BSL/FDL - Константы команд протокола загрузки Spreadtrum
+// [ES] Comandos BSL/FDL - Constantes de comandos de protocolo Spreadtrum
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 
 using System;

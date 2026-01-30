@@ -1,5 +1,15 @@
-// Spreadtrum ISP eMMC 直接访问
-// 通过 Windows 内核 API 直接读写 eMMC 存储
+// ============================================================================
+// SakuraEDL - ISP eMMC Device | ISP eMMC 设备
+// ============================================================================
+// [ZH] ISP eMMC 直接访问 - 通过 Windows API 直接读写存储
+// [EN] ISP eMMC Direct Access - Direct storage R/W via Windows kernel API
+// [JA] ISP eMMC直接アクセス - Windows APIによる直接ストレージ読み書き
+// [KO] ISP eMMC 직접 액세스 - Windows API를 통한 직접 스토리지 읽기/쓰기
+// [RU] Прямой доступ ISP eMMC - Прямое чтение/запись через Windows API
+// [ES] Acceso directo ISP eMMC - Lectura/escritura directa via Windows API
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
+// ============================================================================
 
 using System;
 using System.IO;

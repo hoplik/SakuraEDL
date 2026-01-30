@@ -1,9 +1,15 @@
 // ============================================================================
-// SakuraEDL - MediaTek 云端签名服务
-// MediaTek Cloud Signing Service
+// SakuraEDL - Cloud Signing Service | 云端签名服务
 // ============================================================================
-// 参考: AuthFlashTool 流程分析
-// 流程: 获取设备信息 → 云端获取签名 → 写入签名 → 验证状态
+// [ZH] 云端签名服务 - MTK 设备云端认证签名流程
+// [EN] Cloud Signing Service - MTK device cloud authentication signing
+// [JA] クラウド署名サービス - MTKデバイスクラウド認証署名
+// [KO] 클라우드 서명 서비스 - MTK 기기 클라우드 인증 서명
+// [RU] Сервис облачной подписи - Облачная аутентификация устройств MTK
+// [ES] Servicio de firma en la nube - Firma de autenticación MTK en la nube
+// ============================================================================
+// Flow: Get device info → Cloud signing → Write signature → Verify status
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 
 using System;

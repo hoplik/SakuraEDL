@@ -1,5 +1,15 @@
-// Motorola 固件包支持
-// 解析 SINGLE_N_LONELY 格式固件包
+// ============================================================================
+// SakuraEDL - Motorola Support | Motorola 支持
+// ============================================================================
+// [ZH] Motorola 固件支持 - 解析 SINGLE_N_LONELY 格式固件包
+// [EN] Motorola Firmware Support - Parse SINGLE_N_LONELY format packages
+// [JA] Motorolaファームウェアサポート - SINGLE_N_LONELY形式解析
+// [KO] Motorola 펌웨어 지원 - SINGLE_N_LONELY 형식 패키지 분석
+// [RU] Поддержка Motorola - Разбор пакетов формата SINGLE_N_LONELY
+// [ES] Soporte Motorola - Análisis de paquetes formato SINGLE_N_LONELY
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
+// ============================================================================
 
 using System;
 using System.Collections.Generic;

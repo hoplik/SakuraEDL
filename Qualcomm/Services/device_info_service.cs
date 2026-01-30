@@ -1,6 +1,15 @@
 // ============================================================================
-// SakuraEDL - 设备信息服务
-// 支持从 Sahara、Firehose、Super 分区、build.prop 等多种来源获取设备信息
+// SakuraEDL - Device Info Service | 设备信息服务
+// ============================================================================
+// [ZH] 设备信息服务 - 从多种来源获取设备详细信息
+// [EN] Device Info Service - Get device details from multiple sources
+// [JA] デバイス情報サービス - 複数のソースからデバイス情報を取得
+// [KO] 기기 정보 서비스 - 여러 소스에서 기기 정보 가져오기
+// [RU] Сервис информации об устройстве - Получение данных из разных источников
+// [ES] Servicio de info del dispositivo - Obtener info de múltiples fuentes
+// ============================================================================
+// Sources: Sahara, Firehose, Super partition, build.prop
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 
 using System;

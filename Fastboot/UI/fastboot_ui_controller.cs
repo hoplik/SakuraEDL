@@ -1,3 +1,16 @@
+// ============================================================================
+// SakuraEDL - Fastboot UI Controller | Fastboot UI 控制器
+// ============================================================================
+// [ZH] Fastboot UI 控制器 - 管理 Fastboot 刷机界面交互
+// [EN] Fastboot UI Controller - Manage Fastboot flashing interface
+// [JA] Fastboot UIコントローラー - Fastbootフラッシュインターフェース管理
+// [KO] Fastboot UI 컨트롤러 - Fastboot 플래싱 인터페이스 관리
+// [RU] Контроллер UI Fastboot - Управление интерфейсом прошивки Fastboot
+// [ES] Controlador UI Fastboot - Gestión de interfaz de flasheo Fastboot
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
+// ============================================================================
+
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
