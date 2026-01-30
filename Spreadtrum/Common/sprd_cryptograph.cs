@@ -1,6 +1,14 @@
 // ============================================================================
-// SakuraEDL - 展讯固件加解密
-// Spreadtrum/Unisoc Firmware Cryptograph (AES)
+// SakuraEDL - Spreadtrum Crypto | 展讯加解密
+// ============================================================================
+// [ZH] 展讯固件加解密 - AES 加密/解密固件文件
+// [EN] Spreadtrum Firmware Crypto - AES encrypt/decrypt firmware files
+// [JA] Spreadtrumファームウェア暗号化 - AES暗号化/復号
+// [KO] Spreadtrum 펌웨어 암호화 - AES 암호화/복호화
+// [RU] Криптография Spreadtrum - AES шифрование/дешифрование прошивки
+// [ES] Criptografía Spreadtrum - Cifrado/descifrado AES de firmware
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 
 using System;

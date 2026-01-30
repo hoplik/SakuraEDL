@@ -1,3 +1,16 @@
+// ============================================================================
+// SakuraEDL - Sparse Image | Sparse 镜像处理
+// ============================================================================
+// [ZH] Sparse 镜像处理 - 解析和转换 Android Sparse 格式
+// [EN] Sparse Image Handler - Parse and convert Android Sparse format
+// [JA] Sparseイメージ処理 - Android Sparse形式の解析と変換
+// [KO] Sparse 이미지 처리 - Android Sparse 형식 분석 및 변환
+// [RU] Обработка Sparse образов - Разбор и конвертация Android Sparse
+// [ES] Manejo de imagen Sparse - Análisis y conversión de formato Sparse
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
+// ============================================================================
+
 using System;
 using System.Collections.Generic;
 using System.IO;

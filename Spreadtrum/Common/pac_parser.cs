@@ -1,6 +1,14 @@
 // ============================================================================
-// SakuraEDL - 展讯 PAC 固件包解析器
-// Spreadtrum/Unisoc PAC Firmware Package Parser
+// SakuraEDL - PAC Parser | PAC 固件解析器
+// ============================================================================
+// [ZH] PAC 固件解析器 - 解析展讯/紫光展锐固件包
+// [EN] PAC Firmware Parser - Parse Spreadtrum/Unisoc firmware packages
+// [JA] PACファームウェア解析 - Spreadtrum/Unisocパッケージ解析
+// [KO] PAC 펌웨어 파서 - Spreadtrum/Unisoc 펌웨어 패키지 분석
+// [RU] Парсер прошивки PAC - Разбор пакетов Spreadtrum/Unisoc
+// [ES] Analizador de firmware PAC - Análisis de paquetes Spreadtrum/Unisoc
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 
 using System;

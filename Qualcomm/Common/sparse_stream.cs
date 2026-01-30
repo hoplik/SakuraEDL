@@ -1,9 +1,14 @@
 // ============================================================================
-// SakuraEDL - Android Sparse 镜像透明读取流
-// SparseStream - 将 Sparse 格式镜像转换为 Raw 流
+// SakuraEDL - Sparse Stream | Sparse 镜像流
 // ============================================================================
-// 模块: Qualcomm.Common
-// 功能: 透明读取 Android Sparse 格式镜像，支持随机访问
+// [ZH] Sparse 镜像流 - 透明读取 Android Sparse 格式
+// [EN] Sparse Image Stream - Transparent reading of Android Sparse format
+// [JA] Sparseイメージストリーム - Android Sparse形式の透過的読み取り
+// [KO] Sparse 이미지 스트림 - Android Sparse 형식 투명 읽기
+// [RU] Поток Sparse - Прозрачное чтение Android Sparse формата
+// [ES] Flujo de imagen Sparse - Lectura transparente de formato Android Sparse
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 //
 // Sparse 格式说明:

@@ -1,9 +1,15 @@
 // ============================================================================
-// SakuraEDL - MediaTek SLA 密钥数据库
-// MediaTek SLA Key Database
+// SakuraEDL - MediaTek SLA Keys | 联发科 SLA 密钥
 // ============================================================================
-// 参考: mtkclient 项目 sla_keys.py
-// 注意: 仅包含已验证的真实密钥
+// [ZH] MTK SLA 密钥数据库 - 安全级别认证密钥
+// [EN] MTK SLA Key Database - Security Level Authentication keys
+// [JA] MTK SLAキーデータベース - セキュリティレベル認証キー
+// [KO] MTK SLA 키 데이터베이스 - 보안 레벨 인증 키
+// [RU] База ключей MTK SLA - Ключи аутентификации уровня безопасности
+// [ES] Base de datos de claves MTK SLA - Claves de autenticación
+// ============================================================================
+// Reference: mtkclient project (sla_keys.py)
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 
 using System.Collections.Generic;

@@ -1,9 +1,14 @@
 // ============================================================================
-// SakuraEDL - 高通芯片数据库
-// Qualcomm Chipset Database - 设备识别信息库
+// SakuraEDL - Qualcomm Chip Database | 高通芯片数据库
 // ============================================================================
-// 模块: Qualcomm.Database
-// 功能: 包含 MSM ID、芯片名称、厂商信息和硬件规格
+// [ZH] 高通芯片数据库 - MSM ID、芯片名称、厂商信息
+// [EN] Qualcomm Chip Database - MSM ID, chip names, vendor info
+// [JA] Qualcommチップデータベース - MSM ID、チップ名、ベンダー情報
+// [KO] Qualcomm 칩 데이터베이스 - MSM ID, 칩 이름, 벤더 정보
+// [RU] База данных чипов Qualcomm - MSM ID, названия чипов, информация
+// [ES] Base de datos de chips Qualcomm - MSM ID, nombres, información
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 
 using System.Collections.Generic;

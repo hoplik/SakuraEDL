@@ -1,6 +1,15 @@
 // ============================================================================
-// SakuraEDL - 展讯 Diag 协议客户端
-// Spreadtrum/Unisoc Diag Protocol Client - 纯 C# 实现
+// SakuraEDL - Spreadtrum Diag Client | 展讯 Diag 客户端
+// ============================================================================
+// [ZH] 展讯 Diag 客户端 - IMEI/NV 读写诊断协议
+// [EN] Spreadtrum Diag Client - IMEI/NV read/write diagnostic protocol
+// [JA] Spreadtrum Diagクライアント - IMEI/NV読み書き診断プロトコル
+// [KO] Spreadtrum Diag 클라이언트 - IMEI/NV 읽기/쓰기 진단 프로토콜
+// [RU] Клиент Diag Spreadtrum - Протокол диагностики IMEI/NV
+// [ES] Cliente Diag Spreadtrum - Protocolo de diagnóstico IMEI/NV
+// ============================================================================
+// Pure C# implementation
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 
 using System;

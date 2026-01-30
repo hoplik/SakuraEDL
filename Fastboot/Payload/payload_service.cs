@@ -1,3 +1,16 @@
+// ============================================================================
+// SakuraEDL - Payload Service | Payload 服务
+// ============================================================================
+// [ZH] Payload 提取服务 - 解析 Android OTA payload.bin
+// [EN] Payload Extract Service - Parse Android OTA payload.bin
+// [JA] Payload抽出サービス - Android OTA payload.bin解析
+// [KO] Payload 추출 서비스 - Android OTA payload.bin 분석
+// [RU] Сервис извлечения Payload - Разбор Android OTA payload.bin
+// [ES] Servicio de extracción Payload - Análisis de Android OTA payload.bin
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
+// ============================================================================
+
 using System;
 using System.Collections.Generic;
 using System.IO;

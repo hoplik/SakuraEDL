@@ -1,3 +1,16 @@
+// ============================================================================
+// SakuraEDL - Huawei/Honor Support | 华为/荣耀支持
+// ============================================================================
+// [ZH] 华为/荣耀设备支持 - FRP 解锁、设备信息、Bootloader 操作
+// [EN] Huawei/Honor Device Support - FRP unlock, device info, Bootloader ops
+// [JA] Huawei/Honorデバイスサポート - FRPアンロック、デバイス情報
+// [KO] Huawei/Honor 기기 지원 - FRP 해제, 기기 정보, 부트로더 작업
+// [RU] Поддержка Huawei/Honor - Разблокировка FRP, информация, Bootloader
+// [ES] Soporte Huawei/Honor - Desbloqueo FRP, info del dispositivo
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
+// ============================================================================
+
 using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;

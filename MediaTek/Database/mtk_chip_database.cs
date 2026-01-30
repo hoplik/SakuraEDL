@@ -1,8 +1,15 @@
 // ============================================================================
-// SakuraEDL - MediaTek 芯片数据库
-// MediaTek Chip Information Database
+// SakuraEDL - MediaTek Chip Database | 联发科芯片数据库
 // ============================================================================
-// 参考: mtkclient 项目 brom_config.py
+// [ZH] MTK 芯片数据库 - 包含所有支持的芯片信息和配置
+// [EN] MTK Chip Database - Contains all supported chip info and configurations
+// [JA] MTKチップデータベース - サポートされる全チップ情報と設定
+// [KO] MTK 칩 데이터베이스 - 지원되는 모든 칩 정보 및 구성
+// [RU] База данных чипов MTK - Информация о всех поддерживаемых чипах
+// [ES] Base de datos de chips MTK - Información de todos los chips soportados
+// ============================================================================
+// Reference: mtkclient project (brom_config.py)
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 
 using System;

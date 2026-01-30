@@ -1,5 +1,16 @@
-// Qualcomm Diag Protocol Client
-// 纯 C# 实现，无需外部 QMSL DLL 依赖
+// ============================================================================
+// SakuraEDL - Qualcomm Diag Client | 高通 Diag 客户端
+// ============================================================================
+// [ZH] Diag 诊断协议客户端 - 读写 IMEI/MEID/QCN/NV
+// [EN] Diag Protocol Client - Read/write IMEI/MEID/QCN/NV
+// [JA] Diagプロトコルクライアント - IMEI/MEID/QCN/NV読み書き
+// [KO] Diag 프로토콜 클라이언트 - IMEI/MEID/QCN/NV 읽기/쓰기
+// [RU] Клиент протокола Diag - Чтение/запись IMEI/MEID/QCN/NV
+// [ES] Cliente de protocolo Diag - Lectura/escritura IMEI/MEID/QCN/NV
+// ============================================================================
+// Pure C# implementation, no external QMSL DLL required
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
+// ============================================================================
 
 using System;
 using System.Collections.Generic;

@@ -1,3 +1,16 @@
+// ============================================================================
+// SakuraEDL - Fastboot Client | Fastboot 客户端
+// ============================================================================
+// [ZH] Fastboot 客户端 - 底层 Fastboot 协议通信实现
+// [EN] Fastboot Client - Low-level Fastboot protocol communication
+// [JA] Fastbootクライアント - 低レベルFastbootプロトコル通信
+// [KO] Fastboot 클라이언트 - 저수준 Fastboot 프로토콜 통신
+// [RU] Клиент Fastboot - Низкоуровневая связь по протоколу Fastboot
+// [ES] Cliente Fastboot - Comunicación de protocolo Fastboot de bajo nivel
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
+// ============================================================================
+
 using System;
 using System.Collections.Generic;
 using System.IO;

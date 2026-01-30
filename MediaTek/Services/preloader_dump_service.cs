@@ -1,6 +1,15 @@
 // ============================================================================
-// SakuraEDL - MediaTek Preloader Dump 服务
-// 基于 MTK META UTILITY V48 逆向分析
+// SakuraEDL - Preloader Dump Service | Preloader 转储服务
+// ============================================================================
+// [ZH] Preloader 转储服务 - 从 MTK 设备内存转储 Preloader
+// [EN] Preloader Dump Service - Dump Preloader from MTK device memory
+// [JA] Preloaderダンプサービス - MTKデバイスメモリからPreloaderを抽出
+// [KO] Preloader 덤프 서비스 - MTK 기기 메모리에서 Preloader 추출
+// [RU] Сервис дампа Preloader - Извлечение Preloader из памяти MTK
+// [ES] Servicio de volcado Preloader - Extraer Preloader de memoria MTK
+// ============================================================================
+// Based on MTK META UTILITY V48 reverse engineering
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 // 
 // *** Preloader Dump 是必须优先执行的关键操作 ***

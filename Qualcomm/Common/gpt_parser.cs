@@ -1,10 +1,14 @@
 // ============================================================================
-// SakuraEDL - GPT 分区表解析器 (重构版)
-// GPT Partition Table Parser - Refactored with simplified logic
+// SakuraEDL - GPT Parser | GPT 分区表解析器
 // ============================================================================
-// 模块: Qualcomm.Common
-// 功能: 解析 GPT 分区表，支持自动扇区大小检测、CRC校验
-// 重构: 简化分区条目偏移计算，独立槽位检测
+// [ZH] GPT 分区表解析 - 支持自动扇区检测和 CRC 校验
+// [EN] GPT Partition Table Parser - Auto sector detection and CRC verification
+// [JA] GPTパーティションテーブル解析 - 自動セクタ検出とCRC検証
+// [KO] GPT 파티션 테이블 파서 - 자동 섹터 감지 및 CRC 검증
+// [RU] Парсер таблицы разделов GPT - Автоопределение секторов и CRC
+// [ES] Analizador de tabla GPT - Detección automática y verificación CRC
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 
 using System;

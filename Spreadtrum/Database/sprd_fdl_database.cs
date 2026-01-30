@@ -1,6 +1,14 @@
 // ============================================================================
-// SakuraEDL - 展讯 FDL 数据库
-// 包含芯片信息、FDL 地址、设备 FDL 映射
+// SakuraEDL - Spreadtrum FDL Database | 展讯 FDL 数据库
+// ============================================================================
+// [ZH] 展讯 FDL 数据库 - 芯片信息、地址配置、设备映射
+// [EN] Spreadtrum FDL Database - Chip info, address config, device mapping
+// [JA] Spreadtrum FDLデータベース - チップ情報、アドレス設定
+// [KO] Spreadtrum FDL 데이터베이스 - 칩 정보, 주소 구성
+// [RU] База данных FDL Spreadtrum - Информация о чипах, адреса
+// [ES] Base de datos FDL Spreadtrum - Info de chips, configuración
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 
 using System;
