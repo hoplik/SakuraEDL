@@ -334,7 +334,7 @@ SakuraEDL/
 
 ### 社区交流
 - **QQ 群**: [SakuraEDL](https://qm.qq.com/q/z3iVnkm22c)
-- **Telegram**: [OPFlashTool](https://t.me/OPFlashTool)
+- **Telegram**: [@xiriery](https://t.me/xiriery)
 - **Discord**: [加入服务器](https://discord.gg/sakuraedl)
 
 ### 开发者

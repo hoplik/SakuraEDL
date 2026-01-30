@@ -337,7 +337,7 @@
 ### 社区支持
 
 - **QQ 群**: [SakuraEDL](https://qm.qq.com/q/z3iVnkm22c)
-- **Telegram**: [OPFlashTool](https://t.me/OPFlashTool)
+- **Telegram**: [@xiriery](https://t.me/xiriery)
 
 ### 报告问题
 
