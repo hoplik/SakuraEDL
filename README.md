@@ -105,6 +105,12 @@
 - OEM 解锁/重锁
 - 设备信息查询
 - 自定义命令执行
+- 🆕 华为/荣耀设备完整支持
+  - 设备信息读取 (IMEI/MEID/型号/固件版本)
+  - FRP 解锁 (oem frp-unlock)
+  - Device ID 获取 (用于解锁码计算)
+  - Bootloader 解锁/锁定
+  - EDL 模式重启
 
 #### 🔧 联发科 (MTK)
 - BROM/Preloader 模式
@@ -254,6 +260,13 @@ SakuraEDL/
 │       ├── qualcomm_service.cs
 │       └── cloud_loader_integration.cs  # 云端匹配
 ├── Fastboot/                   # Fastboot 模块
+│   ├── Protocol/
+│   │   ├── fastboot_protocol.cs # Fastboot 协议
+│   │   └── fastboot_client.cs   # 原生客户端
+│   ├── Vendor/                  # 🆕 厂商支持
+│   │   └── huawei_honor_support.cs # 华为/荣耀支持
+│   └── Services/
+│       └── fastboot_service.cs
 ├── Common/                     # 通用模块
 └── docs/                       # 文档
 ```

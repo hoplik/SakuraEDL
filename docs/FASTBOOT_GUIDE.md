@@ -291,6 +291,77 @@ boot boot.img
 | `oem device-info` | 设备信息 |
 | `oem get_unlock_ability` | 解锁能力 |
 
+### 华为/荣耀设备支持
+
+SakuraEDL 提供完整的华为/荣耀 Fastboot 设备支持：
+
+**设备信息读取:**
+- IMEI/IMEI2/MEID
+- 产品型号和设备型号
+- 固件版本 (系统/基础/定制/预装)
+- Bootloader 锁定状态
+- 销售地区和硬件密钥版本
+- 电池信息和救援版本
+
+**FRP 解锁:**
+```
+oem frp-unlock <frp_key>
+```
+
+**华为/荣耀特有 OEM 命令:**
+
+| 命令 | 说明 |
+|------|------|
+| `oem get-psid` | 获取设备标识 (IMEI/MEID) |
+| `oem get-product-model` | 获取产品型号 |
+| `oem get-build-number` | 获取构建号 |
+| `oem get-bootinfo` | 获取 Bootloader 状态 |
+| `oem battery_present_check` | 检查电池 |
+| `oem oeminforead-SYSTEM_VERSION` | 读取系统版本 |
+| `oem oeminforead-BASE_VERSION` | 读取基础版本 |
+| `oem oeminforead-CUSTOM_VERSION` | 读取定制版本 |
+| `oem oeminforead-PRELOAD_VERSION` | 读取预装版本 |
+| `oem get_key_version` | 获取硬件密钥版本 |
+| `oem get-device-id` | 获取设备 ID (用于解锁码) |
+| `oem unlock <code>` | 使用解锁码解锁 |
+| `oem relock` | 重新锁定 Bootloader |
+| `oem reboot-edl` | 重启到 EDL 模式 |
+| `oem frp-unlock <key>` | FRP 解锁 |
+
+**GetVar 变量:**
+
+| 变量 | 说明 |
+|------|------|
+| `devicemodel` | 设备型号 |
+| `vendorcountry` | 销售地区 |
+| `rescue_phoneinfo` | 救援模式手机信息 |
+| `rescue_version` | 救援版本 |
+| `system_update_state` | 系统更新状态 |
+
+**代码示例:**
+```csharp
+// 检测是否为华为/荣耀设备
+bool isHuawei = await fastbootService.IsHuaweiHonorDeviceAsync();
+
+// 读取设备详细信息
+var info = await fastbootService.ReadHuaweiHonorDeviceInfoAsync();
+Console.WriteLine($"型号: {info.ProductModel}");
+Console.WriteLine($"IMEI1: {info.Imei1}");
+Console.WriteLine($"BL状态: {info.BootloaderLockStatus}");
+
+// FRP 解锁 (密钥通常为序列号)
+await fastbootService.HuaweiFrpUnlockAsync(info.Serial);
+
+// 获取 Device ID (用于解锁码计算)
+string deviceId = await fastbootService.GetHuaweiDeviceIdAsync();
+
+// 使用解锁码解锁 Bootloader
+await fastbootService.UnlockHuaweiBootloaderAsync("your_unlock_code");
+
+// 重启到 EDL 模式
+await fastbootService.RebootHuaweiToEdlAsync();
+```
+
 ### 临时启动
 
 不刷写直接启动镜像：

@@ -9,6 +9,7 @@ using SakuraEDL.Fastboot.Common;
 using SakuraEDL.Fastboot.Models;
 using SakuraEDL.Fastboot.Protocol;
 using SakuraEDL.Fastboot.Transport;
+using SakuraEDL.Fastboot.Vendor;
 
 namespace SakuraEDL.Fastboot.Services
 {
@@ -221,6 +222,8 @@ namespace SakuraEDL.Fastboot.Services
         /// </summary>
         public void Disconnect()
         {
+            _huaweiSupport = null;
+            
             if (_nativeService != null)
             {
                 _nativeService.ProgressChanged -= OnNativeProgressChanged;
@@ -772,6 +775,140 @@ namespace SakuraEDL.Fastboot.Services
                 _log($"[Fastboot] 命令执行失败: {ex.Message}");
                 return null;
             }
+        }
+
+        #endregion
+
+        #region 华为/荣耀设备支持
+
+        private HuaweiHonorSupport _huaweiSupport;
+
+        /// <summary>
+        /// 华为/荣耀设备支持
+        /// </summary>
+        public HuaweiHonorSupport HuaweiSupport
+        {
+            get
+            {
+                if (_huaweiSupport == null && _nativeService != null)
+                {
+                    _huaweiSupport = new HuaweiHonorSupport(_nativeService, _log);
+                }
+                return _huaweiSupport;
+            }
+        }
+
+        /// <summary>
+        /// 检测是否为华为/荣耀设备
+        /// </summary>
+        public async Task<bool> IsHuaweiHonorDeviceAsync(CancellationToken ct = default)
+        {
+            if (HuaweiSupport == null)
+            {
+                _log("[Fastboot] 未连接设备");
+                return false;
+            }
+
+            return await HuaweiSupport.IsHuaweiHonorDeviceAsync(ct);
+        }
+
+        /// <summary>
+        /// 读取华为/荣耀设备详细信息
+        /// </summary>
+        public async Task<HuaweiHonorDeviceInfo> ReadHuaweiHonorDeviceInfoAsync(CancellationToken ct = default)
+        {
+            if (HuaweiSupport == null)
+            {
+                _log("[Fastboot] 未连接设备");
+                return null;
+            }
+
+            return await HuaweiSupport.ReadDeviceInfoAsync(ct);
+        }
+
+        /// <summary>
+        /// 华为/荣耀 FRP 解锁
+        /// </summary>
+        /// <param name="frpKey">FRP 密钥 (通常为设备序列号)</param>
+        public async Task<bool> HuaweiFrpUnlockAsync(string frpKey, CancellationToken ct = default)
+        {
+            if (HuaweiSupport == null)
+            {
+                _log("[Fastboot] 未连接设备");
+                return false;
+            }
+
+            return await HuaweiSupport.UnlockFrpAsync(frpKey, ct);
+        }
+
+        /// <summary>
+        /// 获取华为/荣耀 Device ID (用于解锁码计算)
+        /// </summary>
+        public async Task<string> GetHuaweiDeviceIdAsync(CancellationToken ct = default)
+        {
+            if (HuaweiSupport == null)
+            {
+                _log("[Fastboot] 未连接设备");
+                return null;
+            }
+
+            return await HuaweiSupport.GetDeviceIdAsync(ct);
+        }
+
+        /// <summary>
+        /// 使用解锁码解锁华为/荣耀 Bootloader
+        /// </summary>
+        public async Task<bool> UnlockHuaweiBootloaderAsync(string unlockCode, CancellationToken ct = default)
+        {
+            if (HuaweiSupport == null)
+            {
+                _log("[Fastboot] 未连接设备");
+                return false;
+            }
+
+            return await HuaweiSupport.UnlockBootloaderWithCodeAsync(unlockCode, ct);
+        }
+
+        /// <summary>
+        /// 重新锁定华为/荣耀 Bootloader
+        /// </summary>
+        public async Task<bool> RelockHuaweiBootloaderAsync(CancellationToken ct = default)
+        {
+            if (HuaweiSupport == null)
+            {
+                _log("[Fastboot] 未连接设备");
+                return false;
+            }
+
+            return await HuaweiSupport.RelockBootloaderAsync(ct);
+        }
+
+        /// <summary>
+        /// 重启华为/荣耀设备到 EDL 模式
+        /// </summary>
+        public async Task<bool> RebootHuaweiToEdlAsync(CancellationToken ct = default)
+        {
+            if (HuaweiSupport == null)
+            {
+                _log("[Fastboot] 未连接设备");
+                return false;
+            }
+
+            return await HuaweiSupport.RebootToEdlAsync(ct);
+        }
+
+        /// <summary>
+        /// 读取华为/荣耀 OEM 信息
+        /// </summary>
+        public async Task<string> ReadHuaweiOemInfoAsync(string infoName, CancellationToken ct = default)
+        {
+            if (HuaweiSupport == null)
+            {
+                _log("[Fastboot] 未连接设备");
+                return null;
+            }
+
+            return await HuaweiSupport.ReadOemInfoAsync(infoName, ct);
         }
 
         #endregion

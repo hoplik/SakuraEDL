@@ -160,6 +160,8 @@
     <Compile Include="Fastboot\Payload\payload_parser.cs" />
     <Compile Include="Fastboot\Payload\payload_service.cs" />
     <Compile Include="Fastboot\Payload\remote_payload_service.cs" />
+    <!-- Fastboot 厂商支持 -->
+    <Compile Include="Fastboot\Vendor\huawei_honor_support.cs" />
     <!-- 展讯/Unisoc 模块 -->
     <Compile Include="Spreadtrum\Protocol\hdlc_protocol.cs" />
     <Compile Include="Spreadtrum\Protocol\bsl_commands.cs" />
