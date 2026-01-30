@@ -158,11 +158,15 @@ namespace SakuraEDL.Qualcomm.Services
     /// </summary>
     public class SaharaDeviceInfo
     {
+        public int SaharaVersion { get; set; }  // Sahara 协议版本 (1/2/3)
         public string MsmId { get; set; }       // 如 "009600E1"
         public string PkHash { get; set; }      // 64 字符
         public string OemId { get; set; }       // 如 "0x0001"
-        public string HwId { get; set; }
-        public string Serial { get; set; }
+        public string ModelId { get; set; }     // Model ID
+        public string HwId { get; set; }        // 完整 HWID
+        public string Serial { get; set; }      // 序列号
+        public string ChipName { get; set; }    // 芯片名称 (如 SM8550)
+        public string Vendor { get; set; }      // 厂商名称 (如 Xiaomi)
         public bool IsUfs { get; set; }
     }
 }

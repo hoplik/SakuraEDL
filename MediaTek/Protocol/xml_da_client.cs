@@ -38,15 +38,26 @@ namespace SakuraEDL.MediaTek.Protocol
         private const int DEFAULT_TIMEOUT_MS = 30000;
         private const int MAX_BUFFER_SIZE = 65536;
 
-        // XFlash 命令常量
-        private const uint CMD_BOOT_TO = 0x72;
+        // XFlash 命令常量 (根据 mtkclient xflash_param.py 修正)
+        // ═══════════════════════════════════════════════════════════════════════
+        // mtkclient: BOOT_TO = 0x010008
+        // ═══════════════════════════════════════════════════════════════════════
+        private const uint CMD_BOOT_TO = 0x010008;
 
-        // 数据类型
+        // 数据类型 (根据 mtkclient xml_param.py / xflash_param.py 修正)
+        // ═══════════════════════════════════════════════════════════════════════
+        // mtkclient:
+        //   DT_PROTOCOL_FLOW = 1
+        //   DT_MESSAGE = 2
+        // ═══════════════════════════════════════════════════════════════════════
         private enum DataType : uint
         {
-            ProtocolFlow = 0,
-            ProtocolResponse = 1,
-            ProtocolRaw = 2
+            /// <summary>协议流数据 (命令/响应)</summary>
+            ProtocolFlow = 1,       // DT_PROTOCOL_FLOW
+            /// <summary>消息/日志数据</summary>
+            Message = 2,            // DT_MESSAGE
+            /// <summary>原始数据传输</summary>
+            ProtocolRaw = 2         // 也是 2, 用于数据传输
         }
 
         // 连接状态
@@ -75,7 +86,7 @@ namespace SakuraEDL.MediaTek.Protocol
         }
 
         /// <summary>
-        /// 设置串口
+        /// 设置串口 (用于重连后更新端口引用)
         /// </summary>
         public void SetPort(SerialPort port)
         {
@@ -86,6 +97,22 @@ namespace SakuraEDL.MediaTek.Protocol
         /// 获取端口锁
         /// </summary>
         public SemaphoreSlim GetPortLock() => _portLock;
+        
+        /// <summary>
+        /// 检查端口是否有效
+        /// </summary>
+        public bool IsPortValid => _port != null && _port.IsOpen;
+        
+        /// <summary>
+        /// 验证端口状态，如果无效则抛出异常
+        /// </summary>
+        private void EnsurePortValid()
+        {
+            if (_port == null)
+                throw new ObjectDisposedException("SerialPort", "端口对象为空，可能已被释放");
+            if (!_port.IsOpen)
+                throw new InvalidOperationException("端口已关闭，设备可能已断开");
+        }
 
         #region XML 协议核心
 
@@ -94,6 +121,9 @@ namespace SakuraEDL.MediaTek.Protocol
         /// </summary>
         private async Task XSendInternalAsync(string xmlCmd, CancellationToken ct = default)
         {
+            // 验证端口状态
+            EnsurePortValid();
+            
             // 注意：不再清空缓冲区，因为设备可能发送主动消息（如 CMD:DOWNLOAD-FILE）
             // 清空会导致丢失重要请求
             
@@ -289,16 +319,70 @@ namespace SakuraEDL.MediaTek.Protocol
 
         /// <summary>
         /// 发送原始数据 (内部方法，不加锁)
+        /// ★ 修正: 根据 mtkclient xsend，使用 DT_PROTOCOL_FLOW (1) 而不是 ProtocolRaw (2)
         /// </summary>
         private async Task XSendRawInternalAsync(byte[] data, CancellationToken ct = default)
         {
             byte[] header = new byte[12];
             MtkDataPacker.WriteUInt32LE(header, 0, XML_MAGIC);
-            MtkDataPacker.WriteUInt32LE(header, 4, (uint)DataType.ProtocolRaw);
+            MtkDataPacker.WriteUInt32LE(header, 4, (uint)DataType.ProtocolFlow);  // DT_PROTOCOL_FLOW = 1
             MtkDataPacker.WriteUInt32LE(header, 8, (uint)data.Length);
 
             _port.Write(header, 0, 12);
             _port.Write(data, 0, data.Length);
+        }
+        
+        /// <summary>
+        /// 发送 ACK (根据 mtkclient xml_lib.py ack())
+        /// mtkclient: def ack(self): return self.xsend("OK")
+        /// </summary>
+        private async Task SendAckAsync(CancellationToken ct = default)
+        {
+            // mtkclient: xsend 对字符串会加 null 终止符
+            // length = len(data) + 1, usbwrite(bytes(data, 'utf-8') + b"\x00")
+            byte[] data = Encoding.UTF8.GetBytes("OK\0");
+            
+            byte[] header = new byte[12];
+            MtkDataPacker.WriteUInt32LE(header, 0, XML_MAGIC);
+            MtkDataPacker.WriteUInt32LE(header, 4, (uint)DataType.ProtocolFlow);
+            MtkDataPacker.WriteUInt32LE(header, 8, (uint)data.Length);
+
+            await _portLock.WaitAsync(ct);
+            try
+            {
+                _port.Write(header, 0, 12);
+                _port.Write(data, 0, data.Length);
+            }
+            finally
+            {
+                _portLock.Release();
+            }
+        }
+        
+        /// <summary>
+        /// 发送 ACK 带数值 (根据 mtkclient xml_lib.py ack_value())
+        /// mtkclient: def ack_value(self, length): return self.xsend(f"OK@{hex(length)}")
+        /// </summary>
+        private async Task SendAckValueAsync(uint length, CancellationToken ct = default)
+        {
+            string ackStr = $"OK@0x{length:X}\0";  // 加 null 终止符
+            byte[] data = Encoding.UTF8.GetBytes(ackStr);
+            
+            byte[] header = new byte[12];
+            MtkDataPacker.WriteUInt32LE(header, 0, XML_MAGIC);
+            MtkDataPacker.WriteUInt32LE(header, 4, (uint)DataType.ProtocolFlow);
+            MtkDataPacker.WriteUInt32LE(header, 8, (uint)data.Length);
+
+            await _portLock.WaitAsync(ct);
+            try
+            {
+                _port.Write(header, 0, 12);
+                _port.Write(data, 0, data.Length);
+            }
+            finally
+            {
+                _portLock.Release();
+            }
         }
 
         /// <summary>
@@ -572,6 +656,13 @@ namespace SakuraEDL.MediaTek.Protocol
         /// <summary>
         /// boot_to 命令 - 向指定地址写入数据
         /// 这是 Carbonara 漏洞的核心: 可以向 DA1 内存中的任意地址写入数据
+        /// 
+        /// 根据 mtkclient xflash_lib.py boot_to() 修正:
+        /// 1. xsend(BOOT_TO) -> status()
+        /// 2. send_param(addr, len) 
+        /// 3. send_data(da)
+        /// 4. sleep(timeout)
+        /// 5. status() - 检查 0x434E5953 或 0x0
         /// </summary>
         public async Task<bool> BootToAsync(uint address, byte[] data, bool display = true, int timeoutMs = 500, CancellationToken ct = default)
         {
@@ -581,7 +672,7 @@ namespace SakuraEDL.MediaTek.Protocol
             await _portLock.WaitAsync(ct);
             try
             {
-                // 1. 发送 BOOT_TO 命令
+                // 1. 发送 BOOT_TO 命令 (xsend)
                 byte[] cmdHeader = new byte[12];
                 MtkDataPacker.WriteUInt32LE(cmdHeader, 0, XML_MAGIC);
                 MtkDataPacker.WriteUInt32LE(cmdHeader, 4, (uint)DataType.ProtocolFlow);
@@ -592,15 +683,8 @@ namespace SakuraEDL.MediaTek.Protocol
                 MtkDataPacker.WriteUInt32LE(cmdData, 0, CMD_BOOT_TO);
                 _port.Write(cmdData, 0, 4);
 
-                // 读取状态
-                var statusResp = await ReadBytesInternalAsync(4, 5000, ct);
-                if (statusResp == null)
-                {
-                    _log("[XFlash] boot_to 命令无响应");
-                    return false;
-                }
-
-                uint status = MtkDataPacker.UnpackUInt32LE(statusResp, 0);
+                // ★ 修正: 读取完整的 status 响应 (12字节头 + 数据)
+                uint status = await ReadStatusAsync(5000, ct);
                 if (status != 0)
                 {
                     _log($"[XFlash] boot_to 命令错误: 0x{status:X}");
@@ -608,8 +692,8 @@ namespace SakuraEDL.MediaTek.Protocol
                 }
 
                 // 2. 发送参数 (地址 + 长度, 各 8 字节 for 64-bit)
+                // mtkclient: param = pack("<QQ", addr, len(da))
                 byte[] param = new byte[16];
-                // 显式使用 Little-Endian 64-bit (避免平台相关性)
                 WriteUInt64LE(param, 0, address);
                 WriteUInt64LE(param, 8, (ulong)data.Length);
 
@@ -620,25 +704,20 @@ namespace SakuraEDL.MediaTek.Protocol
                 _port.Write(paramHeader, 0, 12);
                 _port.Write(param, 0, param.Length);
 
-                // 3. 发送数据
+                // 3. 发送数据 (send_data)
                 if (!await SendDataInternalAsync(data, ct))
                 {
                     _log("[XFlash] boot_to 数据发送失败");
                     return false;
                 }
 
-                // 4. 等待并读取状态
+                // 4. 等待 (mtkclient: time.sleep(timeout))
                 if (timeoutMs > 0)
                     await Task.Delay(timeoutMs, ct);
 
-                var finalStatus = await ReadBytesInternalAsync(4, 5000, ct);
-                if (finalStatus == null)
-                {
-                    _log("[XFlash] boot_to 最终状态读取失败");
-                    return false;
-                }
-
-                uint result = MtkDataPacker.UnpackUInt32LE(finalStatus, 0);
+                // 5. 读取最终状态
+                uint result = await ReadStatusAsync(5000, ct);
+                
                 // 0x434E5953 = "SYNC" 或 0x0 = 成功
                 if (result == 0x434E5953 || result == 0)
                 {
@@ -659,6 +738,60 @@ namespace SakuraEDL.MediaTek.Protocol
             {
                 _portLock.Release();
             }
+        }
+        
+        /// <summary>
+        /// 读取 XFlash 状态响应 (根据 mtkclient xflash_lib.py status() 修正)
+        /// 格式: [magic(4)][dataType(4)][length(4)][data(length)]
+        /// </summary>
+        private async Task<uint> ReadStatusAsync(int timeoutMs, CancellationToken ct)
+        {
+            // 读取 12 字节头
+            var header = await ReadBytesInternalAsync(12, timeoutMs, ct);
+            if (header == null || header.Length < 12)
+            {
+                _log("[XFlash] 状态读取失败: 头部不完整");
+                return 0xFFFFFFFF;
+            }
+            
+            uint magic = MtkDataPacker.UnpackUInt32LE(header, 0);
+            if (magic != XML_MAGIC)
+            {
+                _log($"[XFlash] 状态错误: Magic 不匹配 0x{magic:X8}");
+                return 0xFFFFFFFF;
+            }
+            
+            uint length = MtkDataPacker.UnpackUInt32LE(header, 8);
+            if (length == 0)
+                return 0;
+                
+            // 读取数据部分
+            var data = await ReadBytesInternalAsync((int)length, timeoutMs, ct);
+            if (data == null || data.Length < length)
+            {
+                _log($"[XFlash] 状态读取失败: 数据不完整 ({data?.Length ?? 0}/{length})");
+                return 0xFFFFFFFF;
+            }
+            
+            // 根据长度解析状态
+            if (length == 2)
+            {
+                return MtkDataPacker.UnpackUInt16LE(data, 0);
+            }
+            else if (length == 4)
+            {
+                uint status = MtkDataPacker.UnpackUInt32LE(data, 0);
+                // 特殊情况: 如果返回 MAGIC，视为成功
+                if (status == XML_MAGIC)
+                    return 0;
+                return status;
+            }
+            else if (length >= 4)
+            {
+                return MtkDataPacker.UnpackUInt32LE(data, 0);
+            }
+            
+            return 0xFFFFFFFF;
         }
 
         /// <summary>
@@ -877,29 +1010,241 @@ namespace SakuraEDL.MediaTek.Protocol
             return BitConverter.ToString(bytes).Replace("-", "");
         }
 
+        #endregion
+
+        #region 认证命令 (CMD:SEND-AUTH / CMD:GET-RANDOM)
+
+        /// <summary>
+        /// 发送认证数据 (CMD:SEND-AUTH)
+        /// 用于发送证书、签名或其他认证信息到设备
+        /// </summary>
+        /// <param name="authData">认证数据 (证书/签名)</param>
+        /// <param name="authType">认证类型: "CERT", "SIGNATURE", "AUTH_FILE"</param>
+        /// <param name="ct">取消令牌</param>
+        /// <returns>是否成功</returns>
+        public async Task<bool> SendAuthAsync(byte[] authData, string authType = "AUTH_FILE", CancellationToken ct = default)
+        {
+            if (authData == null || authData.Length == 0)
+            {
+                _log("[AUTH] 认证数据为空");
+                return false;
+            }
+
+            _log($"[AUTH] 发送认证数据: {authData.Length} 字节, 类型: {authType}");
+
+            try
+            {
+                string authHex = BytesToHex(authData);
+                
+                string cmd = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
+                            "<da><version>1.0</version>" +
+                            $"<command>{XmlDaCommands.CMD_SEND_AUTH}</command>" +
+                            "<arg>" +
+                            $"<type>{authType}</type>" +
+                            $"<length>{authData.Length}</length>" +
+                            $"<data>{authHex}</data>" +
+                            "</arg>" +
+                            "</da>";
+
+                var response = await SendCommandAsync(cmd, ct);
+                if (response != null)
+                {
+                    var statusNode = response.SelectSingleNode("//status");
+                    if (statusNode != null)
+                    {
+                        string status = statusNode.InnerText.ToUpper();
+                        if (status == "OK" || status == "SUCCESS" || status == "0")
+                        {
+                            _log("[AUTH] ✓ 认证数据发送成功");
+                            return true;
+                        }
+                        
+                        // 检查错误信息
+                        var errorNode = response.SelectSingleNode("//error") ?? 
+                                       response.SelectSingleNode("//message");
+                        if (errorNode != null)
+                        {
+                            _log($"[AUTH] 认证失败: {errorNode.InnerText}");
+                        }
+                        else
+                        {
+                            _log($"[AUTH] 认证失败: {status}");
+                        }
+                    }
+                }
+
+                return false;
+            }
+            catch (Exception ex)
+            {
+                _log($"[AUTH] 发送认证数据异常: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 从文件发送认证数据
+        /// </summary>
+        /// <param name="authFilePath">认证文件路径</param>
+        /// <param name="ct">取消令牌</param>
+        /// <returns>是否成功</returns>
+        public async Task<bool> SendAuthFromFileAsync(string authFilePath, CancellationToken ct = default)
+        {
+            if (!System.IO.File.Exists(authFilePath))
+            {
+                _log($"[AUTH] 认证文件不存在: {authFilePath}");
+                return false;
+            }
+
+            byte[] authData = System.IO.File.ReadAllBytes(authFilePath);
+            return await SendAuthAsync(authData, "AUTH_FILE", ct);
+        }
+
+        /// <summary>
+        /// 获取随机数 (CMD:GET-RANDOM) - 默认禁用
+        /// 用于 SLA 认证流程中的质询-响应机制
+        /// 注意: 此命令在某些设备上可能被禁用
+        /// </summary>
+        /// <param name="length">请求的随机数长度 (字节)</param>
+        /// <param name="ct">取消令牌</param>
+        /// <returns>随机数数据，失败返回 null</returns>
+        public async Task<byte[]> GetRandomAsync(int length = 16, CancellationToken ct = default)
+        {
+            _logDetail($"[AUTH] 获取随机数: {length} 字节");
+
+            try
+            {
+                string cmd = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
+                            "<da><version>1.0</version>" +
+                            $"<command>{XmlDaCommands.CMD_GET_RANDOM}</command>" +
+                            "<arg>" +
+                            $"<length>{length}</length>" +
+                            "</arg>" +
+                            "</da>";
+
+                var response = await SendCommandAsync(cmd, ct);
+                if (response != null)
+                {
+                    // 首先检查状态
+                    var statusNode = response.SelectSingleNode("//status");
+                    if (statusNode != null)
+                    {
+                        string status = statusNode.InnerText.ToUpper();
+                        if (status == "DISABLED" || status == "NOT_SUPPORTED")
+                        {
+                            _logDetail("[AUTH] 随机数功能已禁用");
+                            return null;
+                        }
+                    }
+
+                    // 获取随机数数据
+                    var randomNode = response.SelectSingleNode("//random") ??
+                                    response.SelectSingleNode("//data");
+                    if (randomNode != null)
+                    {
+                        string randomHex = randomNode.InnerText;
+                        byte[] randomData = HexToBytes(randomHex);
+                        
+                        if (randomData.Length > 0)
+                        {
+                            _logDetail($"[AUTH] ✓ 获取随机数成功: {randomData.Length} 字节");
+                            return randomData;
+                        }
+                    }
+                }
+
+                _logDetail("[AUTH] 获取随机数失败");
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logDetail($"[AUTH] 获取随机数异常: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// 完整 SLA 认证流程 (使用 CMD:GET-RANDOM + CMD:SEND-AUTH)
+        /// </summary>
+        /// <param name="slaKey">SLA 私钥数据</param>
+        /// <param name="ct">取消令牌</param>
+        /// <returns>是否成功</returns>
+        public async Task<bool> PerformSlaAuthWithRandomAsync(byte[] slaKey, CancellationToken ct = default)
+        {
+            _log("[SLA] 开始完整 SLA 认证流程...");
+
+            try
+            {
+                // 1. 获取随机数作为质询
+                byte[] challenge = await GetRandomAsync(16, ct);
+                if (challenge == null)
+                {
+                    _log("[SLA] 无法获取随机数，尝试使用 SLA-CHALLENGE 方式");
+                    return await ExecuteSlaAuthAsync(ct);
+                }
+
+                _log($"[SLA] 收到质询: {BytesToHex(challenge).Substring(0, Math.Min(16, challenge.Length * 2))}...");
+
+                // 2. 使用 SLA 密钥签名质询
+                byte[] signature = await MtkSlaAuth.SignChallengeAsync(challenge, ct);
+                if (signature == null || signature.Length == 0)
+                {
+                    _log("[SLA] 签名生成失败");
+                    return false;
+                }
+
+                _log($"[SLA] 生成签名: {signature.Length} 字节");
+
+                // 3. 发送签名作为认证数据
+                bool result = await SendAuthAsync(signature, "SIGNATURE", ct);
+                
+                if (result)
+                {
+                    _log("[SLA] ✓ SLA 认证成功");
+                }
+                else
+                {
+                    _log("[SLA] SLA 认证失败");
+                }
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _log($"[SLA] SLA 认证异常: {ex.Message}");
+                return false;
+            }
+        }
+
+        #endregion
+
+        #region 数据传输
+
         /// <summary>
         /// 发送数据 (内部方法)
+        /// 根据 mtkclient xflash_lib.py send_data() 修正:
+        /// pkt2 = pack("<III", MAGIC, DT_PROTOCOL_FLOW, len(data))
         /// </summary>
         private async Task<bool> SendDataInternalAsync(byte[] data, CancellationToken ct = default)
         {
             try
             {
-                // 发送数据头
+                // ★ 修正: 使用 ProtocolFlow (1) 而不是 ProtocolRaw (2)
                 byte[] header = new byte[12];
                 MtkDataPacker.WriteUInt32LE(header, 0, XML_MAGIC);
-                MtkDataPacker.WriteUInt32LE(header, 4, (uint)DataType.ProtocolRaw);
+                MtkDataPacker.WriteUInt32LE(header, 4, (uint)DataType.ProtocolFlow);  // DT_PROTOCOL_FLOW
                 MtkDataPacker.WriteUInt32LE(header, 8, (uint)data.Length);
                 _port.Write(header, 0, 12);
 
-                // 分块发送数据
-                int chunkSize = 4096;
+                // 分块发送数据 (参考 mtkclient: maxoutsize = EP_OUT.wMaxPacketSize)
+                int maxPacketSize = 0x200;  // 默认 512 字节
                 int offset = 0;
                 while (offset < data.Length)
                 {
                     if (ct.IsCancellationRequested)
                         return false;
 
-                    int toSend = Math.Min(chunkSize, data.Length - offset);
+                    int toSend = Math.Min(maxPacketSize, data.Length - offset);
                     _port.Write(data, offset, toSend);
                     offset += toSend;
 
@@ -1130,8 +1475,39 @@ namespace SakuraEDL.MediaTek.Protocol
                     _log($"[XML] 已发送: {offset}/{da2.Data.Length} ({100 * offset / da2.Data.Length}%)");
                 }
                 
-                // 等待设备 ACK
-                await Task.Delay(10, ct); // 短暂等待
+                // 等待设备 ACK (严格同步: 必须收到 ACK 才能继续)
+                int ackWaitMs = 0;
+                const int maxAckWaitMs = 5000;  // 最大等待 5 秒 (大文件写入可能较慢)
+                const int ackPollIntervalMs = 10;
+                int noAckRetries = 0;
+                const int maxNoAckRetries = 3;  // 最大重试次数
+                
+                while (_port.BytesToRead == 0 && ackWaitMs < maxAckWaitMs)
+                {
+                    await Task.Delay(ackPollIntervalMs, ct);
+                    ackWaitMs += ackPollIntervalMs;
+                }
+                
+                // 严格检查: 如果超时未收到 ACK，不能继续发送
+                if (_port.BytesToRead == 0)
+                {
+                    noAckRetries++;
+                    if (noAckRetries >= maxNoAckRetries)
+                    {
+                        _log($"[XML] ✗ 块 {chunkIndex} 发送后未收到 ACK (超时 {maxAckWaitMs}ms)，设备可能已停止响应");
+                        _log("[XML] 提示: 可能是设备缓冲区溢出或连接中断");
+                        return false;
+                    }
+                    _log($"[XML] ⚠ 块 {chunkIndex} 无 ACK，重试 {noAckRetries}/{maxNoAckRetries}");
+                    // 回退 offset，重发当前块
+                    offset -= chunkSize;
+                    chunkIndex--;
+                    await Task.Delay(100, ct);  // 稍等后重试
+                    continue;
+                }
+                
+                // 收到数据，重置重试计数
+                noAckRetries = 0;
                 
                 if (_port.BytesToRead > 0)
                 {
@@ -1285,6 +1661,9 @@ namespace SakuraEDL.MediaTek.Protocol
         /// </summary>
         private async Task XSendBinaryAsync(byte[] data, CancellationToken ct = default)
         {
+            // 验证端口状态
+            EnsurePortValid();
+            
             // 构建头部: magic(4) + dataType(4) + length(4)
             byte[] header = new byte[12];
             header[0] = 0xEF; header[1] = 0xEE; header[2] = 0xEE; header[3] = 0xFE; // Magic
@@ -1532,6 +1911,608 @@ namespace SakuraEDL.MediaTek.Protocol
             await XSendAsync(cmd, ct);
             return true;
         }
+
+        #endregion
+
+        #region 扩展命令 (iReverse 参考)
+
+        /// <summary>
+        /// 设置启动模式
+        /// </summary>
+        /// <param name="mode">启动模式: FASTBOOT, META, ANDROID-TEST-MODE</param>
+        /// <param name="adb">是否启用 ADB</param>
+        /// <param name="mobileLog">是否启用 Mobile Log</param>
+        /// <param name="connectType">连接类型: USB 或 UART</param>
+        /// <param name="ct">取消令牌</param>
+        public async Task<bool> SetBootModeAsync(string mode = "ANDROID-TEST-MODE", bool adb = true, 
+            bool mobileLog = true, string connectType = "USB", CancellationToken ct = default)
+        {
+            _log($"[XML] 设置启动模式: {mode}");
+
+            string adbStr = adb ? "ON" : "OFF";
+            string logStr = mobileLog ? "ON" : "OFF";
+
+            string cmd = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
+                        "<da><version>1.0</version>" +
+                        $"<command>{XmlDaCommands.CMD_SET_BOOT_MODE}</command>" +
+                        "<arg>" +
+                        $"<mode>{mode}</mode>" +
+                        $"<connect_type>{connectType}</connect_type>" +
+                        $"<mobile_log>{logStr}</mobile_log>" +
+                        $"<adb>{adbStr}</adb>" +
+                        "</arg></da>";
+
+            var response = await SendCommandAsync(cmd, ct);
+            if (response != null)
+            {
+                var statusNode = response.SelectSingleNode("//status");
+                if (statusNode != null && statusNode.InnerText.ToUpper() == "OK")
+                {
+                    _log($"[XML] ✓ 启动模式已设置为 {mode}");
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// 设置 Flash 策略
+        /// </summary>
+        /// <param name="hostOffset">主机内存偏移</param>
+        /// <param name="length">数据长度</param>
+        /// <param name="ct">取消令牌</param>
+        public async Task<bool> SetFlashPolicyAsync(long hostOffset = 0x8000000, long length = 0x100000, 
+            CancellationToken ct = default)
+        {
+            _logDetail("[XML] 设置 Flash 策略...");
+
+            string cmd = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
+                        "<da><version>1.0</version>" +
+                        $"<command>{XmlDaCommands.CMD_SECURITY_SET_FLASH_POLICY}</command>" +
+                        "<arg>" +
+                        $"<source_file>MEM://0x{hostOffset:X}:0x{length:X}</source_file>" +
+                        "</arg></da>";
+
+            var response = await SendCommandAsync(cmd, ct);
+            return response != null;
+        }
+
+        /// <summary>
+        /// 获取设备固件信息 (含 SLA 信息)
+        /// </summary>
+        /// <param name="ct">取消令牌</param>
+        /// <returns>包含 rnd, hrid, socid 等信息的响应</returns>
+        public async Task<DeviceFwInfo> GetDeviceFwInfoAsync(CancellationToken ct = default)
+        {
+            _log("[XML] 获取设备固件信息...");
+
+            string cmd = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
+                        "<da><version>1.0</version>" +
+                        $"<command>{XmlDaCommands.CMD_SECURITY_GET_DEV_FW_INFO}</command>" +
+                        "<arg>" +
+                        "<target_file>MEM://0x8000000:0x100000</target_file>" +
+                        "</arg></da>";
+
+            var response = await SendCommandAsync(cmd, ct);
+            if (response == null)
+                return null;
+
+            var info = new DeviceFwInfo
+            {
+                Rnd = response.SelectSingleNode("//rnd")?.InnerText ?? "",
+                HrId = response.SelectSingleNode("//hrid")?.InnerText ?? "",
+                SocId = response.SelectSingleNode("//socid")?.InnerText ?? ""
+            };
+
+            _log($"[XML] 设备固件信息: SocId={info.SocId?.Substring(0, Math.Min(16, info.SocId?.Length ?? 0))}...");
+            return info;
+        }
+
+        /// <summary>
+        /// eMMC 控制
+        /// </summary>
+        /// <param name="function">功能: GET-RPMB-STATUS, LIFE-CYCLE-STATUS 等</param>
+        /// <param name="ct">取消令牌</param>
+        public async Task<string> EmmcControlAsync(string function = "GET-RPMB-STATUS", CancellationToken ct = default)
+        {
+            _logDetail($"[XML] eMMC 控制: {function}");
+
+            string cmd = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
+                        "<da><version>1.0</version>" +
+                        $"<command>{XmlDaCommands.CMD_EMMC_CONTROL}</command>" +
+                        "<arg>" +
+                        $"<function>{function}</function>" +
+                        "<target_file>MEM://0x8000000:0x200000</target_file>" +
+                        "</arg></da>";
+
+            var response = await SendCommandAsync(cmd, ct);
+            if (response != null)
+            {
+                var resultNode = response.SelectSingleNode("//result") ?? 
+                                response.SelectSingleNode("//status");
+                return resultNode?.InnerText ?? "";
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// 读取 eFuse
+        /// </summary>
+        /// <param name="ct">取消令牌</param>
+        /// <returns>eFuse XML 数据</returns>
+        public async Task<string> ReadEfuseAsync(CancellationToken ct = default)
+        {
+            _log("[XML] 读取 eFuse...");
+
+            string cmd = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
+                        "<da><version>1.0</version>" +
+                        $"<command>{XmlDaCommands.CMD_READ_EFUSE}</command>" +
+                        "<arg>" +
+                        "<target_file>ms-appdata:///local/efuse.xml</target_file>" +
+                        "</arg></da>";
+
+            var response = await SendCommandAsync(cmd, ct);
+            if (response != null)
+            {
+                // 返回完整的 eFuse XML
+                return response.OuterXml;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// 写入 eFuse (危险操作!)
+        /// </summary>
+        /// <param name="efuseXml">eFuse XML 数据</param>
+        /// <param name="ct">取消令牌</param>
+        public async Task<bool> WriteEfuseAsync(string efuseXml, CancellationToken ct = default)
+        {
+            _log("[XML] ⚠ 写入 eFuse (危险操作!)...");
+
+            // 首先上传 eFuse 数据
+            string cmd = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
+                        "<da><version>1.0</version>" +
+                        $"<command>{XmlDaCommands.CMD_WRITE_EFUSE}</command>" +
+                        "<arg>" +
+                        "<source_file>ms-appdata:///local/efuse.xml</source_file>" +
+                        "</arg></da>";
+
+            var response = await SendCommandAsync(cmd, ct);
+            if (response != null)
+            {
+                var statusNode = response.SelectSingleNode("//status");
+                if (statusNode != null && statusNode.InnerText.ToUpper() == "OK")
+                {
+                    _log("[XML] ✓ eFuse 写入成功");
+                    return true;
+                }
+            }
+            
+            _log("[XML] eFuse 写入失败");
+            return false;
+        }
+
+        /// <summary>
+        /// RAM 测试
+        /// </summary>
+        /// <param name="function">测试类型: FLIP 或 CALIBRATION</param>
+        /// <param name="startAddress">起始地址</param>
+        /// <param name="length">测试长度</param>
+        /// <param name="repeat">重复次数</param>
+        /// <param name="ct">取消令牌</param>
+        public async Task<bool> RamTestAsync(string function = "FLIP", long startAddress = 0x4000000, 
+            long length = 0x100000, int repeat = 10, CancellationToken ct = default)
+        {
+            _log($"[XML] RAM 测试: {function}");
+
+            string cmd;
+            if (function == "FLIP")
+            {
+                cmd = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
+                     "<da><version>1.0</version>" +
+                     $"<command>{XmlDaCommands.CMD_RAM_TEST}</command>" +
+                     "<arg>" +
+                     "<function>FLIP</function>" +
+                     $"<start_address>0x{startAddress:X}</start_address>" +
+                     $"<length>0x{length:X}</length>" +
+                     $"<repeat>0x{repeat:X}</repeat>" +
+                     "</arg></da>";
+            }
+            else
+            {
+                cmd = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
+                     "<da><version>1.0</version>" +
+                     $"<command>{XmlDaCommands.CMD_RAM_TEST}</command>" +
+                     "<arg>" +
+                     "<function>CALIBRATION</function>" +
+                     "<target_file>ms-appdata:///local/calib.bin</target_file>" +
+                     "</arg></da>";
+            }
+
+            var response = await SendCommandAsync(cmd, ct);
+            if (response != null)
+            {
+                var statusNode = response.SelectSingleNode("//status");
+                if (statusNode != null)
+                {
+                    _log($"[XML] RAM 测试结果: {statusNode.InnerText}");
+                    return statusNode.InnerText.ToUpper() == "OK" || 
+                           statusNode.InnerText.ToUpper() == "PASS";
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// DRAM 修复
+        /// </summary>
+        /// <param name="ct">取消令牌</param>
+        /// <returns>修复结果: SUCCEEDED, NO-NEED, FAILED</returns>
+        public async Task<string> DramRepairAsync(CancellationToken ct = default)
+        {
+            _log("[XML] DRAM 修复...");
+
+            string cmd = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
+                        "<da><version>1.0</version>" +
+                        $"<command>{XmlDaCommands.CMD_DRAM_REPAIR}</command>" +
+                        "<arg>" +
+                        "<param_file>D:\\dram.info</param_file>" +
+                        "<target_file>MEM://0x10000:0x1000</target_file>" +
+                        "</arg></da>";
+
+            var response = await SendCommandAsync(cmd, ct);
+            if (response != null)
+            {
+                var resultNode = response.SelectSingleNode("//result") ?? 
+                                response.SelectSingleNode("//status");
+                string result = resultNode?.InnerText ?? "FAILED";
+                _log($"[XML] DRAM 修复结果: {result}");
+                return result;
+            }
+            return "FAILED";
+        }
+
+        /// <summary>
+        /// 读取寄存器
+        /// </summary>
+        /// <param name="address">寄存器地址</param>
+        /// <param name="bitWidth">位宽: 32 或 16</param>
+        /// <param name="ct">取消令牌</param>
+        public async Task<uint?> ReadRegisterAsync(long address, int bitWidth = 32, CancellationToken ct = default)
+        {
+            _logDetail($"[XML] 读取寄存器: 0x{address:X}");
+
+            string cmd = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
+                        "<da><version>1.0</version>" +
+                        $"<command>{XmlDaCommands.CMD_READ_REGISTER}</command>" +
+                        "<arg>" +
+                        $"<bit_width>{bitWidth}</bit_width>" +
+                        $"<base_address>0x{address:X}</base_address>" +
+                        "<target_file>MEM://0x8000000:0x4</target_file>" +
+                        "</arg></da>";
+
+            var response = await SendCommandAsync(cmd, ct);
+            if (response != null)
+            {
+                var valueNode = response.SelectSingleNode("//value");
+                if (valueNode != null)
+                {
+                    return (uint)ParseULong(valueNode.InnerText);
+                }
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// 写入寄存器
+        /// </summary>
+        /// <param name="address">寄存器地址</param>
+        /// <param name="value">写入值</param>
+        /// <param name="bitWidth">位宽: 32 或 16</param>
+        /// <param name="ct">取消令牌</param>
+        public async Task<bool> WriteRegisterAsync(long address, uint value, int bitWidth = 32, 
+            CancellationToken ct = default)
+        {
+            _logDetail($"[XML] 写入寄存器: 0x{address:X} = 0x{value:X}");
+
+            string cmd = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
+                        "<da><version>1.0</version>" +
+                        $"<command>{XmlDaCommands.CMD_WRITE_REGISTER}</command>" +
+                        "<arg>" +
+                        $"<bit_width>{bitWidth}</bit_width>" +
+                        $"<base_address>0x{address:X}</base_address>" +
+                        "<source_file>MEM://0x8000000:0x4</source_file>" +
+                        "</arg></da>";
+
+            var response = await SendCommandAsync(cmd, ct);
+            return response != null;
+        }
+
+        /// <summary>
+        /// 擦除 Flash
+        /// </summary>
+        /// <param name="partition">分区: EMMC-USER, EMMC-BOOT1, EMMC-BOOT2 等</param>
+        /// <param name="offset">偏移</param>
+        /// <param name="length">长度</param>
+        /// <param name="ct">取消令牌</param>
+        public async Task<bool> EraseFlashAsync(string partition = "EMMC-USER", ulong offset = 0, 
+            ulong length = 0x100000, CancellationToken ct = default)
+        {
+            _log($"[XML] 擦除 Flash: {partition} @ 0x{offset:X}, 长度: 0x{length:X}");
+
+            string cmd = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
+                        "<da><version>1.0</version>" +
+                        $"<command>{XmlDaCommands.CMD_ERASE_FLASH}</command>" +
+                        "<arg>" +
+                        $"<partition>{partition}</partition>" +
+                        $"<offset>0x{offset:X}</offset>" +
+                        $"<length>0x{length:X}</length>" +
+                        "</arg></da>";
+
+            var response = await SendCommandAsync(cmd, ct);
+            if (response != null)
+            {
+                var statusNode = response.SelectSingleNode("//status");
+                if (statusNode != null && statusNode.InnerText.ToUpper() == "OK")
+                {
+                    _log("[XML] ✓ Flash 擦除成功");
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// 读取 Flash
+        /// </summary>
+        /// <param name="partition">分区</param>
+        /// <param name="offset">偏移</param>
+        /// <param name="length">长度</param>
+        /// <param name="ct">取消令牌</param>
+        public async Task<byte[]> ReadFlashAsync(string partition = "EMMC-USER", ulong offset = 0, 
+            ulong length = 0x100000, CancellationToken ct = default)
+        {
+            _log($"[XML] 读取 Flash: {partition} @ 0x{offset:X}, 长度: 0x{length:X}");
+
+            string cmd = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
+                        "<da><version>1.0</version>" +
+                        $"<command>{XmlDaCommands.CMD_READ_FLASH}</command>" +
+                        "<arg>" +
+                        $"<partition>{partition}</partition>" +
+                        $"<offset>0x{offset:X}</offset>" +
+                        $"<length>0x{length:X}</length>" +
+                        "<target_file>ROM_0</target_file>" +
+                        "</arg></da>";
+
+            var response = await SendCommandAsync(cmd, ct);
+            if (response != null)
+            {
+                var statusNode = response.SelectSingleNode("//status");
+                if (statusNode != null && statusNode.InnerText.ToUpper() == "READY")
+                {
+                    // 读取数据块
+                    return await ReadDataChunkAsync(ct);
+                }
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// 获取硬件信息 (详细)
+        /// </summary>
+        /// <param name="ct">取消令牌</param>
+        public async Task<HardwareInfo> GetHardwareInfoAsync(CancellationToken ct = default)
+        {
+            _log("[XML] 获取硬件信息...");
+
+            string cmd = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
+                        "<da><version>1.0</version>" +
+                        $"<command>{XmlDaCommands.CMD_GET_HW_INFO}</command>" +
+                        "<arg>" +
+                        "<target_file>MEM://0x8000000:0x200000</target_file>" +
+                        "</arg></da>";
+
+            var response = await SendCommandAsync(cmd, ct);
+            if (response == null)
+                return null;
+
+            var info = new HardwareInfo
+            {
+                RamSize = ParseULong(response.SelectSingleNode("//ram_size")?.InnerText),
+                BatteryVoltage = (int)ParseULong(response.SelectSingleNode("//battery_voltage")?.InnerText),
+                RandomId = response.SelectSingleNode("//random_id")?.InnerText ?? "",
+                StorageType = response.SelectSingleNode("//storage")?.InnerText ?? "Unknown",
+                ProductId = response.SelectSingleNode("//product_id")?.InnerText ?? ""
+            };
+
+            // 根据存储类型解析更多信息
+            if (info.StorageType == "UFS")
+            {
+                info.BlockSize = (uint)ParseULong(response.SelectSingleNode("//block_size")?.InnerText);
+                info.Lua0Size = ParseULong(response.SelectSingleNode("//lua0_size")?.InnerText);
+                info.Lua1Size = ParseULong(response.SelectSingleNode("//lua1_size")?.InnerText);
+                info.UfsVendorId = response.SelectSingleNode("//ufs_vendor_id")?.InnerText ?? "";
+                info.UfsCid = response.SelectSingleNode("//ufs_cid")?.InnerText ?? "";
+            }
+            else if (info.StorageType == "EMMC")
+            {
+                info.BlockSize = (uint)ParseULong(response.SelectSingleNode("//block_size")?.InnerText);
+                info.Boot1Size = ParseULong(response.SelectSingleNode("//boot1_size")?.InnerText);
+                info.Boot2Size = ParseULong(response.SelectSingleNode("//boot2_size")?.InnerText);
+                info.RpmbSize = ParseULong(response.SelectSingleNode("//rpmb_size")?.InnerText);
+                info.UserSize = ParseULong(response.SelectSingleNode("//user_size")?.InnerText);
+            }
+
+            _log($"[XML] 存储类型: {info.StorageType}, RAM: {info.RamSize / 1024 / 1024}MB");
+            return info;
+        }
+
+        /// <summary>
+        /// 获取系统属性
+        /// </summary>
+        /// <param name="key">属性键: DA.SLA, DA.VERSION 等</param>
+        /// <param name="ct">取消令牌</param>
+        public async Task<string> GetSysPropertyAsync(string key = "DA.SLA", CancellationToken ct = default)
+        {
+            _logDetail($"[XML] 获取系统属性: {key}");
+
+            string cmd = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
+                        "<da><version>1.0</version>" +
+                        $"<command>{XmlDaCommands.CMD_GET_SYS_PROPERTY}</command>" +
+                        "<arg>" +
+                        $"<key>{key}</key>" +
+                        "<target_file>MEM://0x8000000:0x200000</target_file>" +
+                        "</arg></da>";
+
+            var response = await SendCommandAsync(cmd, ct);
+            if (response != null)
+            {
+                var valueNode = response.SelectSingleNode("//value") ?? 
+                               response.SelectSingleNode($"//{key.Replace(".", "_")}");
+                return valueNode?.InnerText ?? "";
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// 获取 DA 信息
+        /// </summary>
+        /// <param name="ct">取消令牌</param>
+        public async Task<DaInfo> GetDaInfoAsync(CancellationToken ct = default)
+        {
+            _log("[XML] 获取 DA 信息...");
+
+            string cmd = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
+                        "<da><version>1.0</version>" +
+                        $"<command>{XmlDaCommands.CMD_GET_DA_INFO}</command>" +
+                        "<arg>" +
+                        "<target_file>MEM://0x2000000:0x20000</target_file>" +
+                        "</arg></da>";
+
+            var response = await SendCommandAsync(cmd, ct);
+            if (response == null)
+                return null;
+
+            var info = new DaInfo
+            {
+                Version = response.SelectSingleNode("//da_version")?.InnerText ?? "",
+                Build = response.SelectSingleNode("//build")?.InnerText ?? ""
+            };
+
+            _log($"[XML] DA 版本: {info.Version}, 构建: {info.Build}");
+            return info;
+        }
+
+        /// <summary>
+        /// 设置 RSC (Regional Sales Code)
+        /// </summary>
+        /// <param name="key">RSC 键</param>
+        /// <param name="ct">取消令牌</param>
+        public async Task<bool> SetRscAsync(string key, CancellationToken ct = default)
+        {
+            _log($"[XML] 设置 RSC: {key}");
+
+            string cmd = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
+                        "<da><version>1.0</version>" +
+                        $"<command>{XmlDaCommands.CMD_SET_RSC}</command>" +
+                        "<arg>" +
+                        $"<key>{key}</key>" +
+                        "<source_file>ms-appdata:///local/RSC.bin</source_file>" +
+                        "</arg></da>";
+
+            var response = await SendCommandAsync(cmd, ct);
+            if (response != null)
+            {
+                var statusNode = response.SelectSingleNode("//status");
+                if (statusNode != null && statusNode.InnerText.ToUpper() == "OK")
+                {
+                    _log("[XML] ✓ RSC 设置成功");
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// 写入私有证书
+        /// </summary>
+        /// <param name="certData">证书数据</param>
+        /// <param name="ct">取消令牌</param>
+        public async Task<bool> WritePrivateCertAsync(byte[] certData, CancellationToken ct = default)
+        {
+            _log("[XML] 写入私有证书...");
+
+            string cmd = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
+                        "<da><version>1.0</version>" +
+                        $"<command>{XmlDaCommands.CMD_WRITE_PRIVATE_CERT}</command>" +
+                        "<arg>" +
+                        "<source_file>ms-appdata:///local/cert.bin</source_file>" +
+                        "</arg></da>";
+
+            var response = await SendCommandAsync(cmd, ct);
+            if (response != null)
+            {
+                var statusNode = response.SelectSingleNode("//status");
+                if (statusNode != null && statusNode.InnerText.ToUpper() == "OK")
+                {
+                    _log("[XML] ✓ 私有证书写入成功");
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// 获取下载镜像反馈
+        /// </summary>
+        /// <param name="ct">取消令牌</param>
+        public async Task<string> GetDownloadedImageFeedbackAsync(CancellationToken ct = default)
+        {
+            _logDetail("[XML] 获取下载镜像反馈...");
+
+            string cmd = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
+                        "<da><version>1.0</version>" +
+                        $"<command>{XmlDaCommands.CMD_GET_DOWNLOADED_IMAGE_FEEDBACK}</command>" +
+                        "<arg>" +
+                        "<target_file>MEM://0x2000000:0x20000</target_file>" +
+                        "</arg></da>";
+
+            var response = await SendCommandAsync(cmd, ct);
+            if (response != null)
+            {
+                return response.OuterXml;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// 设置主机信息
+        /// </summary>
+        /// <param name="hostInfo">主机信息 (默认为当前时间戳)</param>
+        /// <param name="ct">取消令牌</param>
+        public async Task<bool> SetHostInfoAsync(string hostInfo = null, CancellationToken ct = default)
+        {
+            if (string.IsNullOrEmpty(hostInfo))
+            {
+                hostInfo = DateTime.Now.ToString("yyyyMMddTHHmmss");
+            }
+
+            _logDetail($"[XML] 设置主机信息: {hostInfo}");
+
+            string cmd = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
+                        "<da><version>1.0</version>" +
+                        $"<command>{XmlDaCommands.CMD_SET_HOST_INFO}</command>" +
+                        "<arg>" +
+                        $"<info>{hostInfo}</info>" +
+                        "</arg></da>";
+
+            var response = await SendCommandAsync(cmd, ct);
+            return response != null;
+        }
+
+        #endregion
+
+        #region 信息查询
 
         /// <summary>
         /// 获取 Flash 信息

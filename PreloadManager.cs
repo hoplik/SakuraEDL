@@ -60,23 +60,45 @@ namespace SakuraEDL
         }
 
         private static string _systemInfo = null;
+        private static volatile bool _systemInfoLoading = false;
+        
         public static string SystemInfo
         {
             get
             {
                 if (_systemInfo == null)
                 {
+                    // 如果正在加载，返回默认值避免阻塞
+                    if (_systemInfoLoading)
+                        return "加载中...";
+                    
+                    _systemInfoLoading = true;
                     try 
                     { 
-                        // 使用 Task.Run 避免死锁
-                        _systemInfo = Task.Run(async () => 
+                        // 使用带超时的异步操作，避免长时间阻塞
+                        var task = Task.Run(async () => 
                             await WindowsInfo.GetSystemInfoAsync().ConfigureAwait(false)
-                        ).GetAwaiter().GetResult(); 
+                        );
+                        
+                        // 最多等待 2 秒，超时则返回默认值
+                        if (task.Wait(2000))
+                        {
+                            _systemInfo = task.Result;
+                        }
+                        else
+                        {
+                            _systemInfo = "未知";
+                            System.Diagnostics.Debug.WriteLine("[PreloadManager] 获取系统信息超时");
+                        }
                     }
                     catch (Exception ex)
                     { 
                         System.Diagnostics.Debug.WriteLine($"[PreloadManager] 获取系统信息失败: {ex.Message}");
                         _systemInfo = "未知"; 
+                    }
+                    finally
+                    {
+                        _systemInfoLoading = false;
                     }
                 }
                 return _systemInfo;

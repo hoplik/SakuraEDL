@@ -775,9 +775,27 @@ namespace SakuraEDL.Qualcomm.Services
                 }
 
                 // 读取完整的 metadata (根据 header 中的 size)
+                // LP Metadata Header 格式:
+                // offset 0: magic (4 bytes)
+                // offset 4: major_version (2 bytes)
+                // offset 6: minor_version (2 bytes)
+                // offset 8: header_size (4 bytes)
+                // offset 12: header_checksum (4 bytes)
+                // offset 16: tables_size (4 bytes) <- 注意是 16，不是 24
+                // offset 20: tables_checksum (4 bytes)
                 uint headerSize = BitConverter.ToUInt32(metadataData, 8);
-                uint tablesSize = BitConverter.ToUInt32(metadataData, 24);
+                uint tablesSize = BitConverter.ToUInt32(metadataData, 16); // 修复：偏移应为 16
                 int totalToRead = (int)(headerSize + tablesSize);
+                
+                // 合理性检查：headerSize 通常是 256 或 512，tablesSize 通常小于 64KB
+                if (headerSize > 4096 || tablesSize > 256 * 1024)
+                {
+                    _log(string.Format("[LP] 可疑的 Header 大小: headerSize={0}, tablesSize={1}，尝试备用偏移", headerSize, tablesSize));
+                    // 可能是版本差异，尝试其他偏移
+                    headerSize = BitConverter.ToUInt32(metadataData, 8);
+                    tablesSize = BitConverter.ToUInt32(metadataData, 20); // 备用偏移
+                    totalToRead = (int)(headerSize + tablesSize);
+                }
                 
                 _logDetail(string.Format("[LP] Header 偏移={0}, headerSize={1}, tablesSize={2}, 需读取={3} 字节", 
                     finalOffset, headerSize, tablesSize, totalToRead));

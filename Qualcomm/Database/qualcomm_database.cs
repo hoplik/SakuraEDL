@@ -67,6 +67,7 @@ namespace SakuraEDL.Qualcomm.Database
             { 0x2A70, "Oxygen" },
             { 0x2A96, "Micromax" },
             { 0x50E1, "OnePlus" },
+            { 0x90E1, "OPPO" },        // OPPO (骁龙695等)
             { 0xB0E1, "Xiaomi" },      // 小米 (新设备)
             { 0x01E8, "Motorola" },    // Moto 新设备
             { 0x0488, "Motorola" },    // Moto Edge 系列
@@ -155,6 +156,7 @@ namespace SakuraEDL.Qualcomm.Database
             { 0x0015E0E1, "SM6350 (Snapdragon 690)" },
             { 0x0015F0E1, "SA6350 (Snapdragon 690)" },
             { 0x0019E0E1, "SM6375 (Snapdragon 695)" },
+            { 0x00510000, "SM6375 (Snapdragon 695)" },  // OPPO 设备 HWID 变体
             { 0x001BE0E1, "SM6225 (Snapdragon 680)" },
             { 0x0021E0E1, "SM6450 (Snapdragon 6 Gen 1)" },
             { 0x0025C0E1, "SM6475 (Snapdragon 6s Gen 3)" },

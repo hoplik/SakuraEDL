@@ -189,13 +189,14 @@ namespace SakuraEDL.Qualcomm.Protocol
         private bool _disposed;
         private readonly StringBuilder _rxBuffer = new StringBuilder();
 
-        // 配置 - 速度优化
+        // 配置 - 速度优化 (USB 3.0 环境可达 100+ MB/s)
         private int _sectorSize = 4096;
-        private int _maxPayloadSize = 16777216; // 16MB 默认 payload
+        private int _maxPayloadSize = 16 * 1024 * 1024; // 16MB 默认 payload
+        private int _lastSuccessfulGptStrategy = -1; // 缓存成功的 GPT 读取策略，避免重复尝试
 
         private const int ACK_TIMEOUT_MS = 15000;          // 大文件需要更长超时
-        private const int FILE_BUFFER_SIZE = 4 * 1024 * 1024;  // 4MB 文件缓冲 (提高读取速度)
-        private const int OPTIMAL_PAYLOAD_REQUEST = 16 * 1024 * 1024; // 请求 16MB payload (设备可能返回较小值)
+        private const int FILE_BUFFER_SIZE = 4 * 1024 * 1024;  // 4MB 文件缓冲
+        private const int OPTIMAL_PAYLOAD_REQUEST = 16 * 1024 * 1024; // 请求 16MB payload
 
         // 分段传输配置 (默认 0 = 不分段，使用设备支持的最大 payload)
         private int _customChunkSize = 0;
@@ -359,15 +360,25 @@ namespace SakuraEDL.Qualcomm.Protocol
         {
             var strategies = new List<VipSpoofStrategy>();
 
-            // GPT 区域特殊处理
+            // =====================================================
+            // OPLUS VIP 分段规则:
+            // 段1 (0-5/0-33): 使用 gpt_main0 / PrimaryGPT
+            // 段2 (6/34): 使用该 LUN 第一个分区的 filename/label
+            // 段3 (7-n/35-n): 使用 gpt_main0 / PrimaryGPT
+            // =====================================================
+            
+            // GPT 区域特殊处理 (段1)
             if (isGptRead || startSector <= 33)
             {
-                strategies.Add(new VipSpoofStrategy(string.Format("gpt_backup{0}.bin", lun), "BackupGPT", 0));
-                strategies.Add(new VipSpoofStrategy(string.Format("gpt_main{0}.bin", lun), "PrimaryGPT", 1));
+                // 优先使用 PrimaryGPT (段1 使用 gpt_main0)
+                strategies.Add(new VipSpoofStrategy(string.Format("gpt_main{0}.bin", lun), "PrimaryGPT", 0));
+                strategies.Add(new VipSpoofStrategy("gpt_main0.bin", "PrimaryGPT", 1));
+                strategies.Add(new VipSpoofStrategy(string.Format("gpt_backup{0}.bin", lun), "BackupGPT", 2));
+                strategies.Add(new VipSpoofStrategy("gpt_backup0.bin", "BackupGPT", 3));
             }
 
             // 通用 backup 伪装
-            strategies.Add(new VipSpoofStrategy("gpt_backup0.bin", "BackupGPT", 2));
+            strategies.Add(new VipSpoofStrategy("gpt_backup0.bin", "BackupGPT", 4));
 
             // 分区名称伪装
             if (!string.IsNullOrEmpty(partitionName))
@@ -440,11 +451,12 @@ namespace SakuraEDL.Qualcomm.Protocol
             PurgeBuffer();
             _port.Write(Encoding.UTF8.GetBytes(xml));
 
-            for (int i = 0; i < 50; i++)
+            // 最多等待 15 秒 (每次超时 3 秒，最多 5 次重试)
+            for (int i = 0; i < 5; i++)
             {
                 if (ct.IsCancellationRequested) return false;
 
-                var resp = await ProcessXmlResponseAsync(ct);
+                var resp = await ProcessXmlResponseAsync(ct, 3000);
                 if (resp != null)
                 {
                     string val = resp.Attribute("value") != null ? resp.Attribute("value").Value : "";
@@ -464,15 +476,25 @@ namespace SakuraEDL.Qualcomm.Protocol
                         {
                             int maxPayload;
                             if (int.TryParse(mpAttr.Value, out maxPayload) && maxPayload > 0)
-                                _maxPayloadSize = Math.Max(64 * 1024, Math.Min(maxPayload, 16 * 1024 * 1024));
+                                _maxPayloadSize = Math.Max(64 * 1024, Math.Min(maxPayload, 64 * 1024 * 1024)); // 最大 64MB
                         }
 
                         _logDetail(string.Format("[Firehose] 配置成功 - SectorSize:{0}, MaxPayload:{1}KB", _sectorSize, _maxPayloadSize / 1024));
                         return true;
                     }
+                    else if (!string.IsNullOrEmpty(val))
+                    {
+                        _logDetail(string.Format("[Firehose] 收到非预期响应: {0}", val));
+                    }
                 }
-                await Task.Delay(50, ct);
+                else
+                {
+                    _logDetail(string.Format("[Firehose] 等待响应超时 ({0}/5)...", i + 1));
+                }
+                await Task.Delay(100, ct);
             }
+            
+            _log("[Firehose] 配置超时，设备可能不在 Firehose 模式");
             return false;
         }
 
@@ -515,58 +537,102 @@ namespace SakuraEDL.Qualcomm.Protocol
 
                 if (useVipMode)
                 {
-                    // VIP 模式 GPT 读取 - 瀑布式策略 (参考 tools 项目)
-                    // ⚠️ OPPO/Realme 设备必须优先使用 BackupGPT 伪装，否则会卡死
-                    // UFS 设备只需读取 6 扇区 (24KB)，eMMC 读取 34 扇区
+                    // =====================================================
+                    // OPLUS VIP 分段读写规则 (Digest 地址检查限制)
+                    // =====================================================
+                    // 每个 LUN 分三段，单次读写不能跨越分段：
+                    //
+                    // [eMMC版] 扇区 0-33 | 34 | 35-n  (三段)
+                    // [UFS版]  扇区 0-5  | 6  | 7-n   (三段)
+                    //
+                    // 段1和段3: 使用 gpt_main0.bin / PrimaryGPT
+                    // 段2(特殊): 使用该LUN第一个分区的 filename/label
+                    //
+                    // GPT 数据在段1内，不需要跨段：
+                    // - UFS: 扇区 0-5 (6个, 24KB) ✓
+                    // - eMMC: 扇区 0-33 (34个, 17KB) ✓
+                    // =====================================================
                     int vipGptSectors = (_sectorSize == 4096) ? 6 : 34;
                     
-                    _log(string.Format("[GPT] VIP 模式读取 LUN{0} ({1} 扇区, 扇区大小={2})...", lun, vipGptSectors, _sectorSize));
+                    // 仅在第一个 LUN 时打印详细信息
+                    if (lun == 0)
+                        _log(string.Format("[GPT] VIP 模式读取 (扇区大小={0}B, {1} 扇区/LUN, {2}KB)", _sectorSize, vipGptSectors, vipGptSectors * _sectorSize / 1024));
                     
-                    var readStrategies = new string[,]
+                    // 构建当前 LUN 的策略列表
+                    var strategies = new List<(string label, string filename)>();
+                    
+                    // 如果已有成功策略，优先使用（仅改变 filename 中的 LUN 编号）
+                    if (_lastSuccessfulGptStrategy >= 0)
                     {
-                        { "BackupGPT", string.Format("gpt_backup{0}.bin", lun) },  // 优先级 1
-                        { "BackupGPT", "gpt_backup0.bin" },                         // 优先级 2
-                        { "PrimaryGPT", string.Format("gpt_main{0}.bin", lun) },   // 优先级 3
-                        { "ssd", "ssd" }                                            // 优先级 4
-                    };
+                        // 使用上次成功的策略类型
+                        switch (_lastSuccessfulGptStrategy)
+                        {
+                            case 0: strategies.Add(("BackupGPT", string.Format("gpt_backup{0}.bin", lun))); break;
+                            case 1: strategies.Add(("BackupGPT", "gpt_backup0.bin")); break;
+                            case 2: strategies.Add(("PrimaryGPT", string.Format("gpt_main{0}.bin", lun))); break;
+                            case 3: strategies.Add(("ssd", "ssd")); break;
+                        }
+                    }
+                    else
+                    {
+                        // 首次尝试，使用完整策略列表
+                        // 根据 OPLUS VIP 规则：段1 (0-5/0-33) 使用 PrimaryGPT/gpt_main0
+                        // 优先尝试 PrimaryGPT，因为我们读取的是段1内的数据
+                        strategies.Add(("PrimaryGPT", string.Format("gpt_main{0}.bin", lun)));
+                        strategies.Add(("PrimaryGPT", "gpt_main0.bin"));
+                        strategies.Add(("BackupGPT", string.Format("gpt_backup{0}.bin", lun)));
+                        strategies.Add(("BackupGPT", "gpt_backup0.bin"));
+                        strategies.Add(("ssd", "ssd"));
+                    }
 
-                    for (int i = 0; i < readStrategies.GetLength(0); i++)
+                    for (int i = 0; i < strategies.Count; i++)
                     {
                         try
                         {
-                            _logDetail(string.Format("[GPT] LUN{0} 尝试策略 {1}: {2}/{3}", lun, i + 1, readStrategies[i, 0], readStrategies[i, 1]));
-                            gptData = await ReadGptPacketWithTimeoutAsync(lun, 0, vipGptSectors, readStrategies[i, 0], readStrategies[i, 1], ct, 15000);
+                            // LUN0 添加详细日志
+                            if (lun == 0)
+                                _logDetail(string.Format("[GPT] 尝试策略 {0}/{1}: {2}/{3}", i + 1, strategies.Count, strategies[i].label, strategies[i].filename));
+                            
+                            gptData = await ReadGptPacketWithTimeoutAsync(lun, 0, vipGptSectors, strategies[i].label, strategies[i].filename, ct, 8000);
+                            
                             if (gptData != null && gptData.Length >= 512)
                             {
-                                _log(string.Format("[GPT] LUN{0} 使用伪装 {1} 成功", lun, readStrategies[i, 0]));
+                                // 记住成功的策略索引（仅在首次成功时）
+                                if (_lastSuccessfulGptStrategy < 0)
+                                {
+                                    _lastSuccessfulGptStrategy = i;
+                                    _log(string.Format("[GPT] 使用伪装策略: {0}", strategies[i].label));
+                                }
                                 break;
+                            }
+                            else if (lun == 0)
+                            {
+                                _logDetail(string.Format("[GPT] 策略 {0} 返回空数据或太小 (len={1})", strategies[i].label, gptData?.Length ?? 0));
                             }
                         }
                         catch (TimeoutException)
                         {
-                            _log(string.Format("[GPT] LUN{0} 策略 {1} 超时，尝试下一个...", lun, readStrategies[i, 0]));
+                            _log(string.Format("[GPT] LUN{0} 策略 {1} 超时", lun, strategies[i].label));
                         }
                         catch (Exception ex)
                         {
-                            _logDetail(string.Format("[GPT] LUN{0} 策略 {1} 异常: {2}", lun, readStrategies[i, 0], ex.Message));
+                            _log(string.Format("[GPT] LUN{0} 策略 {1} 异常: {2}", lun, strategies[i].label, ex.Message));
                         }
                         
-                        await Task.Delay(200, ct); // 策略切换间隔增加到200ms
+                        if (i < strategies.Count - 1)
+                            await Task.Delay(100, ct); // 减少延迟
                     }
                 }
                 else
                 {
+                    // 普通模式读取
                     try
                     {
                         PurgeBuffer();
                         if (lun > 0) await Task.Delay(50, ct);
 
-                        _logDetail(string.Format("[GPT] 读取 LUN{0}...", lun));
                         gptData = await ReadSectorsAsync(lun, 0, gptSectors, ct);
-                        if (gptData != null && gptData.Length >= 512)
-                        {
-                            _logDetail(string.Format("[GPT] LUN{0} 读取成功 ({1} 字节)", lun, gptData.Length));
-                        }
+                        // 不输出每个 LUN 的详细日志，只在有数据时统计
                     }
                     catch (Exception ex)
                     {
@@ -575,14 +641,46 @@ namespace SakuraEDL.Qualcomm.Protocol
                 }
 
                 if (gptData == null || gptData.Length < 512)
+                {
+                    // 主日志显示读取失败，便于用户排查
+                    _log(string.Format("[GPT] LUN{0} 读取失败 (数据为空或太小)", lun));
                     continue;
+                }
+                
+                // 诊断: 检查 GPT 签名
+                bool hasGptSignature = false;
+                for (int sigOffset = 0; sigOffset < Math.Min(gptData.Length - 8, 8192); sigOffset += 512)
+                {
+                    if (gptData.Length > sigOffset + 7 &&
+                        gptData[sigOffset] == 0x45 && gptData[sigOffset + 1] == 0x46 &&
+                        gptData[sigOffset + 2] == 0x49 && gptData[sigOffset + 3] == 0x20 &&
+                        gptData[sigOffset + 4] == 0x50 && gptData[sigOffset + 5] == 0x41 &&
+                        gptData[sigOffset + 6] == 0x52 && gptData[sigOffset + 7] == 0x54)
+                    {
+                        hasGptSignature = true;
+                        _logDetail(string.Format("[GPT] LUN{0} 找到 GPT 签名 @ 偏移 {1}", lun, sigOffset));
+                        break;
+                    }
+                }
+                if (!hasGptSignature)
+                {
+                    _logDetail(string.Format("[GPT] LUN{0} 未找到 GPT 签名 (数据长度={1})", lun, gptData.Length));
+                    // 输出前 64 字节用于诊断
+                    if (gptData.Length >= 64)
+                    {
+                        _logDetail(string.Format("[GPT] LUN{0} 前64字节: {1}", lun, 
+                            BitConverter.ToString(gptData, 0, 64).Replace("-", " ")));
+                    }
+                }
 
                 var lunPartitions = ParseGptPartitions(gptData, lun);
                 if (lunPartitions.Count > 0)
                 {
                     partitions.AddRange(lunPartitions);
-                    _logDetail(string.Format("[Firehose] LUN {0}: {1} 个分区", lun, lunPartitions.Count));
+                    // 主日志显示每个 LUN 的分区数
+                    _log(string.Format("[GPT] LUN{0}: {1} 个分区", lun, lunPartitions.Count));
                 }
+                // 没有分区的 LUN 不输出日志（很多设备只有 LUN0 有数据）
             }
 
             if (partitions.Count > 0)
@@ -772,7 +870,8 @@ namespace SakuraEDL.Qualcomm.Protocol
                 
                 if (result.SlotInfo.HasAbPartitions)
                 {
-                    _logDetail(string.Format("[GPT] 当前槽位: {0}", result.SlotInfo.CurrentSlot));
+                    string slotMethod = result.SlotInfoV2?.DetectionMethod ?? "";
+                    _logDetail(string.Format("[GPT] 当前槽位: {0} ({1})", result.SlotInfo.CurrentSlot, slotMethod));
                 }
             }
             else if (!string.IsNullOrEmpty(result.ErrorMessage))
@@ -1100,7 +1199,9 @@ namespace SakuraEDL.Qualcomm.Protocol
                     FormatSize(chunkSize), totalChunks));
             }
 
-            using (Stream sourceStream = File.OpenRead(imagePath))
+            // 使用顺序访问提示和大缓冲区优化读取速度
+            using (Stream sourceStream = new FileStream(imagePath, FileMode.Open, FileAccess.Read, 
+                FileShare.Read, FILE_BUFFER_SIZE, FileOptions.SequentialScan))
             {
                 var totalBytes = sourceStream.Length;
                 var totalWritten = 0L;
@@ -1167,20 +1268,33 @@ namespace SakuraEDL.Qualcomm.Protocol
         /// </summary>
         private async Task<bool> WriteSparsePartitionSmartAsync(int lun, long startSector, int sectorSize, string imagePath, string label, bool useOppoMode, CancellationToken ct)
         {
-            using (var sparse = SparseStream.Open(imagePath, _log))
+            // 在后台线程解析 Sparse 文件信息，避免 UI 卡住
+            _logDetail(string.Format("[Sparse] 正在解析 {0}...", Path.GetFileName(imagePath)));
+            
+            SparseStream sparse = null;
+            long totalExpandedSize = 0;
+            long realDataSize = 0;
+            List<Tuple<long, long>> dataRanges = null;
+            
+            try
             {
-                var totalExpandedSize = sparse.Length;
-                var realDataSize = sparse.GetRealDataSize();
-                var dataRanges = sparse.GetDataRanges();
+                // 在后台线程打开和解析 Sparse 文件
+                await Task.Run(() =>
+                {
+                    sparse = SparseStream.Open(imagePath, _log);
+                    totalExpandedSize = sparse.Length;
+                    realDataSize = sparse.GetRealDataSize();
+                    dataRanges = sparse.GetDataRanges();
+                });
                 
                 // 主日志显示写入信息
                 _log(string.Format("[Firehose] 写入: {0} ({1}) [Sparse]", label, FormatFileSize(realDataSize)));
                 _logDetail(string.Format("[Sparse] 展开大小: {0:N0} MB, 实际数据: {1:N0} MB, 节省: {2:P1}", 
                     totalExpandedSize / 1024.0 / 1024.0, 
                     realDataSize / 1024.0 / 1024.0,
-                    1.0 - (double)realDataSize / totalExpandedSize));
+                    realDataSize > 0 ? (1.0 - (double)realDataSize / totalExpandedSize) : 1.0));
                 
-                if (dataRanges.Count == 0)
+                if (dataRanges == null || dataRanges.Count == 0)
                 {
                     // 空 Sparse 镜像: 使用 erase 命令清空分区
                     _logDetail(string.Format("[Sparse] 镜像无实际数据，擦除分区 {0}...", label));
@@ -1256,6 +1370,15 @@ namespace SakuraEDL.Qualcomm.Protocol
                     SimpleBufferPool.Return(buffer);
                 }
             }
+            finally
+            {
+                // 确保 SparseStream 被释放
+                if (sparse != null)
+                {
+                    try { sparse.Dispose(); }
+                    catch { }
+                }
+            }
         }
 
         /// <summary>
@@ -1313,8 +1436,9 @@ namespace SakuraEDL.Qualcomm.Protocol
                 return await FlashSparsePartitionSmartAsync(partitionName, filePath, lun, startSector, progress, ct, useVipMode);
             }
             
-            // Raw 镜像的常规写入
-            using (Stream sourceStream = File.OpenRead(filePath))
+            // Raw 镜像的常规写入 (使用顺序访问提示优化读取)
+            using (Stream sourceStream = new FileStream(filePath, FileMode.Open, FileAccess.Read,
+                FileShare.Read, FILE_BUFFER_SIZE, FileOptions.SequentialScan))
             {
                 long fileSize = sourceStream.Length;
                 int numSectors = (int)Math.Ceiling((double)fileSize / _sectorSize);
@@ -1385,7 +1509,9 @@ namespace SakuraEDL.Qualcomm.Protocol
                 return false;
             }
             
-            using (Stream sourceStream = File.OpenRead(filePath))
+            // 使用顺序访问提示优化读取
+            using (Stream sourceStream = new FileStream(filePath, FileMode.Open, FileAccess.Read,
+                FileShare.Read, FILE_BUFFER_SIZE, FileOptions.SequentialScan))
             {
                 long fileSize = sourceStream.Length;
                 int numSectors = (int)Math.Ceiling((double)fileSize / _sectorSize);
@@ -1429,11 +1555,24 @@ namespace SakuraEDL.Qualcomm.Protocol
         /// </summary>
         private async Task<bool> FlashSparsePartitionSmartAsync(string partitionName, string filePath, int lun, long startSector, IProgress<double> progress, CancellationToken ct, bool useVipMode)
         {
-            using (var sparse = SparseStream.Open(filePath, _log))
+            // 在后台线程解析 Sparse 文件信息，避免 UI 卡住
+            _logDetail(string.Format("[Sparse] 正在解析 {0}...", Path.GetFileName(filePath)));
+            
+            SparseStream sparse = null;
+            long totalExpandedSize = 0;
+            long realDataSize = 0;
+            List<Tuple<long, long>> dataRanges = null;
+            
+            try
             {
-                var totalExpandedSize = sparse.Length;
-                var realDataSize = sparse.GetRealDataSize();
-                var dataRanges = sparse.GetDataRanges();
+                // 在后台线程打开和解析 Sparse 文件（耗时操作）
+                await Task.Run(() =>
+                {
+                    sparse = SparseStream.Open(filePath, _log);
+                    totalExpandedSize = sparse.Length;
+                    realDataSize = sparse.GetRealDataSize();
+                    dataRanges = sparse.GetDataRanges();
+                });
                 
                 // 主日志显示刷写信息
                 _log(string.Format("Firehose: 刷写 {0} -> {1} ({2}) [Sparse]{3}", 
@@ -1443,12 +1582,12 @@ namespace SakuraEDL.Qualcomm.Protocol
                     realDataSize / 1024.0 / 1024.0,
                     realDataSize > 0 ? (1.0 - (double)realDataSize / totalExpandedSize) : 1.0));
                 
-                if (dataRanges.Count == 0)
+                if (dataRanges == null || dataRanges.Count == 0)
                 {
                     // 空 Sparse 镜像 (如 userdata): 使用 erase 命令清空分区
                     _logDetail(string.Format("[Sparse] 镜像无实际数据，擦除分区 {0}...", partitionName));
                     long numSectors = totalExpandedSize / _sectorSize;
-                    bool eraseOk = await EraseSectorsAsync(lun, startSector, numSectors, ct);
+                    bool eraseOk = await EraseSectorsAsync(lun, startSector, numSectors, ct).ConfigureAwait(false);
                     if (progress != null) progress.Report(100.0);
                     if (eraseOk)
                         _logDetail(string.Format("[Sparse] 分区 {0} 擦除完成 ({1:F2} MB)", partitionName, totalExpandedSize / 1024.0 / 1024.0));
@@ -1506,9 +1645,11 @@ namespace SakuraEDL.Qualcomm.Protocol
                             _sectorSize, numSectors, lun, rangeStartSector, partitionName);
                     }
                     
-                    _port.Write(Encoding.UTF8.GetBytes(xml));
+                    // 使用异步写入
+                    var xmlBytes = Encoding.UTF8.GetBytes(xml);
+                    await _port.WriteAsync(xmlBytes, 0, xmlBytes.Length, ct).ConfigureAwait(false);
                     
-                    if (!await WaitForRawDataModeAsync(ct))
+                    if (!await WaitForRawDataModeAsync(ct).ConfigureAwait(false))
                     {
                         _logDetail(string.Format("[Sparse] 第 {0}/{1} 段 Program 命令被拒绝", rangeIndex, dataRanges.Count));
                         return false;
@@ -1516,7 +1657,7 @@ namespace SakuraEDL.Qualcomm.Protocol
                     
                     // 发送该范围的数据 (使用优化的块大小以获得最佳性能)
                     var sent = 0L;
-                    // 使用 4MB 块大小，提高 USB 3.0 传输效率
+                    // 使用 4MB 块大小 (USB 2.0/3.0 最佳平衡)
                     const int OPTIMAL_CHUNK = 4 * 1024 * 1024;
                     var chunkSize = Math.Min(OPTIMAL_CHUNK, _maxPayloadSize);
                     var buffer = new byte[chunkSize];
@@ -1535,8 +1676,8 @@ namespace SakuraEDL.Qualcomm.Protocol
                         if (paddedSize > read)
                             Array.Clear(buffer, read, paddedSize - read);
                         
-                        // 使用同步写入提高效率
-                        _port.Write(buffer, 0, paddedSize);
+                        // 使用异步写入避免阻塞
+                        await _port.WriteAsync(buffer, 0, paddedSize, ct).ConfigureAwait(false);
                         
                         sent += read;
                         totalWritten += read;
@@ -1550,7 +1691,7 @@ namespace SakuraEDL.Qualcomm.Protocol
                         }
                     }
                     
-                    if (!await WaitForAckAsync(ct, 30))
+                    if (!await WaitForAckAsync(ct, 30).ConfigureAwait(false))
                     {
                         _logDetail(string.Format("[Sparse] 第 {0}/{1} 段写入未确认", rangeIndex, dataRanges.Count));
                         return false;
@@ -1560,6 +1701,15 @@ namespace SakuraEDL.Qualcomm.Protocol
                 _logDetail(string.Format("[Sparse] {0} 写入完成: {1:N0} 字节 (跳过 {2:N0} MB 空白)", 
                     partitionName, totalWritten, (totalExpandedSize - realDataSize) / 1024.0 / 1024.0));
                 return true;
+            }
+            finally
+            {
+                // 确保 SparseStream 被释放
+                if (sparse != null)
+                {
+                    try { sparse.Dispose(); }
+                    catch { }
+                }
             }
         }
 
@@ -1625,9 +1775,9 @@ namespace SakuraEDL.Qualcomm.Protocol
             long sent = 0;
             
             // 使用双缓冲实现读写并行
-            // 块大小优化：USB 3.0 环境下 4MB 是最佳块大小
-            // USB 2.0 环境下 2MB 较优，但 4MB 也能正常工作
-            const int OPTIMAL_CHUNK_SIZE = 4 * 1024 * 1024; // 4MB 块 (从 2MB 增加)
+            // 块大小优化：USB 3.0 环境下 8MB 是最佳块大小，可减少 ACK 等待开销
+            // USB 2.0/3.0 通用最佳值
+            const int OPTIMAL_CHUNK_SIZE = 4 * 1024 * 1024; // 4MB 块
             int chunkSize = Math.Min(OPTIMAL_CHUNK_SIZE, _maxPayloadSize);
             
             byte[] buffer1 = new byte[chunkSize];
@@ -2723,7 +2873,13 @@ namespace SakuraEDL.Qualcomm.Protocol
                         }
                         else if (IndexOfPattern(probeBuf, 0, probeIdx, nakPattern) >= 0)
                         {
-                            // 设备拒绝
+                            // 设备拒绝 - 提取错误信息
+                            try
+                            {
+                                string responseStr = Encoding.UTF8.GetString(probeBuf, 0, Math.Min(probeIdx, 2048));
+                                _logDetail("[Read] NAK 响应: " + responseStr.Replace("\n", " ").Replace("\r", "").Substring(0, Math.Min(responseStr.Length, 500)));
+                            }
+                            catch { }
                             return false;
                         }
                     }

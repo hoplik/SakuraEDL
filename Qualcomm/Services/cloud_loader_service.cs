@@ -38,12 +38,8 @@ namespace SakuraEDL.Qualcomm.Services
 
         #region Configuration
         
-        // API 地址配置
-        private const string API_BASE_DEV = "http://localhost:8082/api";
-        private const string API_BASE_PROD = "https://api.sakuraedl.org/api";
-        
         // 当前使用的 API 地址
-        public string ApiBase { get; set; } = API_BASE_PROD;
+        public string ApiBase { get; set; } = "https://api.sakuraedl.org/api";
         
         // 本地缓存目录
         public string CacheDirectory { get; set; }
@@ -71,8 +67,17 @@ namespace SakuraEDL.Qualcomm.Services
         
         private CloudLoaderService()
         {
-            _httpClient = new HttpClient();
+            // 绕过系统代理，避免 VPN/代理软件干扰
+            var handler = new HttpClientHandler
+            {
+                UseProxy = false,
+                // 允许自签名证书（可选，调试用）
+                // ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
+            };
+            _httpClient = new HttpClient(handler);
             _httpClient.DefaultRequestHeaders.Add("User-Agent", "SakuraEDL/2.0");
+            // 在构造函数中设置超时（HttpClient 启动后不能再修改 Timeout）
+            _httpClient.Timeout = TimeSpan.FromSeconds(60);
             
             // 默认缓存目录
             CacheDirectory = Path.Combine(
@@ -112,8 +117,6 @@ namespace SakuraEDL.Qualcomm.Services
 
             try
             {
-                _httpClient.Timeout = TimeSpan.FromSeconds(TimeoutSeconds);
-                
                 // 1. 检查本地缓存
                 if (EnableCache && !string.IsNullOrEmpty(pkHash))
                 {
@@ -223,28 +226,164 @@ namespace SakuraEDL.Qualcomm.Services
         /// </summary>
         public async Task<byte[]> DownloadLoaderAsync(int loaderId)
         {
+            return await DownloadLoaderAsync(loaderId, null);
+        }
+        
+        /// <summary>
+        /// 从云端下载 Loader 文件 (带进度回调)
+        /// </summary>
+        /// <param name="loaderId">Loader ID</param>
+        /// <param name="progressCallback">进度回调: (已下载字节, 总字节, 速度KB/s)</param>
+        public async Task<byte[]> DownloadLoaderAsync(int loaderId, Action<long, long, double> progressCallback)
+        {
             try
             {
-                Log(string.Format("正在下载 Loader (ID: {0})...", loaderId));
+                var url = string.Format("{0}/loaders/{1}/download", ApiBase, loaderId);
                 
-                var response = await _httpClient.GetAsync(string.Format("{0}/loaders/{1}/download", ApiBase, loaderId));
-                
-                if (!response.IsSuccessStatusCode)
+                using (var response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead))
                 {
-                    Log(string.Format("下载失败: HTTP {0}", (int)response.StatusCode));
-                    return null;
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        Log(string.Format("下载失败: HTTP {0}", (int)response.StatusCode));
+                        return null;
+                    }
+                    
+                    var totalBytes = response.Content.Headers.ContentLength ?? 0;
+                    
+                    using (var stream = await response.Content.ReadAsStreamAsync())
+                    using (var memoryStream = new System.IO.MemoryStream())
+                    {
+                        var buffer = new byte[8192];
+                        long downloadedBytes = 0;
+                        int bytesRead;
+                        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+                        long lastReportTime = 0;
+                        long lastReportBytes = 0;
+                        double speed = 0;
+                        
+                        while ((bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length)) > 0)
+                        {
+                            memoryStream.Write(buffer, 0, bytesRead);
+                            downloadedBytes += bytesRead;
+                            
+                            // 每 100ms 更新一次进度
+                            if (stopwatch.ElapsedMilliseconds - lastReportTime >= 100)
+                            {
+                                // 计算下载速度 (KB/s)
+                                var timeDiff = (stopwatch.ElapsedMilliseconds - lastReportTime) / 1000.0;
+                                if (timeDiff > 0)
+                                {
+                                    speed = (downloadedBytes - lastReportBytes) / 1024.0 / timeDiff;
+                                }
+                                
+                                lastReportTime = stopwatch.ElapsedMilliseconds;
+                                lastReportBytes = downloadedBytes;
+                                
+                                progressCallback?.Invoke(downloadedBytes, totalBytes, speed);
+                            }
+                        }
+                        
+                        // 最终进度
+                        progressCallback?.Invoke(downloadedBytes, totalBytes, speed);
+                        
+                        return memoryStream.ToArray();
+                    }
                 }
-                
-                var data = await response.Content.ReadAsByteArrayAsync();
-                Log(string.Format("下载完成: {0} KB", data.Length / 1024));
-                
-                return data;
             }
             catch (Exception ex)
             {
                 Log(string.Format("下载异常: {0}", ex.Message));
                 return null;
             }
+        }
+        
+        /// <summary>
+        /// 下载 VIP Digest 文件
+        /// </summary>
+        /// <param name="loaderId">Loader ID</param>
+        public async Task<byte[]> DownloadDigestAsync(int loaderId)
+        {
+            try
+            {
+                var url = string.Format("{0}/loaders/{1}/digest", ApiBase, loaderId);
+                Log(string.Format("[云端] 下载 Digest (ID={0})...", loaderId));
+                
+                using (var response = await _httpClient.GetAsync(url))
+                {
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        Log(string.Format("[云端] Digest 下载失败: HTTP {0}", (int)response.StatusCode));
+                        return null;
+                    }
+                    
+                    var data = await response.Content.ReadAsByteArrayAsync();
+                    Log(string.Format("[云端] Digest 下载完成 ({0} 字节)", data.Length));
+                    return data;
+                }
+            }
+            catch (Exception ex)
+            {
+                Log(string.Format("[云端] Digest 下载异常: {0}", ex.Message));
+                return null;
+            }
+        }
+        
+        /// <summary>
+        /// 下载 VIP Sign 文件
+        /// </summary>
+        /// <param name="loaderId">Loader ID</param>
+        public async Task<byte[]> DownloadSignatureAsync(int loaderId)
+        {
+            try
+            {
+                var url = string.Format("{0}/loaders/{1}/sign", ApiBase, loaderId);
+                Log(string.Format("[云端] 下载 Sign (ID={0})...", loaderId));
+                
+                using (var response = await _httpClient.GetAsync(url))
+                {
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        Log(string.Format("[云端] Sign 下载失败: HTTP {0}", (int)response.StatusCode));
+                        return null;
+                    }
+                    
+                    var data = await response.Content.ReadAsByteArrayAsync();
+                    Log(string.Format("[云端] Sign 下载完成 ({0} 字节)", data.Length));
+                    return data;
+                }
+            }
+            catch (Exception ex)
+            {
+                Log(string.Format("[云端] Sign 下载异常: {0}", ex.Message));
+                return null;
+            }
+        }
+        
+        /// <summary>
+        /// 下载 VIP 验证所需的所有文件
+        /// </summary>
+        /// <param name="loaderId">Loader ID</param>
+        /// <returns>元组: (digestData, signData)，任一为 null 表示下载失败</returns>
+        public async Task<(byte[] digest, byte[] sign)> DownloadVipFilesAsync(int loaderId)
+        {
+            Log("[云端] 下载 VIP 验证文件...");
+            
+            var digestTask = DownloadDigestAsync(loaderId);
+            var signTask = DownloadSignatureAsync(loaderId);
+            
+            await Task.WhenAll(digestTask, signTask);
+            
+            var digest = digestTask.Result;
+            var sign = signTask.Result;
+            
+            if (digest == null || sign == null)
+            {
+                Log("[云端] VIP 验证文件下载不完整");
+                return (null, null);
+            }
+            
+            Log(string.Format("[云端] VIP 文件下载完成 (Digest={0}B, Sign={1}B)", digest.Length, sign.Length));
+            return (digest, sign);
         }
         
         /// <summary>
@@ -256,16 +395,18 @@ namespace SakuraEDL.Qualcomm.Services
             
             try
             {
-                _httpClient.Timeout = TimeSpan.FromSeconds(TimeoutSeconds);
-                
-                string url = ApiBase + "/loaders/list";
+                // 添加时间戳防止缓存
+                string cacheBuster = "_t=" + DateTime.UtcNow.Ticks;
+                string url = ApiBase + "/loaders/list?" + cacheBuster;
                 if (!string.IsNullOrEmpty(storageType))
                 {
-                    url += "?storage_type=" + storageType;
+                    url += "&storage_type=" + storageType;
                 }
                 
-                Log("正在获取云端 Loader 列表...");
-                var response = await _httpClient.GetAsync(url);
+                // 创建请求并禁用缓存
+                var request = new HttpRequestMessage(HttpMethod.Get, url);
+                request.Headers.CacheControl = new System.Net.Http.Headers.CacheControlHeaderValue { NoCache = true };
+                var response = await _httpClient.SendAsync(request);
                 var resultJson = await response.Content.ReadAsStringAsync();
                 
                 int code = ParseJsonInt(resultJson, "code");
@@ -279,11 +420,13 @@ namespace SakuraEDL.Qualcomm.Services
                 string loadersArray = ExtractJsonArray(resultJson, "loaders");
                 if (string.IsNullOrEmpty(loadersArray))
                 {
+                    Log("未找到 loaders 数组");
                     return result;
                 }
                 
                 // 简单解析 JSON 数组中的每个对象
                 var items = ParseJsonArrayItems(loadersArray);
+                
                 foreach (var itemJson in items)
                 {
                     var info = new CloudLoaderInfo
@@ -296,7 +439,9 @@ namespace SakuraEDL.Qualcomm.Services
                         AuthType = ParseJsonString(itemJson, "auth_type"),
                         StorageType = ParseJsonString(itemJson, "storage_type"),
                         FileSize = ParseJsonInt(itemJson, "file_size"),
-                        DisplayName = ParseJsonString(itemJson, "display_name")
+                        DisplayName = ParseJsonString(itemJson, "display_name"),
+                        HasDigest = ParseJsonBool(itemJson, "has_digest"),
+                        HasSign = ParseJsonBool(itemJson, "has_sign")
                     };
                     
                     if (info.Id > 0)
@@ -305,23 +450,63 @@ namespace SakuraEDL.Qualcomm.Services
                     }
                 }
                 
-                Log(string.Format("获取到 {0} 个云端 Loader", result.Count));
             }
             catch (Exception ex)
             {
-                Log(string.Format("获取列表异常: {0}", ex.Message));
+                // 输出详细错误信息用于调试
+                string errorDetail = ex.Message;
+                if (ex.InnerException != null)
+                {
+                    errorDetail += " -> " + ex.InnerException.Message;
+                    if (ex.InnerException.InnerException != null)
+                    {
+                        errorDetail += " -> " + ex.InnerException.InnerException.Message;
+                    }
+                }
+                Log(string.Format("获取列表异常: {0}", errorDetail));
+                LogDetail(string.Format("API地址: {0}", ApiBase + "/loaders/list"));
             }
             
             return result;
         }
         
         /// <summary>
-        /// 上报设备日志 (异步，不阻塞主流程)
+        /// 上报设备日志 (异步，不阻塞主流程) - 简化版本
         /// </summary>
         public void ReportDeviceLog(
             string msmId,
             string pkHash,
             string oemId,
+            string storageType,
+            string matchResult)
+        {
+            ReportDeviceLogEx(0, msmId, pkHash, oemId, "", "", "", "", "", storageType, matchResult);
+        }
+        
+        /// <summary>
+        /// 上报设备日志 (异步，不阻塞主流程) - 完整版本
+        /// </summary>
+        /// <param name="saharaVersion">Sahara 协议版本 (1/2/3)</param>
+        /// <param name="msmId">MSM ID</param>
+        /// <param name="pkHash">PK Hash</param>
+        /// <param name="oemId">OEM ID</param>
+        /// <param name="modelId">Model ID</param>
+        /// <param name="hwId">完整 HWID</param>
+        /// <param name="serialNumber">设备序列号</param>
+        /// <param name="chipName">芯片名称 (如 SM8550)</param>
+        /// <param name="vendor">厂商名称 (如 Xiaomi)</param>
+        /// <param name="storageType">存储类型</param>
+        /// <param name="matchResult">匹配结果</param>
+        public void ReportDeviceLogEx(
+            int saharaVersion,
+            string msmId,
+            string pkHash,
+            string oemId,
+            string modelId,
+            string hwId,
+            string serialNumber,
+            string chipName,
+            string vendor,
             string storageType,
             string matchResult)
         {
@@ -331,7 +516,8 @@ namespace SakuraEDL.Qualcomm.Services
             {
                 try
                 {
-                    var json = BuildDeviceLogJson(msmId, pkHash, oemId, storageType, matchResult);
+                    var json = BuildDeviceLogJsonEx(saharaVersion, msmId, pkHash, oemId, modelId, 
+                        hwId, serialNumber, chipName, vendor, storageType, matchResult);
                     var content = new StringContent(json, Encoding.UTF8, "application/json");
                     await _httpClient.PostAsync(ApiBase + "/device-logs", content);
                 }
@@ -398,14 +584,32 @@ namespace SakuraEDL.Qualcomm.Services
         
         private string BuildDeviceLogJson(string msmId, string pkHash, string oemId, string storageType, string matchResult)
         {
+            return BuildDeviceLogJsonEx(0, msmId, pkHash, oemId, "", "", "", "", "", storageType, matchResult);
+        }
+        
+        private string BuildDeviceLogJsonEx(int saharaVersion, string msmId, string pkHash, string oemId, 
+            string modelId, string hwId, string serialNumber, string chipName, string vendor, 
+            string storageType, string matchResult)
+        {
             var sb = new StringBuilder();
             sb.Append("{");
             sb.Append("\"platform\":\"qualcomm\"");
+            sb.AppendFormat(",\"sahara_version\":{0}", saharaVersion);
             sb.AppendFormat(",\"msm_id\":\"{0}\"", EscapeJson(msmId ?? ""));
             if (!string.IsNullOrEmpty(pkHash))
                 sb.AppendFormat(",\"pk_hash\":\"{0}\"", EscapeJson(pkHash));
             if (!string.IsNullOrEmpty(oemId))
                 sb.AppendFormat(",\"oem_id\":\"{0}\"", EscapeJson(oemId));
+            if (!string.IsNullOrEmpty(modelId))
+                sb.AppendFormat(",\"model_id\":\"{0}\"", EscapeJson(modelId));
+            if (!string.IsNullOrEmpty(hwId))
+                sb.AppendFormat(",\"hw_id\":\"{0}\"", EscapeJson(hwId));
+            if (!string.IsNullOrEmpty(serialNumber))
+                sb.AppendFormat(",\"serial_number\":\"{0}\"", EscapeJson(serialNumber));
+            if (!string.IsNullOrEmpty(chipName))
+                sb.AppendFormat(",\"chip_name\":\"{0}\"", EscapeJson(chipName));
+            if (!string.IsNullOrEmpty(vendor))
+                sb.AppendFormat(",\"vendor\":\"{0}\"", EscapeJson(vendor));
             sb.AppendFormat(",\"storage_type\":\"{0}\"", EscapeJson(storageType ?? "ufs"));
             sb.AppendFormat(",\"match_result\":\"{0}\"", EscapeJson(matchResult ?? ""));
             sb.Append(",\"client_version\":\"SakuraEDL/2.0\"");
@@ -441,6 +645,18 @@ namespace SakuraEDL.Qualcomm.Services
             return 0;
         }
         
+        private bool ParseJsonBool(string json, string key)
+        {
+            if (string.IsNullOrEmpty(json)) return false;
+            var pattern = string.Format("\"{0}\"\\s*:\\s*(true|false)", Regex.Escape(key));
+            var match = Regex.Match(json, pattern, RegexOptions.IgnoreCase);
+            if (match.Success)
+            {
+                return match.Groups[1].Value.ToLower() == "true";
+            }
+            return false;
+        }
+        
         private string ExtractJsonObject(string json, string key)
         {
             if (string.IsNullOrEmpty(json)) return null;
@@ -450,12 +666,36 @@ namespace SakuraEDL.Qualcomm.Services
             
             int start = match.Index + match.Length - 1;
             int depth = 0;
+            bool inString = false;
+            bool escape = false;
+            
             for (int i = start; i < json.Length; i++)
             {
-                if (json[i] == '{') depth++;
-                else if (json[i] == '}') depth--;
-                if (depth == 0)
-                    return json.Substring(start, i - start + 1);
+                char c = json[i];
+                
+                if (escape)
+                {
+                    escape = false;
+                    continue;
+                }
+                if (c == '\\' && inString)
+                {
+                    escape = true;
+                    continue;
+                }
+                if (c == '"')
+                {
+                    inString = !inString;
+                    continue;
+                }
+                
+                if (!inString)
+                {
+                    if (c == '{') depth++;
+                    else if (c == '}') depth--;
+                    if (depth == 0)
+                        return json.Substring(start, i - start + 1);
+                }
             }
             return null;
         }
@@ -469,12 +709,40 @@ namespace SakuraEDL.Qualcomm.Services
             
             int start = match.Index + match.Length - 1;
             int depth = 0;
+            bool inString = false;
+            bool escape = false;
+            
             for (int i = start; i < json.Length; i++)
             {
-                if (json[i] == '[') depth++;
-                else if (json[i] == ']') depth--;
-                if (depth == 0)
-                    return json.Substring(start, i - start + 1);
+                char c = json[i];
+                
+                // 处理转义字符
+                if (escape)
+                {
+                    escape = false;
+                    continue;
+                }
+                if (c == '\\' && inString)
+                {
+                    escape = true;
+                    continue;
+                }
+                
+                // 处理字符串边界
+                if (c == '"')
+                {
+                    inString = !inString;
+                    continue;
+                }
+                
+                // 只在字符串外部计算括号深度
+                if (!inString)
+                {
+                    if (c == '[') depth++;
+                    else if (c == ']') depth--;
+                    if (depth == 0)
+                        return json.Substring(start, i - start + 1);
+                }
             }
             return null;
         }
@@ -490,17 +758,40 @@ namespace SakuraEDL.Qualcomm.Services
             
             int depth = 0;
             int start = 0;
+            bool inString = false;
+            bool escape = false;
+            
             for (int i = 0; i < arrayJson.Length; i++)
             {
                 char c = arrayJson[i];
-                if (c == '{') depth++;
-                else if (c == '}') depth--;
-                else if (c == ',' && depth == 0)
+                
+                if (escape)
                 {
-                    var item = arrayJson.Substring(start, i - start).Trim();
-                    if (!string.IsNullOrEmpty(item))
-                        items.Add(item);
-                    start = i + 1;
+                    escape = false;
+                    continue;
+                }
+                if (c == '\\' && inString)
+                {
+                    escape = true;
+                    continue;
+                }
+                if (c == '"')
+                {
+                    inString = !inString;
+                    continue;
+                }
+                
+                if (!inString)
+                {
+                    if (c == '{') depth++;
+                    else if (c == '}') depth--;
+                    else if (c == ',' && depth == 0)
+                    {
+                        var item = arrayJson.Substring(start, i - start).Trim();
+                        if (!string.IsNullOrEmpty(item))
+                            items.Add(item);
+                        start = i + 1;
+                    }
                 }
             }
             // 最后一个元素
@@ -606,6 +897,7 @@ namespace SakuraEDL.Qualcomm.Services
         
         private void LogDetail(string message)
         {
+            System.Diagnostics.Debug.WriteLine("[CloudLoader] " + message);
             if (_logDetail != null)
                 _logDetail(message);
         }
@@ -649,6 +941,16 @@ namespace SakuraEDL.Qualcomm.Services
         public string DisplayName { get; set; }
         
         /// <summary>
+        /// 是否有 Digest 文件 (VIP 验证需要)
+        /// </summary>
+        public bool HasDigest { get; set; }
+        
+        /// <summary>
+        /// 是否有 Sign 文件 (VIP 验证需要)
+        /// </summary>
+        public bool HasSign { get; set; }
+        
+        /// <summary>
         /// 是否需要 VIP 验证
         /// </summary>
         public bool IsVip => AuthType?.ToLower() == "vip";
@@ -662,6 +964,11 @@ namespace SakuraEDL.Qualcomm.Services
         /// 是否需要小米验证
         /// </summary>
         public bool IsXiaomi => AuthType?.ToLower() == "miauth";
+        
+        /// <summary>
+        /// VIP 验证文件是否完整
+        /// </summary>
+        public bool HasVipFiles => HasDigest && HasSign;
         
         /// <summary>
         /// 获取显示名称

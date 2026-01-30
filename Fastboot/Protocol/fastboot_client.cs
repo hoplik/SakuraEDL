@@ -408,12 +408,15 @@ namespace SakuraEDL.Fastboot.Protocol
             long totalSize = image.SparseSize;
             _log($"刷写 {partition}: {totalSize / 1024} KB ({(image.IsSparse ? "Sparse" : "Raw")})");
             
-            // 如果文件大于 max-download-size，需要分块
-            if (totalSize > _maxDownloadSize && !image.IsSparse)
+            // 大文件处理说明：
+            // - Raw 镜像：SplitForTransfer 会自动转换为 Sparse 格式（带偏移量）
+            // - Sparse 镜像：SplitForTransfer 会 resparse 并支持拆分过大的 Chunk
+            // 两种情况都已正确实现，无需特殊处理
+            
+            if (totalSize > _maxDownloadSize)
             {
-                _log($"文件过大，需要 Resparse");
-                // TODO: 实现 resparse
-                return false;
+                int estimatedChunks = (int)((totalSize + _maxDownloadSize - 1) / _maxDownloadSize);
+                _log($"文件需要分块传输: ~{estimatedChunks} 块");
             }
             
             // 分块传输 - 使用设备报告的 max-download-size（与官方 fastboot 一致）

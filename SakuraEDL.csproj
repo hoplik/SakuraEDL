@@ -110,6 +110,7 @@
     <Compile Include="Common\Logger.cs" />
     <Compile Include="Common\PerformanceConfig.cs" />
     <Compile Include="Common\Watchdog.cs" />
+    <Compile Include="Common\DriverDownloadService.cs" />
     <!-- 高通模块 -->
     <Compile Include="Qualcomm\Authentication\i_auth_strategy.cs" />
     <Compile Include="Qualcomm\Authentication\oneplus_auth_strategy.cs" />
@@ -129,7 +130,11 @@
     <Compile Include="Qualcomm\Services\cloud_loader_integration.cs" />
     <Compile Include="Qualcomm\Common\port_detector.cs" />
     <Compile Include="Qualcomm\Common\rawprogram_parser.cs" />
+    <Compile Include="Qualcomm\Common\loader_feature_detector.cs" />
+    <Compile Include="Qualcomm\Common\motorola_support.cs" />
+    <Compile Include="Qualcomm\Protocol\diag_client.cs" />
     <Compile Include="Qualcomm\Common\gpt_parser.cs" />
+    <Compile Include="Qualcomm\Common\slot_detector.cs" />
     <Compile Include="Qualcomm\Common\lp_metadata_parser.cs" />
     <Compile Include="Qualcomm\Common\lz4_decoder.cs" />
     <Compile Include="Qualcomm\Common\erofs_parser.cs" />
@@ -177,6 +182,18 @@
     <Compile Include="Spreadtrum\Resources\fdl_pak_manager.cs" />
     <Compile Include="Spreadtrum\Resources\sprd_pak_manager.cs" />
     <Compile Include="Spreadtrum\Resources\fdl_index.cs" />
+    <!-- 展讯高级功能 -->
+    <Compile Include="Spreadtrum\Common\sprd_advanced_features.cs" />
+    <Compile Include="Spreadtrum\Common\boot_parser.cs" />
+    <Compile Include="Spreadtrum\Common\cpio_parser.cs" />
+    <Compile Include="Spreadtrum\Common\device_info_extractor.cs" />
+    <Compile Include="Spreadtrum\Common\lz4_decompressor.cs" />
+    <Compile Include="Spreadtrum\Common\sprd_cryptograph.cs" />
+    <Compile Include="Spreadtrum\Protocol\diag_client.cs" />
+    <!-- 展讯 ISP -->
+    <Compile Include="Spreadtrum\ISP\emmc_device.cs" />
+    <Compile Include="Spreadtrum\ISP\emmc_gpt.cs" />
+    <Compile Include="Spreadtrum\ISP\emmc_partition_manager.cs" />
     <!-- 高通附加服务 -->
     <Compile Include="Qualcomm\Services\provision_service.cs" />
     <Compile Include="Qualcomm\Common\compression_service.cs" />
@@ -283,105 +300,4 @@
       <ErrorText>这台计算机上缺少此项目引用的 NuGet 程序包。使用“NuGet 程序包还原”可下载这些程序包。有关更多信息，请参见 http://go.microsoft.com/fwlink/?LinkID=322105。缺少的文件是 {0}。</ErrorText>
     </PropertyGroup>
   </Target>
-  <!-- 复制 SPD FDL 资源到输出目录 -->
-  <ItemGroup>
-    <Content Include="SprdResources\sprd_fdls\**\*.*">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Link>SprdResources\sprd_fdls\%(RecursiveDir)%(Filename)%(Extension)</Link>
-    </Content>
-  </ItemGroup>
-  <ItemGroup>
-    <Folder Include="SprdResources\sprd_fdls\.git\hooks\" />
-    <Folder Include="SprdResources\sprd_fdls\.git\info\" />
-    <Folder Include="SprdResources\sprd_fdls\.git\logs\refs\heads\" />
-    <Folder Include="SprdResources\sprd_fdls\.git\logs\refs\remotes\origin\" />
-    <Folder Include="SprdResources\sprd_fdls\.git\objects\pack\" />
-    <Folder Include="SprdResources\sprd_fdls\.git\refs\heads\" />
-    <Folder Include="SprdResources\sprd_fdls\.git\refs\remotes\origin\" />
-    <Folder Include="SprdResources\sprd_fdls\other\udx710\udx710_4h10\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\98xx_85xx\9820a\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\98xx_85xx\9832E_8541E\9832e_1h10\9832e\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\98xx_85xx\9832E_8541E\A23-Pro-L5006C\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\98xx_85xx\9832E_8541E\A23R\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\98xx_85xx\9832E_8541E\A23S-A511LQ\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\98xx_85xx\9832E_8541E\A27-A551L\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\98xx_85xx\9832E_8541E\A3-2020\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\98xx_85xx\9832E_8541E\A60-A662L\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\98xx_85xx\9832E_8541E\A661L\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\98xx_85xx\9832E_8541E\A662L\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\98xx_85xx\9832E_8541E\BL50\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\98xx_85xx\9832E_8541E\BL51\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\98xx_85xx\9832E_8541E\Bold-T0040TT-DS\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\98xx_85xx\9832E_8541E\Bold-T0060TT-DS\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\98xx_85xx\9832E_8541E\Bold-T0070TT-SS\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\98xx_85xx\9832E_8541E\L6006-a\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\98xx_85xx\9832E_8541E\L6006\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\98xx_85xx\9832E_8541E\sl8541e\1\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\98xx_85xx\9832E_8541E\sl8541e\2\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\98xx_85xx\9850K\K320T\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\98xx_85xx\9863A_8581A\3c10\max\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\98xx_85xx\9863A_8581A\3h10\A70\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\98xx_85xx\9863A_8581A\3h10\S661LP\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\98xx_85xx\9863A_8581A\bf6-pop-7\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\98xx_85xx\9863A_8581A\BL50-Pro\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\98xx_85xx\9863A_8581A\Blade-V10-Vita\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\98xx_85xx\9863A_8581A\Bold-T0050TT-SS\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\98xx_85xx\9863A_8581A\Bold-T6-T0090TT\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\98xx_85xx\9863A_8581A\J9L-J0090WW\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\98xx_85xx\9863A_8581A\L6005\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\98xx_85xx\9863A_8581A\P963F01\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\98xx_85xx\9863A_8581A\PR651H-v2\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\98xx_85xx\9863A_8581A\PR651H\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\98xx_85xx\9863A_8581A\pr651\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\98xx_85xx\9863A_8581A\PR652B_Hot-10i\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\98xx_85xx\9863A_8581A\RMX3231_c11\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\98xx_85xx\9863A_8581A\S18-S663L-SE663\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\98xx_85xx\9863A_8581A\Vision-2-P681L\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\98xx_85xx\9863A_8581A\Vision-2S-P651L\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\98xx_85xx\9863A_8581A\X6511B\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\98xx_85xx\9863A_8581A\Z25\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\old\7731e\A33-Plus-A509W\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\old\7731e\A571W\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\old\7731e\A58-A661W\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\old\7731e\LIV_1_LIV1052\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\old\7731e\Nitro_55R\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\old\7731e\P38-P661W\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\old\7731e\Rubyfame\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\old\7731e\S16-W6502\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\old\sc6820_sc8810\Set1\6500-TV - S560\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\old\sc6820_sc8810\Set1\C909 JF V12 - GT-N9300\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\old\sc6820_sc8810\Set1\c909_JF_CH_v01\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\old\sc6820_sc8810\Set1\Feiteng A7100 - SC6820 - C910\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\old\sc6820_sc8810\Set1\Generic - SC6820a 2sim eng\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\old\sc6820_sc8810\Set1\Mini N9300 - S2-c909-V15\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\old\sc6820_sc8810\Set1\MocorDroid4.0.3_VLX_W12.23_P3_U788+\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\old\sc6820_sc8810\Set2\SC8810 - 5830 Q206 - S930\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\old\sc6820_sc8810\Set2\sp8810eabase\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\old\sc6820_sc8810\Set3\c909_JF_EAHC_V12\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\old\sc6820_sc8810\Set3\c909_JF_EN_v03-235\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\old\sc6820_sc8810\Set3\H003_JF_4.0.3_EN_TV_V05\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\old\sc6820_sc8810\Set3\H369X_JF_v02-LJJ\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\old\sc6820_sc8810\Set3\HOO3_JF_V12-LJJ\" />
-    <Folder Include="SprdResources\sprd_fdls\sc_sp_sl\old\sc8830\" />
-    <Folder Include="SprdResources\sprd_fdls\t_series\t1xx\" />
-    <Folder Include="SprdResources\sprd_fdls\ums\ums312\2h10\" />
-    <Folder Include="SprdResources\sprd_fdls\ums\ums512\RMX3261-c11\" />
-    <Folder Include="SprdResources\sprd_fdls\ums\ums512\RMX3261-c21y\" />
-    <Folder Include="SprdResources\sprd_fdls\ums\ums512\RMX3263\" />
-    <Folder Include="SprdResources\sprd_fdls\ums\ums512\RMX3269-a\" />
-    <Folder Include="SprdResources\sprd_fdls\ums\ums512\RMX3269_c25y_v1\" />
-    <Folder Include="SprdResources\sprd_fdls\ums\ums512\RMX3269_c25y_v2\" />
-    <Folder Include="SprdResources\sprd_fdls\ums\ums9230\RMX3501EU-c31\" />
-    <Folder Include="SprdResources\sprd_fdls\ums\ums9230\RMX3506\" />
-    <Folder Include="SprdResources\sprd_fdls\ums\ums9230\RMX3511\" />
-    <Folder Include="SprdResources\sprd_fdls\ums\ums9230\RMX3516\" />
-    <Folder Include="SprdResources\sprd_fdls\ums\ums9230\RMX3581-c30\" />
-    <Folder Include="SprdResources\sprd_fdls\ums\ums9230\RMX3624\" />
-    <Folder Include="SprdResources\sprd_fdls\ums\ums9230\RMX3627-a\" />
-    <Folder Include="SprdResources\sprd_fdls\ums\ums9230\RMX3627\" />
-    <Folder Include="SprdResources\sprd_fdls\uws\uws6131\" />
-    <Folder Include="SprdResources\sprd_fdls\uws\uws6137E\" />
-    <Folder Include="SprdResources\sprd_fdls\uws\uws6152E\" />
-    <Folder Include="SprdResources\sprd_fdls\uws\uws6152\" />
-  </ItemGroup>
 </Project>

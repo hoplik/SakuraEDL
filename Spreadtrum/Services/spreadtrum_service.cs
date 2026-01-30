@@ -15,6 +15,7 @@ using SakuraEDL.Common;
 using SakuraEDL.Spreadtrum.Common;
 using SakuraEDL.Spreadtrum.Exploit;
 using SakuraEDL.Spreadtrum.Protocol;
+using SakuraEDL.Spreadtrum.ISP;
 
 namespace SakuraEDL.Spreadtrum.Services
 {
@@ -1855,6 +1856,955 @@ namespace SakuraEDL.Spreadtrum.Services
 
         #endregion
 
+        #region Boot 镜像解析与设备信息
+
+        private BootParser _bootParser;
+        private DeviceInfoExtractor _deviceInfoExtractor;
+        private DiagClient _diagClient;
+
+        /// <summary>
+        /// 从 Boot.img 文件提取设备信息
+        /// </summary>
+        public SprdDeviceDetails ExtractDeviceInfoFromBoot(string bootImagePath)
+        {
+            try
+            {
+                Log("[展讯] 解析 Boot 镜像...", Color.White);
+                
+                if (_deviceInfoExtractor == null)
+                    _deviceInfoExtractor = new DeviceInfoExtractor(msg => Log(msg, Color.Gray));
+
+                var details = _deviceInfoExtractor.ExtractFromBootImage(bootImagePath);
+                
+                if (details != null)
+                {
+                    Log($"[展讯] 设备: {details.GetDisplayName()}", Color.Lime);
+                    Log($"[展讯] 版本: {details.GetVersionInfo()}", Color.Lime);
+                }
+                
+                return details;
+            }
+            catch (Exception ex)
+            {
+                Log($"[展讯] Boot 解析失败: {ex.Message}", Color.Red);
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// 从 Boot.img 数据提取设备信息
+        /// </summary>
+        public SprdDeviceDetails ExtractDeviceInfoFromBoot(byte[] bootImageData)
+        {
+            try
+            {
+                Log("[展讯] 解析 Boot 镜像数据...", Color.White);
+                
+                if (_deviceInfoExtractor == null)
+                    _deviceInfoExtractor = new DeviceInfoExtractor(msg => Log(msg, Color.Gray));
+
+                return _deviceInfoExtractor.ExtractFromBootImage(bootImageData);
+            }
+            catch (Exception ex)
+            {
+                Log($"[展讯] Boot 解析失败: {ex.Message}", Color.Red);
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// 从 PAC 固件包提取设备信息
+        /// </summary>
+        public async Task<SprdDeviceDetails> ExtractDeviceInfoFromPacAsync(string pacFilePath)
+        {
+            try
+            {
+                Log("[展讯] 从 PAC 提取设备信息...", Color.White);
+
+                // 解析 PAC
+                var pacInfo = _pacParser.Parse(pacFilePath);
+                if (pacInfo == null)
+                {
+                    Log("[展讯] PAC 解析失败", Color.Red);
+                    return null;
+                }
+
+                // 查找 boot.img
+                var bootEntry = pacInfo.Files.FirstOrDefault(f => 
+                    f.FileName.ToLower().Contains("boot") && 
+                    (f.FileName.EndsWith(".img") || f.FileName.EndsWith(".bin")));
+
+                if (bootEntry == null)
+                {
+                    Log("[展讯] PAC 中未找到 Boot 镜像", Color.Orange);
+                    return null;
+                }
+
+                // 提取 boot.img
+                var pacParser = new PacParser();
+                byte[] bootData = await Task.Run(() => pacParser.ExtractFileData(pacInfo.FilePath, bootEntry));
+                if (bootData == null || bootData.Length == 0)
+                {
+                    Log("[展讯] 无法提取 Boot 镜像", Color.Red);
+                    return null;
+                }
+
+                // 检查是否加密
+                if (SprdCryptograph.IsEncrypted(bootData))
+                {
+                    Log("[展讯] Boot 镜像已加密，尝试解密...", Color.Yellow);
+                    bootData = SprdCryptograph.TryDecrypt(bootData);
+                }
+
+                return ExtractDeviceInfoFromBoot(bootData);
+            }
+            catch (Exception ex)
+            {
+                Log($"[展讯] 从 PAC 提取设备信息失败: {ex.Message}", Color.Red);
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// 解压 Ramdisk 并列出文件
+        /// </summary>
+        public List<CpioEntry> ExtractRamdiskFiles(string bootImagePath)
+        {
+            try
+            {
+                if (_bootParser == null)
+                    _bootParser = new BootParser(msg => Log(msg, Color.Gray));
+
+                var bootInfo = _bootParser.Parse(bootImagePath);
+                return _bootParser.ExtractRamdisk(bootInfo);
+            }
+            catch (Exception ex)
+            {
+                Log($"[展讯] Ramdisk 提取失败: {ex.Message}", Color.Red);
+                return new List<CpioEntry>();
+            }
+        }
+
+        #endregion
+
+        #region Diag 诊断通道
+
+        /// <summary>
+        /// 连接 Diag 端口
+        /// </summary>
+        public async Task<bool> ConnectDiagAsync(string portName)
+        {
+            try
+            {
+                if (_diagClient == null)
+                {
+                    _diagClient = new DiagClient();
+                    _diagClient.OnLog += msg => Log(msg, Color.Gray);
+                }
+
+                return await _diagClient.ConnectAsync(portName);
+            }
+            catch (Exception ex)
+            {
+                Log($"[展讯] Diag 连接失败: {ex.Message}", Color.Red);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 断开 Diag 连接
+        /// </summary>
+        public void DisconnectDiag()
+        {
+            _diagClient?.Disconnect();
+        }
+
+        /// <summary>
+        /// 通过 Diag 读取 IMEI
+        /// </summary>
+        public async Task<string> ReadImeiViaDiagAsync(int slot = 1)
+        {
+            if (_diagClient == null || !_diagClient.IsConnected)
+            {
+                Log("[展讯] Diag 未连接", Color.Red);
+                return null;
+            }
+
+            try
+            {
+                string imei = await _diagClient.ReadImeiAsync(slot);
+                if (!string.IsNullOrEmpty(imei))
+                {
+                    Log($"[展讯] IMEI{slot}: {imei}", Color.Lime);
+                }
+                return imei;
+            }
+            catch (Exception ex)
+            {
+                Log($"[展讯] 读取 IMEI 失败: {ex.Message}", Color.Red);
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// 通过 Diag 写入 IMEI
+        /// </summary>
+        public async Task<bool> WriteImeiViaDiagAsync(string imei, int slot = 1)
+        {
+            if (_diagClient == null || !_diagClient.IsConnected)
+            {
+                Log("[展讯] Diag 未连接", Color.Red);
+                return false;
+            }
+
+            try
+            {
+                bool result = await _diagClient.WriteImeiAsync(imei, slot);
+                if (result)
+                {
+                    Log($"[展讯] IMEI{slot} 写入成功: {imei}", Color.Lime);
+                }
+                else
+                {
+                    Log($"[展讯] IMEI{slot} 写入失败", Color.Red);
+                }
+                return result;
+            }
+            catch (Exception ex)
+            {
+                Log($"[展讯] 写入 IMEI 失败: {ex.Message}", Color.Red);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 通过 Diag 发送 AT 命令
+        /// </summary>
+        public async Task<string> SendAtCommandViaDiagAsync(string command)
+        {
+            if (_diagClient == null || !_diagClient.IsConnected)
+            {
+                Log("[展讯] Diag 未连接", Color.Red);
+                return null;
+            }
+
+            try
+            {
+                return await _diagClient.SendAtCommandAsync(command);
+            }
+            catch (Exception ex)
+            {
+                Log($"[展讯] AT 命令失败: {ex.Message}", Color.Red);
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// 通过 Diag 切换到下载模式
+        /// </summary>
+        public async Task<bool> SwitchToDownloadModeViaDiagAsync()
+        {
+            if (_diagClient == null || !_diagClient.IsConnected)
+            {
+                Log("[展讯] Diag 未连接", Color.Red);
+                return false;
+            }
+
+            try
+            {
+                Log("[展讯] 切换到下载模式...", Color.Yellow);
+                return await _diagClient.SwitchToDownloadModeAsync();
+            }
+            catch (Exception ex)
+            {
+                Log($"[展讯] 切换下载模式失败: {ex.Message}", Color.Red);
+                return false;
+            }
+        }
+
+        #endregion
+
+        #region 高级功能 (iReverseSPRDClient)
+
+        /// <summary>
+        /// 解锁 Bootloader
+        /// </summary>
+        public async Task<bool> UnlockBootloaderAsync()
+        {
+            if (!IsConnected || CurrentStage != FdlStage.FDL2)
+            {
+                Log("[展讯] 设备未连接或未进入 FDL2 阶段", Color.Red);
+                return false;
+            }
+
+            try
+            {
+                Log("[展讯] 尝试解锁 Bootloader...", Color.Yellow);
+                
+                // 使用 UnlockAsync 方法 (relock=false 表示解锁)
+                bool success = await _client.UnlockAsync(null, false);
+                
+                if (success)
+                {
+                    Log("[展讯] Bootloader 解锁成功", Color.Lime);
+                }
+                else
+                {
+                    Log("[展讯] Bootloader 解锁失败，当前 FDL 可能不支持此功能", Color.Orange);
+                }
+                
+                return success;
+            }
+            catch (Exception ex)
+            {
+                Log($"[展讯] Bootloader 解锁异常: {ex.Message}", Color.Red);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 锁定 Bootloader
+        /// </summary>
+        public async Task<bool> LockBootloaderAsync()
+        {
+            if (!IsConnected || CurrentStage != FdlStage.FDL2)
+            {
+                Log("[展讯] 设备未连接或未进入 FDL2 阶段", Color.Red);
+                return false;
+            }
+
+            try
+            {
+                Log("[展讯] 尝试锁定 Bootloader...", Color.Yellow);
+                
+                // 使用 UnlockAsync 方法 (relock=true 表示锁定)
+                bool success = await _client.UnlockAsync(null, true);
+                
+                if (success)
+                {
+                    Log("[展讯] Bootloader 锁定成功", Color.Lime);
+                }
+                else
+                {
+                    Log("[展讯] Bootloader 锁定失败，当前 FDL 可能不支持此功能", Color.Orange);
+                }
+                
+                return success;
+            }
+            catch (Exception ex)
+            {
+                Log($"[展讯] Bootloader 锁定异常: {ex.Message}", Color.Red);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 设置 A/B 分区活动槽位
+        /// </summary>
+        public async Task<bool> SetActiveSlotAsync(ActiveSlot slot)
+        {
+            if (!IsConnected || CurrentStage != FdlStage.FDL2)
+            {
+                Log("[展讯] 设备未连接或未进入 FDL2 阶段", Color.Red);
+                return false;
+            }
+
+            try
+            {
+                // 检查 misc 分区是否存在
+                if (!await _client.CheckPartitionExistAsync("misc"))
+                {
+                    Log("[展讯] misc 分区不存在，无法切换槽位", Color.Red);
+                    return false;
+                }
+
+                string slotName = slot == ActiveSlot.SlotA ? "A" : "B";
+                Log($"[展讯] 设置活动槽位为: {slotName}", Color.Yellow);
+
+                byte[] payload = SlotPayloads.GetPayload(slot);
+                
+                // 写入 misc 分区（完整写入 payload 数据）
+                // 注意：此方法会覆盖整个分区，payload 需要包含正确的偏移数据
+                bool success = await _client.WritePartitionAsync("misc", payload);
+                
+                if (success)
+                {
+                    Log($"[展讯] 活动槽位已设置为: {slotName}", Color.Lime);
+                }
+                else
+                {
+                    Log("[展讯] 设置活动槽位失败", Color.Red);
+                }
+                
+                return success;
+            }
+            catch (Exception ex)
+            {
+                Log($"[展讯] 设置活动槽位异常: {ex.Message}", Color.Red);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 启用/禁用 DM-Verity (需要完整读取和修改 vbmeta 分区)
+        /// </summary>
+        public async Task<bool> SetDmVerityAsync(bool enable)
+        {
+            if (!IsConnected || CurrentStage != FdlStage.FDL2)
+            {
+                Log("[展讯] 设备未连接或未进入 FDL2 阶段", Color.Red);
+                return false;
+            }
+
+            try
+            {
+                // 检查 vbmeta 分区是否存在
+                if (!await _client.CheckPartitionExistAsync("vbmeta"))
+                {
+                    Log("[展讯] vbmeta 分区不存在，无法修改 DM-Verity", Color.Red);
+                    return false;
+                }
+
+                string action = enable ? "启用" : "禁用";
+                Log($"[展讯] {action} DM-Verity...", Color.Yellow);
+
+                // 读取 vbmeta 分区
+                var partitions = await _client.ReadPartitionTableAsync();
+                var vbmetaInfo = partitions?.FirstOrDefault(p => 
+                    p.Name.Equals("vbmeta", StringComparison.OrdinalIgnoreCase));
+                
+                if (vbmetaInfo == null)
+                {
+                    Log("[展讯] 无法获取 vbmeta 分区信息", Color.Red);
+                    return false;
+                }
+
+                byte[] vbmetaData = await _client.ReadPartitionAsync("vbmeta", vbmetaInfo.Size);
+                if (vbmetaData == null || vbmetaData.Length < DmVerityControl.VbmetaFlagOffset + 1)
+                {
+                    Log("[展讯] 读取 vbmeta 分区失败", Color.Red);
+                    return false;
+                }
+
+                // 修改 flag 字节
+                byte[] verityData = DmVerityControl.GetVerityData(enable);
+                vbmetaData[DmVerityControl.VbmetaFlagOffset] = verityData[0];
+                
+                // 写回 vbmeta 分区
+                bool success = await _client.WritePartitionAsync("vbmeta", vbmetaData);
+                
+                if (success)
+                {
+                    Log($"[展讯] DM-Verity 已{action}", Color.Lime);
+                }
+                else
+                {
+                    Log($"[展讯] {action} DM-Verity 失败", Color.Red);
+                }
+                
+                return success;
+            }
+            catch (Exception ex)
+            {
+                Log($"[展讯] 修改 DM-Verity 异常: {ex.Message}", Color.Red);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 重启到指定模式
+        /// </summary>
+        public async Task<bool> ResetToModeAsync(ResetToMode mode)
+        {
+            if (!IsConnected || CurrentStage != FdlStage.FDL2)
+            {
+                Log("[展讯] 设备未连接或未进入 FDL2 阶段", Color.Red);
+                return false;
+            }
+
+            try
+            {
+                string modeName = mode switch
+                {
+                    ResetToMode.Normal => "正常模式",
+                    ResetToMode.Recovery => "Recovery",
+                    ResetToMode.Fastboot => "Fastboot",
+                    ResetToMode.FactoryReset => "恢复出厂设置",
+                    ResetToMode.EraseFrp => "擦除 FRP",
+                    _ => "未知"
+                };
+                
+                Log($"[展讯] 准备重启到: {modeName}", Color.Yellow);
+
+                // 擦除 FRP 模式
+                if (mode == ResetToMode.EraseFrp)
+                {
+                    if (await _client.CheckPartitionExistAsync("frp"))
+                    {
+                        Log("[展讯] 擦除 frp 分区...", Color.White);
+                        await _client.ErasePartitionAsync("frp");
+                    }
+                    if (await _client.CheckPartitionExistAsync("persistent"))
+                    {
+                        Log("[展讯] 擦除 persistent 分区...", Color.White);
+                        await _client.ErasePartitionAsync("persistent");
+                    }
+                    Log("[展讯] FRP 数据已擦除", Color.Lime);
+                    return true;
+                }
+
+                // 需要写入 misc 分区的模式
+                if (mode != ResetToMode.Normal)
+                {
+                    if (!await _client.CheckPartitionExistAsync("misc"))
+                    {
+                        Log("[展讯] misc 分区不存在", Color.Orange);
+                    }
+                    else
+                    {
+                        byte[] miscData = MiscCommands.CreateMiscData(mode);
+                        if (miscData != null)
+                        {
+                            await _client.WritePartitionAsync("misc", miscData);
+                        }
+                    }
+
+                    // 擦除 FRP 相关分区
+                    if (await _client.CheckPartitionExistAsync("frp"))
+                    {
+                        await _client.ErasePartitionAsync("frp");
+                    }
+                    if (await _client.CheckPartitionExistAsync("persistent"))
+                    {
+                        await _client.ErasePartitionAsync("persistent");
+                    }
+                }
+
+                // 发送重启命令
+                await _client.ResetDeviceAsync();
+                
+                Log($"[展讯] 设备将重启到: {modeName}", Color.Lime);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Log($"[展讯] 重启异常: {ex.Message}", Color.Red);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 绕过签名写入分区 (使用临时重分区) - 需要先实现分区表序列化
+        /// 注意：此功能需要 FdlClient 支持分区表修改，当前为简化版实现
+        /// </summary>
+        public async Task<bool> WritePartitionSkipVerifyAsync(
+            string partitionName, 
+            byte[] data)
+        {
+            if (!IsConnected || CurrentStage != FdlStage.FDL2)
+            {
+                Log("[展讯] 设备未连接或未进入 FDL2 阶段", Color.Red);
+                return false;
+            }
+
+            if (!SkipVerifyHelper.CanUseSkipVerify(partitionName))
+            {
+                Log($"[展讯] 分区 {partitionName} 不支持绕过签名写入", Color.Red);
+                return false;
+            }
+
+            try
+            {
+                Log($"[展讯] 尝试写入分区: {partitionName}", Color.Yellow);
+                
+                // 直接写入分区 (FDL2 可能已支持绕过验证)
+                bool success = await _client.WritePartitionAsync(partitionName, data);
+                
+                if (success)
+                {
+                    Log($"[展讯] 分区 {partitionName} 写入成功", Color.Lime);
+                }
+                else
+                {
+                    Log($"[展讯] 分区 {partitionName} 写入失败", Color.Red);
+                }
+
+                return success;
+            }
+            catch (Exception ex)
+            {
+                Log($"[展讯] 写入异常: {ex.Message}", Color.Red);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 擦除 FRP 分区
+        /// </summary>
+        public async Task<bool> EraseFrpAsync()
+        {
+            return await ResetToModeAsync(ResetToMode.EraseFrp);
+        }
+
+        /// <summary>
+        /// 检查是否为 A/B 分区系统
+        /// </summary>
+        public async Task<bool> IsAbSystemAsync()
+        {
+            if (!IsConnected || CurrentStage != FdlStage.FDL2)
+            {
+                return false;
+            }
+
+            try
+            {
+                // 检查 boot_a 分区是否存在
+                return await _client.CheckPartitionExistAsync("boot_a");
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        #endregion
+
+        #region 固件加解密
+
+        /// <summary>
+        /// 解密固件文件
+        /// </summary>
+        public void DecryptFirmware(string inputPath, string outputPath, string password = null)
+        {
+            try
+            {
+                Log($"[展讯] 解密固件: {Path.GetFileName(inputPath)}", Color.White);
+                SprdCryptograph.DecryptFile(inputPath, outputPath, password);
+                Log("[展讯] 解密完成", Color.Lime);
+            }
+            catch (Exception ex)
+            {
+                Log($"[展讯] 解密失败: {ex.Message}", Color.Red);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// 加密固件文件
+        /// </summary>
+        public void EncryptFirmware(string inputPath, string outputPath, string password = null)
+        {
+            try
+            {
+                Log($"[展讯] 加密固件: {Path.GetFileName(inputPath)}", Color.White);
+                SprdCryptograph.EncryptFile(inputPath, outputPath, password);
+                Log("[展讯] 加密完成", Color.Lime);
+            }
+            catch (Exception ex)
+            {
+                Log($"[展讯] 加密失败: {ex.Message}", Color.Red);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// 检查文件是否已加密
+        /// </summary>
+        public bool IsFirmwareEncrypted(string filePath)
+        {
+            return SprdCryptograph.IsEncrypted(filePath);
+        }
+
+        #endregion
+
+        #region ISP eMMC 直接访问
+
+        private EmmcPartitionManager _ispManager;
+
+        /// <summary>
+        /// ISP 分区管理器
+        /// </summary>
+        public EmmcPartitionManager IspManager => _ispManager;
+
+        /// <summary>
+        /// ISP 模式是否就绪
+        /// </summary>
+        public bool IsIspReady => _ispManager?.IsReady ?? false;
+
+        /// <summary>
+        /// 检测 ISP USB 设备
+        /// </summary>
+        public List<DetectedUsbStorage> DetectIspDevices()
+        {
+            Log("[展讯] 检测 ISP USB 设备...", Color.Yellow);
+            var devices = EmmcPartitionManager.DetectUsbStorageDevices();
+            
+            foreach (var device in devices)
+            {
+                Log($"  发现: {device.FriendlyName} ({device.Size / 1024 / 1024} MB)", Color.White);
+            }
+            
+            if (devices.Count == 0)
+            {
+                Log("[展讯] 未检测到 USB 存储设备", Color.Gray);
+            }
+            
+            return devices;
+        }
+
+        /// <summary>
+        /// 检测 Spreadtrum ISP 设备
+        /// </summary>
+        public DetectedUsbStorage DetectSprdIspDevice()
+        {
+            return EmmcPartitionManager.DetectSprdIspDevice();
+        }
+
+        /// <summary>
+        /// 等待 ISP 设备连接
+        /// </summary>
+        public async Task<DetectedUsbStorage> WaitForIspDeviceAsync(int timeoutSeconds = 60)
+        {
+            Log("[展讯] 等待 ISP 设备连接...", Color.Yellow);
+            var device = await EmmcPartitionManager.WaitForDeviceAsync(timeoutSeconds, _cts?.Token ?? default);
+            
+            if (device != null)
+            {
+                Log($"[展讯] ISP 设备已连接: {device.FriendlyName}", Color.Lime);
+            }
+            else
+            {
+                Log("[展讯] 等待 ISP 设备超时", Color.Red);
+            }
+            
+            return device;
+        }
+
+        /// <summary>
+        /// 打开 ISP 设备
+        /// </summary>
+        public bool OpenIspDevice(string devicePath)
+        {
+            try
+            {
+                if (_ispManager == null)
+                {
+                    _ispManager = new EmmcPartitionManager();
+                    _ispManager.OnLog += msg => Log($"[ISP] {msg}", Color.Cyan);
+                    _ispManager.OnProgress += (cur, total) => OnProgress?.Invoke((int)(cur * 100 / total), 100);
+                }
+
+                Log($"[展讯] 打开 ISP 设备: {devicePath}", Color.Yellow);
+                
+                if (_ispManager.Open(devicePath))
+                {
+                    Log($"[展讯] ISP 设备已打开", Color.Lime);
+                    Log($"  扇区大小: {_ispManager.Device.SectorSize} 字节", Color.White);
+                    Log($"  总大小: {_ispManager.Device.TotalSize / 1024 / 1024} MB", Color.White);
+                    Log($"  分区数: {_ispManager.Partitions.Count}", Color.White);
+                    
+                    // 打印分区表
+                    foreach (var p in _ispManager.Partitions)
+                    {
+                        Log($"    {p.Name}: {p.GetSize(_ispManager.Device.SectorSize) / 1024 / 1024} MB", Color.Gray);
+                    }
+                    
+                    return true;
+                }
+                
+                Log("[展讯] 打开 ISP 设备失败", Color.Red);
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Log($"[展讯] 打开 ISP 设备异常: {ex.Message}", Color.Red);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 关闭 ISP 设备
+        /// </summary>
+        public void CloseIspDevice()
+        {
+            _ispManager?.Close();
+            Log("[展讯] ISP 设备已关闭", Color.White);
+        }
+
+        /// <summary>
+        /// ISP 读取分区到文件
+        /// </summary>
+        public async Task<bool> IspReadPartitionAsync(string partitionName, string outputPath)
+        {
+            if (!IsIspReady)
+            {
+                Log("[展讯] ISP 设备未就绪", Color.Red);
+                return false;
+            }
+
+            Log($"[展讯] ISP 读取分区: {partitionName} -> {outputPath}", Color.Yellow);
+            var result = await _ispManager.ReadPartitionAsync(partitionName, outputPath, _cts?.Token ?? default);
+            
+            if (result.Success)
+            {
+                Log($"[展讯] 分区读取成功: {result.BytesTransferred / 1024 / 1024} MB, 耗时 {result.Duration.TotalSeconds:F1}s", Color.Lime);
+            }
+            else
+            {
+                Log($"[展讯] 分区读取失败: {result.ErrorMessage}", Color.Red);
+            }
+            
+            return result.Success;
+        }
+
+        /// <summary>
+        /// ISP 写入文件到分区
+        /// </summary>
+        public async Task<bool> IspWritePartitionAsync(string partitionName, string inputPath)
+        {
+            if (!IsIspReady)
+            {
+                Log("[展讯] ISP 设备未就绪", Color.Red);
+                return false;
+            }
+
+            Log($"[展讯] ISP 写入分区: {inputPath} -> {partitionName}", Color.Yellow);
+            var result = await _ispManager.WritePartitionAsync(partitionName, inputPath, _cts?.Token ?? default);
+            
+            if (result.Success)
+            {
+                Log($"[展讯] 分区写入成功: {result.BytesTransferred / 1024 / 1024} MB, 耗时 {result.Duration.TotalSeconds:F1}s", Color.Lime);
+            }
+            else
+            {
+                Log($"[展讯] 分区写入失败: {result.ErrorMessage}", Color.Red);
+            }
+            
+            return result.Success;
+        }
+
+        /// <summary>
+        /// ISP 擦除分区
+        /// </summary>
+        public bool IspErasePartition(string partitionName)
+        {
+            if (!IsIspReady)
+            {
+                Log("[展讯] ISP 设备未就绪", Color.Red);
+                return false;
+            }
+
+            Log($"[展讯] ISP 擦除分区: {partitionName}", Color.Yellow);
+            var result = _ispManager.ErasePartition(partitionName);
+            
+            if (result.Success)
+            {
+                Log($"[展讯] 分区擦除成功", Color.Lime);
+            }
+            else
+            {
+                Log($"[展讯] 分区擦除失败: {result.ErrorMessage}", Color.Red);
+            }
+            
+            return result.Success;
+        }
+
+        /// <summary>
+        /// ISP 备份所有分区
+        /// </summary>
+        public async Task<bool> IspBackupAllPartitionsAsync(string outputFolder)
+        {
+            if (!IsIspReady)
+            {
+                Log("[展讯] ISP 设备未就绪", Color.Red);
+                return false;
+            }
+
+            Log($"[展讯] ISP 备份所有分区到: {outputFolder}", Color.Yellow);
+            var results = await _ispManager.BackupAllPartitionsAsync(outputFolder, _cts?.Token ?? default);
+            
+            int success = results.Count(r => r.Success);
+            int failed = results.Count(r => !r.Success);
+            
+            Log($"[展讯] 备份完成: 成功 {success}, 失败 {failed}", success == results.Count ? Color.Lime : Color.Orange);
+            
+            return failed == 0;
+        }
+
+        /// <summary>
+        /// ISP 备份 GPT
+        /// </summary>
+        public bool IspBackupGpt(string outputPath)
+        {
+            if (!IsIspReady)
+            {
+                Log("[展讯] ISP 设备未就绪", Color.Red);
+                return false;
+            }
+
+            return _ispManager.BackupGpt(outputPath);
+        }
+
+        /// <summary>
+        /// ISP 恢复 GPT
+        /// </summary>
+        public bool IspRestoreGpt(string inputPath)
+        {
+            if (!IsIspReady)
+            {
+                Log("[展讯] ISP 设备未就绪", Color.Red);
+                return false;
+            }
+
+            return _ispManager.RestoreGpt(inputPath);
+        }
+
+        /// <summary>
+        /// ISP 读取原始扇区
+        /// </summary>
+        public byte[] IspReadRawSectors(long startSector, int sectorCount)
+        {
+            if (!IsIspReady)
+            {
+                Log("[展讯] ISP 设备未就绪", Color.Red);
+                return null;
+            }
+
+            return _ispManager.ReadRawSectors(startSector, sectorCount);
+        }
+
+        /// <summary>
+        /// ISP 写入原始扇区
+        /// </summary>
+        public bool IspWriteRawSectors(long startSector, byte[] data)
+        {
+            if (!IsIspReady)
+            {
+                Log("[展讯] ISP 设备未就绪", Color.Red);
+                return false;
+            }
+
+            return _ispManager.WriteRawSectors(startSector, data);
+        }
+
+        /// <summary>
+        /// 获取 ISP 分区列表
+        /// </summary>
+        public List<EmmcPartitionInfo> GetIspPartitions()
+        {
+            return _ispManager?.Partitions ?? new List<EmmcPartitionInfo>();
+        }
+
+        /// <summary>
+        /// 查找 ISP 分区
+        /// </summary>
+        public EmmcPartitionInfo FindIspPartition(string name)
+        {
+            return _ispManager?.Gpt?.FindPartition(name);
+        }
+
+        #endregion
+
         #region 辅助方法
 
         private string FormatSize(ulong size)
@@ -1877,6 +2827,10 @@ namespace SakuraEDL.Spreadtrum.Services
         {
             Disconnect();
             _portDetector?.Dispose();
+            
+            // 释放 ISP 管理器
+            _ispManager?.Dispose();
+            _ispManager = null;
             
             // 释放 CancellationTokenSource (忽略异常，确保完整清理)
             if (_cts != null)

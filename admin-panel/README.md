@@ -1,5 +1,43 @@
 # SakuraEDL Admin Panel
 
+## 数据库配置 (MySQL)
+
+### 1. 创建数据库和用户
+
+```sql
+-- 登录 MySQL
+mysql -u root -p
+
+-- 创建数据库
+CREATE DATABASE sakuraedl CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- 创建用户并授权
+CREATE USER 'sakuraedl'@'localhost' IDENTIFIED BY 'sakuraedl2024';
+GRANT ALL PRIVILEGES ON sakuraedl.* TO 'sakuraedl'@'localhost';
+FLUSH PRIVILEGES;
+```
+
+### 2. 环境变量配置
+
+```bash
+export DB_HOST=127.0.0.1
+export DB_PORT=3306
+export DB_USER=sakuraedl
+export DB_PASS=sakuraedl2024
+export DB_NAME=sakuraedl
+```
+
+### 3. 宝塔面板配置
+
+在 Go 项目管理中添加环境变量：
+- `DB_HOST`: 127.0.0.1
+- `DB_PORT`: 3306
+- `DB_USER`: sakuraedl
+- `DB_PASS`: 你的密码
+- `DB_NAME`: sakuraedl
+
+---
+
 后台管理面板，用于管理 Loader 文件和查看设备匹配日志。
 
 ## 功能特性

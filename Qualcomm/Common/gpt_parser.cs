@@ -1,9 +1,10 @@
 // ============================================================================
-// SakuraEDL - GPT 分区表解析器 (借鉴 gpttool 逻辑)
-// GPT Partition Table Parser - Enhanced version based on gpttool
+// SakuraEDL - GPT 分区表解析器 (重构版)
+// GPT Partition Table Parser - Refactored with simplified logic
 // ============================================================================
 // 模块: Qualcomm.Common
-// 功能: 解析 GPT 分区表，支持自动扇区大小检测、CRC校验、槽位检测
+// 功能: 解析 GPT 分区表，支持自动扇区大小检测、CRC校验
+// 重构: 简化分区条目偏移计算，独立槽位检测
 // ============================================================================
 
 using System;
@@ -38,10 +39,13 @@ namespace SakuraEDL.Qualcomm.Common
         public bool CrcValid { get; set; }
         public string GptType { get; set; }             // "gptmain" 或 "gptbackup"
         public int SectorSize { get; set; }             // 扇区大小 (512 或 4096)
+        
+        /// <summary>是否为备份 GPT (Header 在分区条目之后)</summary>
+        public bool IsBackupGpt => GptType == "gptbackup";
     }
 
     /// <summary>
-    /// 槽位信息
+    /// 槽位信息 (保留兼容性)
     /// </summary>
     public class SlotInfo
     {
@@ -58,6 +62,7 @@ namespace SakuraEDL.Qualcomm.Common
         public GptHeaderInfo Header { get; set; }
         public List<PartitionInfo> Partitions { get; set; }
         public SlotInfo SlotInfo { get; set; }
+        public SlotInfoV2 SlotInfoV2 { get; set; }      // 新版槽位信息
         public int Lun { get; set; }
         public bool Success { get; set; }
         public string ErrorMessage { get; set; }
@@ -70,19 +75,16 @@ namespace SakuraEDL.Qualcomm.Common
     }
 
     /// <summary>
-    /// GPT 分区表解析器 (借鉴 gpttool)
+    /// GPT 分区表解析器 (重构版)
     /// </summary>
     public class GptParser
     {
         private readonly Action<string> _log;
         private readonly Action<string> _logDetail;
+        private readonly SlotDetector _slotDetector;
         
         // GPT 签名
         private static readonly byte[] GPT_SIGNATURE = Encoding.ASCII.GetBytes("EFI PART");
-        
-        // A/B 分区属性标志
-        private const int AB_FLAG_OFFSET = 6;
-        private const int AB_PARTITION_ATTR_SLOT_ACTIVE = 0x1 << 2;
 
         // 静态 CRC32 表 (避免每次重新生成)
         private static readonly uint[] CRC32_TABLE = GenerateStaticCrc32Table();
@@ -91,6 +93,7 @@ namespace SakuraEDL.Qualcomm.Common
         {
             _log = log ?? (s => { });
             _logDetail = logDetail ?? _log;
+            _slotDetector = new SlotDetector(_log, _logDetail);
         }
 
         #region 主要解析方法
@@ -162,15 +165,17 @@ namespace SakuraEDL.Qualcomm.Common
                 // 4. 验证 CRC (可选)
                 header.CrcValid = VerifyCrc32(gptData, headerOffset, header);
 
-                // 5. 解析分区条目
-                result.Partitions = ParsePartitionEntries(gptData, headerOffset, header, lun);
+                // 5. 解析分区条目 (使用简化逻辑)
+                result.Partitions = ParsePartitionEntriesSimplified(gptData, headerOffset, header, lun);
 
-                // 6. 检测 A/B 槽位
-                result.SlotInfo = DetectSlot(result.Partitions);
+                // 6. 检测 A/B 槽位 (使用新的 SlotDetector)
+                result.SlotInfoV2 = _slotDetector.Detect(result.Partitions);
+                result.SlotInfo = result.SlotInfoV2.ToLegacy();
 
                 result.Success = true;
-                _logDetail(string.Format("[GPT] LUN{0}: {1} 个分区, 槽位: {2}",
-                    lun, result.Partitions.Count, result.SlotInfo.CurrentSlot));
+                _logDetail(string.Format("[GPT] LUN{0}: {1} 个分区, 槽位: {2} ({3})",
+                    lun, result.Partitions.Count, result.SlotInfo.CurrentSlot, 
+                    result.SlotInfoV2?.DetectionMethod ?? ""));
             }
             catch (Exception ex)
             {
@@ -313,10 +318,146 @@ namespace SakuraEDL.Qualcomm.Common
 
         #endregion
 
-        #region 分区条目解析
+        #region 分区条目解析 (简化版)
 
         /// <summary>
-        /// 解析分区条目
+        /// 解析分区条目 (简化版 - 只保留3种核心策略)
+        /// </summary>
+        private List<PartitionInfo> ParsePartitionEntriesSimplified(byte[] data, int headerOffset, GptHeaderInfo header, int lun)
+        {
+            var partitions = new List<PartitionInfo>();
+            int sectorSize = header.SectorSize > 0 ? header.SectorSize : 4096;
+            int entrySize = (int)header.SizeOfPartitionEntry;
+            if (entrySize <= 0 || entrySize > 512) entrySize = 128;
+            
+            _logDetail($"[GPT] LUN{lun} 解析: Header@{headerOffset}, SectorSize={sectorSize}, EntrySize={entrySize}");
+            _logDetail($"[GPT] Header: PartitionEntryLba={header.PartitionEntryLba}, Entries={header.NumberOfPartitionEntries}");
+            
+            // ========== 计算分区条目偏移 (3种核心策略) ==========
+            int entryOffset = -1;
+            string strategy = "";
+            
+            // 策略1: 使用 Header 中的 PartitionEntryLba (最标准)
+            if (header.PartitionEntryLba > 0)
+            {
+                // 尝试当前扇区大小
+                long offset = (long)header.PartitionEntryLba * sectorSize;
+                if (offset > 0 && offset < data.Length - 128 && HasValidPartitionEntry(data, (int)offset))
+                {
+                    entryOffset = (int)offset;
+                    strategy = $"PartitionEntryLba({header.PartitionEntryLba}) * {sectorSize}B";
+                }
+                else
+                {
+                    // 尝试另一种扇区大小
+                    int altSectorSize = sectorSize == 4096 ? 512 : 4096;
+                    offset = (long)header.PartitionEntryLba * altSectorSize;
+                    if (offset > 0 && offset < data.Length - 128 && HasValidPartitionEntry(data, (int)offset))
+                    {
+                        entryOffset = (int)offset;
+                        sectorSize = altSectorSize;
+                        header.SectorSize = altSectorSize;
+                        strategy = $"PartitionEntryLba({header.PartitionEntryLba}) * {altSectorSize}B (修正)";
+                    }
+                }
+            }
+            
+            // 策略2: 标准偏移 (LBA 2)
+            if (entryOffset < 0)
+            {
+                int[] standardOffsets = { 
+                    1024,   // LBA 2 * 512B (eMMC 标准)
+                    8192,   // LBA 2 * 4096B (UFS 标准)
+                };
+                foreach (int offset in standardOffsets)
+                {
+                    if (offset < data.Length - 128 && HasValidPartitionEntry(data, offset))
+                    {
+                        entryOffset = offset;
+                        strategy = $"标准偏移 {offset}";
+                        // 推断扇区大小
+                        if (offset == 1024) sectorSize = 512;
+                        else if (offset == 8192) sectorSize = 4096;
+                        break;
+                    }
+                }
+            }
+            
+            // 策略3: Header 后搜索 (备份 GPT 或非标准布局)
+            if (entryOffset < 0)
+            {
+                // 向后搜索
+                for (int offset = headerOffset + 92; offset < Math.Min(data.Length - 128, headerOffset + 32768); offset += 128)
+                {
+                    if (HasValidPartitionEntry(data, offset))
+                    {
+                        entryOffset = offset;
+                        strategy = $"Header后搜索 @{offset}";
+                        break;
+                    }
+                }
+                
+                // 向前搜索 (备份 GPT)
+                if (entryOffset < 0 && header.IsBackupGpt && headerOffset > 16384)
+                {
+                    for (int offset = headerOffset - 128; offset >= Math.Max(0, headerOffset - 32768); offset -= 128)
+                    {
+                        if (HasValidPartitionEntry(data, offset))
+                        {
+                            // 继续向前找第一个条目
+                            int firstEntry = offset;
+                            while (firstEntry - 128 >= 0 && HasValidPartitionEntry(data, firstEntry - 128))
+                                firstEntry -= 128;
+                            entryOffset = firstEntry;
+                            strategy = $"备份GPT向前搜索 @{firstEntry}";
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            if (entryOffset < 0)
+            {
+                _log($"[GPT] LUN{lun} 无法找到有效的分区条目偏移");
+                return partitions;
+            }
+            
+            _logDetail($"[GPT] 分区条目偏移: {entryOffset} ({strategy})");
+            
+            // ========== 计算扫描数量 ==========
+            int maxEntries = (int)header.NumberOfPartitionEntries;
+            if (maxEntries <= 0 || maxEntries > 512) maxEntries = 128;
+            
+            // 确保不超出数据范围
+            int maxFromData = (data.Length - entryOffset) / entrySize;
+            maxEntries = Math.Min(maxEntries, maxFromData);
+            
+            // ========== 解析分区条目 ==========
+            int validCount = 0;
+            for (int i = 0; i < maxEntries; i++)
+            {
+                int offset = entryOffset + i * entrySize;
+                if (offset + 128 > data.Length) break;
+                
+                var partition = ParsePartitionEntry(data, offset, lun, sectorSize, i + 1);
+                if (partition != null && !string.IsNullOrWhiteSpace(partition.Name))
+                {
+                    partitions.Add(partition);
+                    validCount++;
+                    
+                    if (validCount <= 5 || validCount % 20 == 0)
+                    {
+                        _logDetail($"[GPT] #{validCount}: {partition.Name} @ LBA {partition.StartSector} ({partition.FormattedSize})");
+                    }
+                }
+            }
+            
+            _logDetail($"[GPT] LUN{lun} 解析完成: {validCount} 个分区");
+            return partitions;
+        }
+
+        /// <summary>
+        /// 解析分区条目 (旧版，保留兼容性)
         /// </summary>
         private List<PartitionInfo> ParsePartitionEntries(byte[] data, int headerOffset, GptHeaderInfo header, int lun)
         {
@@ -445,8 +586,53 @@ namespace SakuraEDL.Qualcomm.Common
                         if (HasValidPartitionEntry(data, searchOffset))
                         {
                             entryOffset = searchOffset;
-                            usedStrategy = string.Format("策略7 (搜索): 偏移 {0}", entryOffset);
+                            usedStrategy = string.Format("策略7 (向后搜索): 偏移 {0}", entryOffset);
                             break;
+                        }
+                    }
+                }
+                
+                // 策略8: 备份 GPT - 向前搜索 (分区条目在 Header 之前)
+                // 备份 GPT 布局: Partition Entries -> Header (在磁盘末尾)
+                if (entryOffset < 0 && headerOffset > 128)
+                {
+                    // 计算可能的分区表大小 (通常 128 * 128 = 16KB)
+                    int entriesSize = 128 * 128;  // 默认 128 个条目
+                    int[] tryEntrySizes = { entriesSize, 128 * 64, 128 * 32, 128 * 256 };
+                    
+                    foreach (int trySize in tryEntrySizes)
+                    {
+                        int backwardOffset = headerOffset - trySize;
+                        if (backwardOffset >= 0 && backwardOffset < headerOffset - 128)
+                        {
+                            // 验证这个位置是否有有效分区
+                            if (HasValidPartitionEntry(data, backwardOffset))
+                            {
+                                entryOffset = backwardOffset;
+                                usedStrategy = string.Format("策略8 (备份GPT向前搜索): Header({0}) - {1} = {2}", 
+                                    headerOffset, trySize, entryOffset);
+                                break;
+                            }
+                        }
+                    }
+                    
+                    // 如果还没找到，从 Header 向前每 128 字节搜索
+                    if (entryOffset < 0)
+                    {
+                        for (int searchOffset = headerOffset - 128; searchOffset >= 0 && searchOffset > headerOffset - 32768; searchOffset -= 128)
+                        {
+                            if (HasValidPartitionEntry(data, searchOffset))
+                            {
+                                // 找到了，继续向前找到第一个条目
+                                int firstEntry = searchOffset;
+                                while (firstEntry - 128 >= 0 && HasValidPartitionEntry(data, firstEntry - 128))
+                                {
+                                    firstEntry -= 128;
+                                }
+                                entryOffset = firstEntry;
+                                usedStrategy = string.Format("策略8 (备份GPT搜索): 偏移 {0}", entryOffset);
+                                break;
+                            }
                         }
                     }
                 }
@@ -613,28 +799,39 @@ namespace SakuraEDL.Qualcomm.Common
         
         /// <summary>
         /// 检查是否有有效的分区条目
+        /// 修复: 仅检查 PartitionTypeGUID 是否有效，不强制要求名称
+        /// （某些底层分区如 fsc, modemst1 可能没有名称）
         /// </summary>
         private bool HasValidPartitionEntry(byte[] data, int offset)
         {
             if (offset + 128 > data.Length) return false;
-            
-            // 检查分区类型 GUID 是否为非空
-            bool hasData = false;
+
+            // 仅检查分区类型 GUID 是否为非零（关键修复）
+            // UEFI 规范: 全零 GUID 表示未使用的条目
+            bool hasTypeGuid = false;
             for (int i = 0; i < 16; i++)
             {
                 if (data[offset + i] != 0)
                 {
-                    hasData = true;
+                    hasTypeGuid = true;
                     break;
                 }
             }
-            if (!hasData) return false;
+            if (!hasTypeGuid) return false;
             
-            // 检查分区名称是否可读
+            // 检查 LBA 是否合理（起始 LBA 应该大于 0）
+            long startLba = BitConverter.ToInt64(data, offset + 32);
+            long endLba = BitConverter.ToInt64(data, offset + 40);
+            if (startLba <= 0 || endLba <= 0 || endLba < startLba)
+                return false;
+
+            // 名称可以为空，不再强制检查
+            // 但验证偏移处数据可读取
             try
             {
-                string name = Encoding.Unicode.GetString(data, offset + 56, 72).TrimEnd('\0');
-                return !string.IsNullOrWhiteSpace(name) && name.Length > 0;
+                // 尝试读取名称（不作为判断依据）
+                Encoding.Unicode.GetString(data, offset + 56, 72);
+                return true;
             }
             catch
             {
@@ -644,11 +841,20 @@ namespace SakuraEDL.Qualcomm.Common
 
         /// <summary>
         /// 解析单个分区条目
+        /// 修复: 允许空名称的分区（某些底层分区只有 GUID）
         /// </summary>
         private PartitionInfo ParsePartitionEntry(byte[] data, int offset, int lun, int sectorSize, int index)
         {
             try
             {
+                // 检查类型 GUID 是否全零（表示空条目）
+                bool hasTypeGuid = false;
+                for (int i = 0; i < 16; i++)
+                {
+                    if (data[offset + i] != 0) { hasTypeGuid = true; break; }
+                }
+                if (!hasTypeGuid) return null;
+                
                 // 分区类型 GUID (0-16)
                 string typeGuid = FormatGuid(data, offset);
 
@@ -660,6 +866,10 @@ namespace SakuraEDL.Qualcomm.Common
 
                 // 结束 LBA (40-48)
                 long endLba = BitConverter.ToInt64(data, offset + 40);
+                
+                // 验证 LBA 有效性
+                if (startLba <= 0 || endLba <= 0 || endLba < startLba)
+                    return null;
 
                 // 属性 (48-56)
                 ulong attributes = BitConverter.ToUInt64(data, offset + 48);
@@ -667,8 +877,14 @@ namespace SakuraEDL.Qualcomm.Common
                 // 分区名称 UTF-16LE (56-128)
                 string name = Encoding.Unicode.GetString(data, offset + 56, 72).TrimEnd('\0');
 
+                // 允许空名称: 如果名称为空，生成基于 GUID 的默认名称
                 if (string.IsNullOrWhiteSpace(name))
-                    return null;
+                {
+                    // 使用类型 GUID 或 Unique GUID 的前 8 位作为名称
+                    string guidPart = uniqueGuid.Length >= 8 ? uniqueGuid.Substring(0, 8) : typeGuid.Substring(0, 8);
+                    name = $"unnamed_{guidPart}";
+                    _logDetail($"[GPT] 分区 {index} 无名称，使用默认名称: {name}");
+                }
 
                 return new PartitionInfo
                 {
@@ -692,139 +908,14 @@ namespace SakuraEDL.Qualcomm.Common
 
         #endregion
 
-        #region A/B 槽位检测
+        #region A/B 槽位检测 (已迁移到 SlotDetector)
 
         /// <summary>
-        /// 检测 A/B 槽位状态
+        /// 检测 A/B 槽位状态 (兼容方法，调用 SlotDetector)
         /// </summary>
         private SlotInfo DetectSlot(List<PartitionInfo> partitions)
         {
-            var info = new SlotInfo
-            {
-                CurrentSlot = "nonexistent",
-                OtherSlot = "nonexistent",
-                HasAbPartitions = false
-            };
-
-            // 查找带 _a 或 _b 后缀的分区
-            var abPartitions = partitions.Where(p =>
-                p.Name.EndsWith("_a") || p.Name.EndsWith("_b")).ToList();
-
-            if (abPartitions.Count == 0)
-                return info;
-
-            info.HasAbPartitions = true;
-            info.CurrentSlot = "undefined";
-
-            // 检测关键分区的槽位状态 (boot, system, vendor 等)
-            var keyPartitions = new[] { "boot", "system", "vendor", "abl", "xbl", "dtbo" };
-            var checkPartitions = abPartitions.Where(p => {
-                string baseName = p.Name.EndsWith("_a") ? p.Name.Substring(0, p.Name.Length - 2) :
-                                  p.Name.EndsWith("_b") ? p.Name.Substring(0, p.Name.Length - 2) : p.Name;
-                return keyPartitions.Contains(baseName.ToLower());
-            }).ToList();
-
-            // 如果没有关键分区，使用所有 A/B 分区 (排除 vendor_boot)
-            if (checkPartitions.Count == 0)
-            {
-                checkPartitions = abPartitions.Where(p =>
-                    p.Name != "vendor_boot_a" && p.Name != "vendor_boot_b").ToList();
-            }
-
-            int slotAActive = 0;
-            int slotBActive = 0;
-
-            foreach (var p in checkPartitions)
-            {
-                bool isActive = IsSlotActive(p.Attributes);
-                bool isSuccessful = IsSlotSuccessful(p.Attributes);
-                bool isUnbootable = IsSlotUnbootable(p.Attributes);
-                
-                // 调试日志：打印关键分区的属性
-                if (keyPartitions.Any(k => p.Name.StartsWith(k, StringComparison.OrdinalIgnoreCase)))
-                {
-                    _logDetail(string.Format("[GPT] 槽位检测: {0} attr=0x{1:X16} active={2} success={3} unboot={4}",
-                        p.Name, p.Attributes, isActive, isSuccessful, isUnbootable));
-                }
-                
-                if (p.Name.EndsWith("_a") && isActive)
-                    slotAActive++;
-                else if (p.Name.EndsWith("_b") && isActive)
-                    slotBActive++;
-            }
-
-            _logDetail(string.Format("[GPT] 槽位统计: A激活={0}, B激活={1} (检查了{2}个分区)", 
-                slotAActive, slotBActive, checkPartitions.Count));
-
-            if (slotAActive > slotBActive)
-            {
-                info.CurrentSlot = "a";
-                info.OtherSlot = "b";
-            }
-            else if (slotBActive > slotAActive)
-            {
-                info.CurrentSlot = "b";
-                info.OtherSlot = "a";
-            }
-            else if (slotAActive > 0 && slotBActive > 0)
-            {
-                info.CurrentSlot = "unknown";
-                info.OtherSlot = "unknown";
-            }
-            else if (slotAActive == 0 && slotBActive == 0 && checkPartitions.Count > 0)
-            {
-                // 没有激活标志，尝试使用 successful 标志判断
-                int slotASuccessful = checkPartitions.Count(p => p.Name.EndsWith("_a") && IsSlotSuccessful(p.Attributes));
-                int slotBSuccessful = checkPartitions.Count(p => p.Name.EndsWith("_b") && IsSlotSuccessful(p.Attributes));
-                
-                _logDetail(string.Format("[GPT] 无激活标志，使用 successful: A={0}, B={1}", slotASuccessful, slotBSuccessful));
-                
-                if (slotASuccessful > slotBSuccessful)
-                {
-                    info.CurrentSlot = "a";
-                    info.OtherSlot = "b";
-                }
-                else if (slotBSuccessful > slotASuccessful)
-                {
-                    info.CurrentSlot = "b";
-                    info.OtherSlot = "a";
-                }
-            }
-
-            return info;
-        }
-
-        /// <summary>
-        /// 检查槽位是否激活 (bit 50 in attributes)
-        /// </summary>
-        private bool IsSlotActive(ulong attributes)
-        {
-            // A/B 属性在 attributes 的高字节部分
-            // Bit 48: Priority bit 0
-            // Bit 49: Priority bit 1
-            // Bit 50: Active
-            // Bit 51: Successful
-            // Bit 52: Unbootable
-            byte flagByte = (byte)((attributes >> (AB_FLAG_OFFSET * 8)) & 0xFF);
-            return (flagByte & AB_PARTITION_ATTR_SLOT_ACTIVE) == AB_PARTITION_ATTR_SLOT_ACTIVE;
-        }
-        
-        /// <summary>
-        /// 检查槽位是否启动成功 (bit 51 in attributes)
-        /// </summary>
-        private bool IsSlotSuccessful(ulong attributes)
-        {
-            byte flagByte = (byte)((attributes >> (AB_FLAG_OFFSET * 8)) & 0xFF);
-            return (flagByte & 0x08) == 0x08;  // bit 3 in byte 6 = bit 51
-        }
-        
-        /// <summary>
-        /// 检查槽位是否不可启动 (bit 52 in attributes)
-        /// </summary>
-        private bool IsSlotUnbootable(ulong attributes)
-        {
-            byte flagByte = (byte)((attributes >> (AB_FLAG_OFFSET * 8)) & 0xFF);
-            return (flagByte & 0x10) == 0x10;  // bit 4 in byte 6 = bit 52
+            return _slotDetector.Detect(partitions).ToLegacy();
         }
 
         #endregion

@@ -80,6 +80,16 @@ namespace SakuraEDL.Qualcomm.UI
         /// </summary>
         public bool CanQuickReconnect { get { return _service != null && _service.IsPortReleased && _service.State == QualcommConnectionState.Ready; } }
         
+        /// <summary>
+        /// 是否有已读取的分区数据（GPT 已成功解析）
+        /// </summary>
+        public bool HasPartitions { get { return Partitions != null && Partitions.Count > 0; } }
+        
+        /// <summary>
+        /// 是否可以进行分区操作（已连接或可以快速重连，且有分区数据）
+        /// </summary>
+        public bool CanOperatePartitions { get { return (IsConnected || CanQuickReconnect) && HasPartitions; } }
+        
         public bool IsBusy { get; private set; }
         public List<PartitionInfo> Partitions { get; private set; }
 
@@ -437,14 +447,18 @@ namespace SakuraEDL.Qualcomm.UI
                     return null;
                 }
 
-                // 转换为 SaharaDeviceInfo
+                // 转换为 SaharaDeviceInfo (包含完整字段)
                 return new SakuraEDL.Qualcomm.Services.SaharaDeviceInfo
                 {
+                    SaharaVersion = (int)_service.SaharaProtocolVersion,  // Sahara 协议版本
                     MsmId = chipInfo.MsmId.ToString("X8"),
                     PkHash = chipInfo.PkHash ?? "",
                     OemId = "0x" + chipInfo.OemId.ToString("X4"),
+                    ModelId = chipInfo.ModelId.ToString("X4"),
                     HwId = chipInfo.HwIdHex ?? "",
                     Serial = chipInfo.SerialHex ?? "",
+                    ChipName = chipInfo.ChipName ?? "",
+                    Vendor = chipInfo.Vendor ?? "",
                     IsUfs = true
                 };
             }
@@ -489,6 +503,91 @@ namespace SakuraEDL.Qualcomm.UI
                 else
                 {
                     Log("连接失败", Color.Red);
+                }
+
+                return success;
+            }
+            catch (Exception ex)
+            {
+                Log("连接异常: " + ex.Message, Color.Red);
+                return false;
+            }
+            finally
+            {
+                IsBusy = false;
+            }
+        }
+        
+        /// <summary>
+        /// 使用云端 Loader 数据连接设备
+        /// </summary>
+        /// <param name="loaderData">Loader 二进制数据</param>
+        /// <param name="storageType">存储类型</param>
+        /// <param name="authMode">认证模式</param>
+        /// <param name="digestData">VIP 认证的 Digest 数据 (可选)</param>
+        /// <param name="signatureData">VIP 认证的 Signature 数据 (可选)</param>
+        public async Task<bool> ConnectWithCloudLoaderDataAsync(byte[] loaderData, string storageType, string authMode, 
+            byte[] digestData = null, byte[] signatureData = null)
+        {
+            if (IsBusy) { Log("操作进行中", Color.Orange); return false; }
+
+            string portName = GetSelectedPortName();
+            if (string.IsNullOrEmpty(portName)) { Log("请选择端口", Color.Red); return false; }
+
+            if (loaderData == null || loaderData.Length == 0)
+            {
+                Log("Loader 数据为空", Color.Red);
+                return false;
+            }
+
+            try
+            {
+                IsBusy = true;
+                ResetCancellationToken();
+                
+                // 启动进度条
+                StartOperationTimer("连接设备", 100, 0);
+                UpdateProgressBarDirect(_progressBar, 0);
+                UpdateProgressBarDirect(_subProgressBar, 0);
+
+                _service = new QualcommService(
+                    msg => Log(msg, null),
+                    (current, total) => {
+                        if (total > 0)
+                        {
+                            double percent = 40.0 * current / total;
+                            UpdateProgressBarDirect(_progressBar, percent);
+                            UpdateProgressBarDirect(_subProgressBar, 100.0 * current / total);
+                        }
+                    },
+                    _logDetail
+                );
+
+                Log(string.Format("连接设备 (存储: {0}, 认证: {1})...", storageType, authMode), Color.Blue);
+                bool success = await _service.ConnectWithCloudLoaderAsync(portName, loaderData, storageType, authMode, digestData, signatureData, _cts.Token);
+                UpdateProgressBarDirect(_progressBar, 80);
+                
+                if (success)
+                    SetSkipSaharaChecked(true);
+
+                if (success)
+                {
+                    Log("连接成功！", Color.Green);
+                    UpdateProgressBarDirect(_progressBar, 100);
+                    UpdateProgressBarDirect(_subProgressBar, 100);
+                    UpdateDeviceInfoLabels();
+                    
+                    _service.PortDisconnected += OnServicePortDisconnected;
+                    _service.XiaomiAuthTokenRequired += OnXiaomiAuthTokenRequired;
+                    StartPortMonitor(portName);
+                    
+                    ConnectionStateChanged?.Invoke(this, true);
+                }
+                else
+                {
+                    Log("连接失败", Color.Red);
+                    UpdateProgressBarDirect(_progressBar, 0);
+                    UpdateProgressBarDirect(_subProgressBar, 0);
                 }
 
                 return success;
@@ -854,13 +953,55 @@ namespace SakuraEDL.Qualcomm.UI
 
         public void Disconnect()
         {
+            // 停止端口监控
+            StopPortMonitor();
+            
             if (_service != null)
             {
+                try
+                {
+                    _service.PortDisconnected -= OnServicePortDisconnected;
+                }
+                catch { }
                 _service.Disconnect();
                 _service.Dispose();
                 _service = null;
             }
             CancelOperation();
+            
+            // 重置进度条
+            UpdateProgressBarDirect(_progressBar, 0);
+            UpdateProgressBarDirect(_subProgressBar, 0);
+            
+            // 清除端口显示
+            if (_portComboBox != null)
+            {
+                try
+                {
+                    if (_portComboBox.InvokeRequired)
+                        _portComboBox.BeginInvoke(new Action(() => { _portComboBox.Items.Clear(); _portComboBox.Text = "设备状态：未连接任何设备"; }));
+                    else
+                    {
+                        _portComboBox.Items.Clear();
+                        _portComboBox.Text = "设备状态：未连接任何设备";
+                    }
+                }
+                catch { }
+            }
+            
+            // 清空分区列表
+            Partitions?.Clear();
+            if (_partitionListView != null)
+            {
+                try
+                {
+                    _partitionListView.BeginUpdate();
+                    _partitionListView.Items.Clear();
+                    _partitionListView.EndUpdate();
+                }
+                catch { }
+            }
+            
             ConnectionStateChanged?.Invoke(this, false);
             ClearDeviceInfoLabels();
             Log("已断开连接", Color.Gray);
@@ -2195,6 +2336,9 @@ namespace SakuraEDL.Qualcomm.UI
                     PartitionsLoaded?.Invoke(this, partitions);
                     Log(string.Format("成功读取 {0} 个分区", partitions.Count), Color.Green);
                     
+                    // GPT 读取成功后自动勾选"跳过引导"，下次操作可以直接使用
+                    SetSkipSaharaChecked(true);
+                    
                     // 读取分区表后，尝试读取设备信息（build.prop）- 占 80-100%
                     var superPart = partitions.Find(p => p.Name.Equals("super", StringComparison.OrdinalIgnoreCase));
                     var systemPart = partitions.Find(p => p.Name.Equals("system", StringComparison.OrdinalIgnoreCase) ||
@@ -2385,39 +2529,98 @@ namespace SakuraEDL.Qualcomm.UI
                 StartOperationTimer("批量读取", total, 0, totalBytes);
                 Log(string.Format("开始批量读取 {0} 个分区 (总计: {1:F2} MB)...", total, totalBytes / 1024.0 / 1024.0), Color.Blue);
 
-                long currentCompletedBytes = 0;
-                for (int i = 0; i < total; i++)
+                // 预先获取分区大小信息（在 UI 线程）
+                var partitionSizes = new Dictionary<string, long>();
+                foreach (var item in partitionsToRead)
                 {
-                    if (_cts.Token.IsCancellationRequested) break;
-
-                    var item = partitionsToRead[i];
-                    string partitionName = item.Item1;
-                    string outputPath = item.Item2;
-                    
-                    var p = _service.FindPartition(partitionName);
-                    long pSize = p?.Size ?? 0;
-
-                    // 传入当前分区大小用于准确速度计算
-                    UpdateTotalProgress(i, total, currentCompletedBytes, pSize);
-                    UpdateLabelSafe(_operationLabel, string.Format("读取 {0} ({1}/{2})", partitionName, i + 1, total));
-
-                    var progress = new Progress<double>(percent => UpdateSubProgressFromPercent(percent));
-                    bool ok = await _service.ReadPartitionAsync(partitionName, outputPath, progress, _cts.Token);
-
-                    if (ok)
-                    {
-                        success++;
-                        currentCompletedBytes += pSize;
-                        Log(string.Format("[{0}/{1}] {2} 读取成功", i + 1, total, partitionName), Color.Green);
-                    }
-                    else
-                    {
-                        Log(string.Format("[{0}/{1}] {2} 读取失败", i + 1, total, partitionName), Color.Red);
-                    }
+                    var p = _service.FindPartition(item.Item1);
+                    partitionSizes[item.Item1] = p?.Size ?? 0;
                 }
 
+                // 整个读取循环在后台线程执行
+                var ct = _cts.Token;
+                var readResult = await Task.Run(async () =>
+                {
+                    int bgSuccess = 0;
+                    long bgCompletedBytes = 0;
+                    
+                    var failedList = new List<string>();
+                    
+                    for (int i = 0; i < total; i++)
+                    {
+                        if (ct.IsCancellationRequested) break;
+
+                        var item = partitionsToRead[i];
+                        string partitionName = item.Item1;
+                        string outputPath = item.Item2;
+                        string fileName = System.IO.Path.GetFileName(outputPath);
+                        long pSize = partitionSizes.ContainsKey(partitionName) ? partitionSizes[partitionName] : 0;
+
+                        // 异步更新 UI（不重置子进度条，避免抽搐）
+                        int idx = i;
+                        long completed = bgCompletedBytes;
+                        UpdateUIAsync(() => {
+                            // 只更新标签和总进度，不调用 UpdateTotalProgress（它会重置子进度条）
+                            UpdateLabelSafe(_operationLabel, string.Format("读取 {0} ({1}/{2})", partitionName, idx + 1, total));
+                            // 更新总进度条（基于已完成字节）
+                            if (totalBytes > 0)
+                            {
+                                double totalPercent = 100.0 * completed / totalBytes;
+                                UpdateProgressBarDirect(_progressBar, totalPercent);
+                            }
+                            // 重置子进度条为 0（新分区开始）
+                            UpdateProgressBarDirect(_subProgressBar, 0);
+                            _currentStepBytes = pSize;
+                        });
+
+                        IProgress<double> progress = new LightweightProgress(p => UpdateUIAsync(() => UpdateSubProgressFromPercent(p)));
+                        
+                        bool ok;
+                        string errorMsg = null;
+                        try
+                        {
+                            ok = await _service.ReadPartitionAsync(partitionName, outputPath, progress, ct).ConfigureAwait(false);
+                        }
+                        catch (Exception ex)
+                        {
+                            ok = false;
+                            errorMsg = ex.Message;
+                        }
+
+                        if (ok)
+                        {
+                            bgSuccess++;
+                            bgCompletedBytes += pSize;
+                            UpdateUIAsync(() => Log(string.Format("[{0}/{1}] [成功] {2} -> {3}", idx + 1, total, partitionName, fileName), Color.Green));
+                        }
+                        else
+                        {
+                            failedList.Add(partitionName);
+                            string errDetail = string.IsNullOrEmpty(errorMsg) ? "读取失败" : errorMsg;
+                            UpdateUIAsync(() => Log(string.Format("[{0}/{1}] [失败] {2}: {3}", idx + 1, total, partitionName, errDetail), Color.Red));
+                        }
+                    }
+                    
+                    return Tuple.Create(bgSuccess, bgCompletedBytes, failedList);
+                }).ConfigureAwait(false);
+                
+                success = readResult.Item1;
+                var failedPartitions = readResult.Item3;
+
                 UpdateTotalProgress(total, total, totalBytes, 0);
-                Log(string.Format("批量读取完成: {0}/{1} 成功", success, total), success == total ? Color.Green : Color.Orange);
+                Log("------------------------------------------------", Color.Gray);
+                if (success == total)
+                {
+                    Log(string.Format("批量读取完成: {0} 个分区全部成功!", total), Color.Green);
+                }
+                else
+                {
+                    Log(string.Format("批量读取完成: {0}/{1} 成功, {2} 个失败", success, total, total - success), Color.Orange);
+                    if (failedPartitions != null && failedPartitions.Count > 0)
+                    {
+                        Log(string.Format("失败分区: {0}", string.Join(", ", failedPartitions)), Color.Red);
+                    }
+                }
                 return success;
             }
             catch (Exception ex)
@@ -2449,6 +2652,18 @@ namespace SakuraEDL.Qualcomm.UI
         /// <param name="activateBootLun">是否激活启动 LUN (UFS)</param>
         public async Task<int> WritePartitionsBatchAsync(List<Tuple<string, string, int, long>> partitionsToWrite, List<string> patchFiles, bool activateBootLun)
         {
+            return await WritePartitionsBatchAsync(partitionsToWrite, patchFiles, activateBootLun, null);
+        }
+        
+        /// <summary>
+        /// 批量写入分区 (支持 Patch、激活启动分区和 MetaSuper)
+        /// </summary>
+        /// <param name="partitionsToWrite">分区信息列表 (名称, 文件路径, LUN, StartSector)</param>
+        /// <param name="patchFiles">Patch XML 文件列表 (可选)</param>
+        /// <param name="activateBootLun">是否激活启动 LUN (UFS)</param>
+        /// <param name="metaSuperFirmwareRoot">MetaSuper 固件根目录 (包含 IMAGES 和 META)，为空则跳过</param>
+        public async Task<int> WritePartitionsBatchAsync(List<Tuple<string, string, int, long>> partitionsToWrite, List<string> patchFiles, bool activateBootLun, string metaSuperFirmwareRoot)
+        {
             if (!await EnsureConnectedAsync()) return 0;
             if (IsBusy) { Log("操作进行中", Color.Orange); return 0; }
 
@@ -2461,106 +2676,259 @@ namespace SakuraEDL.Qualcomm.UI
                 IsBusy = true;
                 ResetCancellationToken();
                 
-                // 计算总步骤: 分区写入 + Patch + 激活
-                int totalSteps = total + (hasPatch ? 1 : 0) + (activateBootLun ? 1 : 0);
+                // MetaSuper 任务合并
+                List<SakuraEDL.Qualcomm.Services.OplusSuperFlashManager.FlashTask> metaSuperTasks = null;
+                var superPart = _service?.FindPartition("super");
+                bool hasMetaSuper = !string.IsNullOrEmpty(metaSuperFirmwareRoot) && superPart != null;
                 
-                // 预先获取总字节数，用于流畅进度条
-                long totalBytes = 0;
-                foreach (var item in partitionsToWrite)
+                if (hasMetaSuper)
                 {
-                    string path = item.Item2;
-                    if (File.Exists(path))
+                    Log("[MetaSuper] 开始解析 Super 逻辑分区布局...", Color.Blue);
+                    string activeSlot = _service.CurrentSlot;
+                    // 槽位未知或未定义时默认使用 a 槽位
+                    if (activeSlot == "nonexistent" || activeSlot == "undefined" || activeSlot == "unknown" || string.IsNullOrEmpty(activeSlot)) 
+                        activeSlot = "a";
+                    
+                    string nvId = _currentDeviceInfo?.OplusNvId ?? "";
+                    long superPartitionSize = superPart.Size;
+                    
+                    Log(string.Format("[高通] Super 分区: 起始扇区={0}, 大小={1} MB", 
+                        superPart.StartSector, superPartitionSize / 1024 / 1024), Color.Gray);
+                    
+                    var superManager = new SakuraEDL.Qualcomm.Services.OplusSuperFlashManager(s => Log(s, Color.Gray));
+                    metaSuperTasks = await superManager.PrepareSuperTasksAsync(
+                        metaSuperFirmwareRoot, superPart.StartSector, (int)superPart.SectorSize, activeSlot, nvId, superPartitionSize);
+                    
+                    if (metaSuperTasks.Count > 0)
                     {
-                        if (SparseStream.IsSparseFile(path))
+                        // 校验任务
+                        var validation = superManager.ValidateTasks(metaSuperTasks, superPartitionSize, (int)superPart.SectorSize);
+                        if (!validation.IsValid)
                         {
-                            // 使用实际数据大小，而非展开后的大小
-                            using (var ss = SparseStream.Open(path))
-                                totalBytes += ss.GetRealDataSize();
+                            foreach (var err in validation.Errors)
+                                Log("[MetaSuper] 错误: " + err, Color.Red);
+                            Log("[MetaSuper] 校验失败，将跳过 Super 逻辑分区写入", Color.Orange);
+                            metaSuperTasks = null;
                         }
                         else
                         {
-                            totalBytes += new FileInfo(path).Length;
+                            foreach (var warn in validation.Warnings)
+                                Log("[MetaSuper] 警告: " + warn, Color.Orange);
+                            Log(string.Format("[MetaSuper] 已加载 {0} 个 Super 逻辑分区任务", metaSuperTasks.Count), Color.Blue);
                         }
                     }
+                    else
+                    {
+                        Log("[MetaSuper] 未找到可用的 Super 逻辑分区镜像", Color.Orange);
+                        metaSuperTasks = null;
+                    }
                 }
+                
+                // 计算总步骤: 分区写入 + MetaSuper + Patch + 激活
+                int metaSuperCount = metaSuperTasks?.Count ?? 0;
+                int totalSteps = total + metaSuperCount + (hasPatch ? 1 : 0) + (activateBootLun ? 1 : 0);
+                
+                // 在后台线程预先获取所有文件大小，避免 UI 卡住
+                Log("正在计算文件大小...", Color.Gray);
+                var fileSizes = await Task.Run(() =>
+                {
+                    var sizes = new Dictionary<string, long>();
+                    foreach (var item in partitionsToWrite)
+                    {
+                        string path = item.Item2;
+                        try
+                        {
+                            if (File.Exists(path))
+                            {
+                                if (SparseStream.IsSparseFile(path))
+                                {
+                                    using (var ss = SparseStream.Open(path))
+                                        sizes[path] = ss.GetRealDataSize();
+                                }
+                                else
+                                {
+                                    sizes[path] = new FileInfo(path).Length;
+                                }
+                            }
+                            else
+                            {
+                                sizes[path] = 0;
+                            }
+                        }
+                        catch
+                        {
+                            sizes[path] = 0;
+                        }
+                    }
+                    // MetaSuper 文件大小
+                    if (metaSuperTasks != null)
+                    {
+                        foreach (var task in metaSuperTasks)
+                        {
+                            if (!sizes.ContainsKey(task.FilePath))
+                                sizes[task.FilePath] = task.SizeInBytes;
+                        }
+                    }
+                    return sizes;
+                });
+                
+                long totalBytes = fileSizes.Values.Sum();
+                
+                // 合并并按物理扇区排序所有任务
+                // 任务格式: (分区名, 文件路径, LUN, StartSector, IsMetaSuper)
+                var allTasks = new List<Tuple<string, string, int, long, bool>>();
+                
+                // 添加常规分区任务
+                foreach (var item in partitionsToWrite)
+                {
+                    allTasks.Add(Tuple.Create(item.Item1, item.Item2, item.Item3, item.Item4, false));
+                }
+                
+                // 添加 MetaSuper 任务
+                if (metaSuperTasks != null && superPart != null)
+                {
+                    foreach (var task in metaSuperTasks)
+                    {
+                        allTasks.Add(Tuple.Create(
+                            "[Super] " + task.PartitionName,  // 标记为 Super 逻辑分区
+                            task.FilePath,
+                            superPart.Lun,
+                            task.PhysicalSector,
+                            true  // 标记为 MetaSuper
+                        ));
+                    }
+                }
+                
+                // 按物理扇区排序 (LUN 相同时按扇区排序，不同 LUN 按 LUN 号排序)
+                allTasks = allTasks.OrderBy(t => t.Item3).ThenBy(t => t.Item4).ToList();
+                
+                total = allTasks.Count;
+                totalSteps = total + (hasPatch ? 1 : 0) + (activateBootLun ? 1 : 0);
 
                 StartOperationTimer("批量写入", totalSteps, 0, totalBytes);
                 Log(string.Format("开始批量写入 {0} 个分区 (实际数据: {1:F2} MB)...", total, totalBytes / 1024.0 / 1024.0), Color.Blue);
 
-                long currentCompletedBytes = 0;
-                for (int i = 0; i < total; i++)
+                // 整个写入循环在后台线程执行，UI 线程只负责显示
+                var ct = _cts.Token;
+                var protectEnabled = IsProtectPartitionsEnabled();
+                var failedPartitions = new System.Collections.Concurrent.ConcurrentBag<string>();
+                
+                var writeResult = await Task.Run(async () =>
                 {
-                    if (_cts.Token.IsCancellationRequested) break;
-
-                    var item = partitionsToWrite[i];
-                    string partitionName = item.Item1;
-                    string filePath = item.Item2;
-                    int lun = item.Item3;
-                    long startSector = item.Item4;
+                    int bgSuccess = 0;
+                    long bgCompletedBytes = 0;
                     
-                    long fSize = 0;
-                    if (File.Exists(filePath))
+                    for (int i = 0; i < total; i++)
                     {
-                        if (SparseStream.IsSparseFile(filePath))
+                        if (ct.IsCancellationRequested) break;
+
+                        var item = allTasks[i];
+                        string partitionName = item.Item1;
+                        string filePath = item.Item2;
+                        int lun = item.Item3;
+                        long startSector = item.Item4;
+                        bool isMetaSuper = item.Item5;
+                        string fileName = System.IO.Path.GetFileName(filePath);
+                        
+                        // MetaSuper 任务去掉 "[Super] " 前缀用于显示
+                        string displayName = isMetaSuper ? partitionName.Replace("[Super] ", "") : partitionName;
+                        
+                        long fSize = fileSizes.ContainsKey(filePath) ? fileSizes[filePath] : 0;
+
+                        // 敏感分区保护（不对 MetaSuper 任务应用）
+                        if (!isMetaSuper && protectEnabled && RawprogramParser.IsSensitivePartition(partitionName))
                         {
-                            // 使用实际数据大小，而非展开后的大小
-                            using (var ss = SparseStream.Open(filePath))
-                                fSize = ss.GetRealDataSize();
+                            UpdateUIAsync(() => Log(string.Format("[{0}/{1}] [跳过] {2} (敏感分区保护)", i + 1, total, partitionName), Color.Orange));
+                            bgCompletedBytes += fSize;
+                            continue;
+                        }
+
+                        // 异步更新 UI 状态（不调用 UpdateTotalProgress，避免进度条抽搐）
+                        int idx = i;
+                        long completed = bgCompletedBytes;
+                        long totalBytesLocal = totalBytes;
+                        string displayPartName = displayName;
+                        UpdateUIAsync(() => {
+                            UpdateLabelSafe(_operationLabel, string.Format("写入 {0} ({1}/{2})", displayPartName, idx + 1, total));
+                            // 更新总进度条（基于已完成字节）
+                            if (totalBytesLocal > 0)
+                            {
+                                double totalPercent = 100.0 * completed / totalBytesLocal;
+                                UpdateProgressBarDirect(_progressBar, totalPercent);
+                            }
+                            // 重置子进度条为 0（新分区开始）
+                            UpdateProgressBarDirect(_subProgressBar, 0);
+                            _currentStepBytes = fSize;
+                        });
+
+                        // 轻量级进度回调
+                        IProgress<double> progress = new LightweightProgress(p => UpdateUIAsync(() => UpdateSubProgressFromPercent(p)));
+                        
+                        bool ok;
+                        string errorMsg = null;
+                        
+                        // MetaSuper 任务总是使用 DirectWrite (指定 LUN 和扇区)
+                        bool useDirectWrite = isMetaSuper || 
+                            partitionName == "PrimaryGPT" || partitionName == "BackupGPT" || 
+                            partitionName.StartsWith("gpt_main") || partitionName.StartsWith("gpt_backup") ||
+                            startSector != 0;
+                        
+                        try
+                        {
+                            if (useDirectWrite)
+                            {
+                                // MetaSuper 任务使用 "super" 作为目标分区名
+                                string targetPartName = isMetaSuper ? "super" : partitionName;
+                                ok = await _service.WriteDirectAsync(targetPartName, filePath, lun, startSector, progress, ct).ConfigureAwait(false);
+                            }
+                            else
+                            {
+                                ok = await _service.WritePartitionAsync(partitionName, filePath, progress, ct).ConfigureAwait(false);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            ok = false;
+                            errorMsg = ex.Message;
+                        }
+
+                        if (ok)
+                        {
+                            bgSuccess++;
+                            bgCompletedBytes += fSize;
+                            // 成功时显示简洁的确认
+                            string msgPrefix = isMetaSuper ? "[Super]" : "";
+                            UpdateUIAsync(() => Log(string.Format("[{0}/{1}] [成功] {2}{3} -> {4}", idx + 1, total, msgPrefix, fileName, displayPartName), Color.Green));
                         }
                         else
                         {
-                            fSize = new FileInfo(filePath).Length;
+                            failedPartitions.Add(displayName);
+                            // 失败时显示详细错误
+                            string errDetail = string.IsNullOrEmpty(errorMsg) ? "写入被拒绝或超时" : errorMsg;
+                            UpdateUIAsync(() => Log(string.Format("[{0}/{1}] [失败] {2} -> {3}: {4}", idx + 1, total, fileName, displayPartName, errDetail), Color.Red));
                         }
                     }
-
-                    if (IsProtectPartitionsEnabled() && RawprogramParser.IsSensitivePartition(partitionName))
-                    {
-                        Log(string.Format("[{0}/{1}] 跳过敏感分区: {2}", i + 1, total, partitionName), Color.Orange);
-                        currentCompletedBytes += fSize;
-                        continue;
-                    }
-
-                    // 传入当前文件大小用于准确速度计算
-                    UpdateTotalProgress(i, totalSteps, currentCompletedBytes, fSize);
-                    UpdateLabelSafe(_operationLabel, string.Format("写入 {0} ({1}/{2})", partitionName, i + 1, total));
-
-                    var progress = new Progress<double>(percent => UpdateSubProgressFromPercent(percent));
-                    bool ok;
-
-                    // 如果有 XML 中的 LUN 和 StartSector 信息，优先使用直接写入
-                    // 这确保按照 XML 定义的位置写入，而不是依赖设备 GPT
-                    bool useDirectWrite = partitionName == "PrimaryGPT" || partitionName == "BackupGPT" || 
-                        partitionName.StartsWith("gpt_main") || partitionName.StartsWith("gpt_backup") ||
-                        startSector != 0;  // 如果有明确的起始扇区，使用直接写入
                     
-                    if (useDirectWrite)
-                    {
-                        ok = await _service.WriteDirectAsync(partitionName, filePath, lun, startSector, progress, _cts.Token);
-                    }
-                    else
-                    {
-                        // 没有明确扇区信息时，尝试通过分区名查找 (依赖设备 GPT)
-                        ok = await _service.WritePartitionAsync(partitionName, filePath, progress, _cts.Token);
-                    }
-
-                    if (ok)
-                    {
-                        success++;
-                        currentCompletedBytes += fSize;
-                        // 成功时不单独打印日志，只在最后汇总
-                    }
-                    else
-                    {
-                        // 失败时打印详细信息
-                        Log(string.Format("写入失败: {0}", partitionName), Color.Red);
-                    }
-                }
+                    return Tuple.Create(bgSuccess, bgCompletedBytes);
+                }).ConfigureAwait(false);
+                
+                success = writeResult.Item1;
+                long currentCompletedBytes = writeResult.Item2;
 
                 // 汇总显示结果
+                Log("------------------------------------------------", Color.Gray);
                 if (success == total)
-                    Log(string.Format("分区写入完成: {0} 个分区全部成功", total), Color.Green);
+                {
+                    Log(string.Format("分区写入完成: {0} 个分区全部成功!", total), Color.Green);
+                }
                 else
-                    Log(string.Format("分区写入完成: {0}/{1} 成功，{2} 个失败", success, total, total - success), Color.Orange);
+                {
+                    Log(string.Format("分区写入完成: {0}/{1} 成功, {2} 个失败", success, total, total - success), Color.Orange);
+                    if (failedPartitions.Count > 0)
+                    {
+                        Log(string.Format("失败分区: {0}", string.Join(", ", failedPartitions)), Color.Red);
+                    }
+                }
 
                 // 2. 应用 Patch (如果有)
                 if (hasPatch && !_cts.Token.IsCancellationRequested)
@@ -2806,7 +3174,13 @@ namespace SakuraEDL.Qualcomm.UI
             try
             {
                 bool success = await _service.RebootToEdlAsync(_cts?.Token ?? CancellationToken.None);
-                if (success) Log("已发送重启到 EDL 命令", Color.Green);
+                if (success)
+                {
+                    Log("已发送重启到 EDL 命令", Color.Green);
+                    // 断开当前连接，等待设备重新进入 EDL
+                    Disconnect();
+                    Log("等待设备重新进入 EDL 模式...", Color.Orange);
+                }
                 return success;
             }
             catch (Exception ex) { Log("重启到 EDL 失败: " + ex.Message, Color.Red); return false; }
@@ -2942,7 +3316,8 @@ namespace SakuraEDL.Qualcomm.UI
         {
             if (_service == null)
             {
-                Log("未连接设备", Color.Red);
+                // 不输出错误日志，由调用者处理
+                _logDetail("[UI] 服务未初始化");
                 return false;
             }
             
@@ -2959,10 +3334,10 @@ namespace SakuraEDL.Qualcomm.UI
                 _logDetail("[UI] 端口重新打开成功");
             }
             
-            // 使用 ValidateConnection 检测端口是否真正可用
-            if (!_service.ValidateConnection())
+            // 使用快速连接检查（不触发断开事件），避免意外取消用户的"跳过引导"选择
+            if (!_service.IsConnectedFast)
             {
-                _logDetail("[UI] 端口验证失败");
+                _logDetail("[UI] 快速连接检查失败");
                 return false;
             }
             
@@ -3217,6 +3592,56 @@ namespace SakuraEDL.Qualcomm.UI
             UpdateProgressBarDirect(_subProgressBar, 0);
         }
         
+        /// <summary>
+        /// 轻量级进度报告器（不捕获 SynchronizationContext，不阻塞后台线程）
+        /// </summary>
+        private class LightweightProgress : IProgress<double>
+        {
+            private readonly Action<double> _handler;
+            private DateTime _lastReport = DateTime.MinValue;
+            
+            public LightweightProgress(Action<double> handler)
+            {
+                _handler = handler;
+            }
+            
+            public void Report(double value)
+            {
+                // 节流：最多每 100ms 报告一次
+                var now = DateTime.Now;
+                if ((now - _lastReport).TotalMilliseconds < 100) return;
+                _lastReport = now;
+                _handler?.Invoke(value);
+            }
+        }
+        
+        /// <summary>
+        /// 异步更新 UI（非阻塞，fire-and-forget）
+        /// 用于后台线程向 UI 线程发送更新请求
+        /// </summary>
+        private void UpdateUIAsync(Action action)
+        {
+            if (action == null) return;
+            
+            // 使用任意 UI 控件的 BeginInvoke（非阻塞）
+            if (_progressBar != null)
+            {
+                try
+                {
+                    var ctrl = _progressBar as System.Windows.Forms.Control;
+                    if (ctrl != null && ctrl.IsHandleCreated && !ctrl.IsDisposed)
+                    {
+                        ctrl.BeginInvoke(action);
+                        return;
+                    }
+                }
+                catch { }
+            }
+            
+            // 备选：直接执行（可能在 UI 线程）
+            try { action(); } catch { }
+        }
+        
         private void UpdateLabelSafe(dynamic label, string text)
         {
             if (label == null) return;
@@ -3468,17 +3893,41 @@ namespace SakuraEDL.Qualcomm.UI
 
                 // 2. 预分析任务以获取总字节数
                 string activeSlot = _service.CurrentSlot;
-                if (activeSlot == "nonexistent" || string.IsNullOrEmpty(activeSlot)) activeSlot = "a";
+                // 槽位未知或未定义时默认使用 a 槽位
+                if (activeSlot == "nonexistent" || activeSlot == "undefined" || activeSlot == "unknown" || string.IsNullOrEmpty(activeSlot)) 
+                    activeSlot = "a";
                 
                 string nvId = _currentDeviceInfo?.OplusNvId ?? "";
+                long superPartitionSize = superPart.Size;
                 
-                var tasks = await new SakuraEDL.Qualcomm.Services.OplusSuperFlashManager(s => Log(s, Color.Gray)).PrepareSuperTasksAsync(
-                    firmwareRoot, superPart.StartSector, (int)superPart.SectorSize, activeSlot, nvId);
+                Log(string.Format("[高通] Super 分区: 起始扇区={0}, 大小={1} MB", 
+                    superPart.StartSector, superPartitionSize / 1024 / 1024), Color.Gray);
+                
+                var superManager = new SakuraEDL.Qualcomm.Services.OplusSuperFlashManager(s => Log(s, Color.Gray));
+                var tasks = await superManager.PrepareSuperTasksAsync(
+                    firmwareRoot, superPart.StartSector, (int)superPart.SectorSize, activeSlot, nvId, superPartitionSize);
 
                 if (tasks.Count == 0)
                 {
                     Log("未找到可用的 Super 逻辑分区镜像", Color.Red);
                     return false;
+                }
+                
+                // 校验任务
+                var validation = superManager.ValidateTasks(tasks, superPartitionSize, (int)superPart.SectorSize);
+                if (!validation.IsValid)
+                {
+                    foreach (var err in validation.Errors)
+                    {
+                        Log("[MetaSuper] 错误: " + err, Color.Red);
+                    }
+                    Log("[高通] Super 刷写校验失败，已中止", Color.Red);
+                    return false;
+                }
+                
+                foreach (var warn in validation.Warnings)
+                {
+                    Log("[MetaSuper] 警告: " + warn, Color.Orange);
                 }
 
                 long totalBytes = tasks.Sum(t => t.SizeInBytes);
@@ -3500,6 +3949,7 @@ namespace SakuraEDL.Qualcomm.UI
             catch (Exception ex)
             {
                 Log("OPLUS Super 写入异常: " + ex.Message, Color.Red);
+                _logDetail?.Invoke("[MetaSuper] 异常详情: " + ex.ToString());
                 return false;
             }
             finally

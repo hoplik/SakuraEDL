@@ -27,12 +27,11 @@ namespace SakuraEDL.Qualcomm.Common
         private readonly Action<string> _log;
 
         // 串口配置 (9008 EDL 模式用 USB CDC 模拟串口)
-        // 注意：缓冲区过大会增加内存拷贝开销，反而降低速度
         public int BaudRate { get; set; } = 921600;
         public int ReadTimeout { get; set; } = 30000;
         public int WriteTimeout { get; set; } = 30000;
-        public int ReadBufferSize { get; set; } = 2 * 1024 * 1024;   // 2MB 读缓冲
-        public int WriteBufferSize { get; set; } = 4 * 1024 * 1024;  // 4MB 写缓冲
+        public int ReadBufferSize { get; set; } = 64 * 1024;    // 64KB 读缓冲
+        public int WriteBufferSize { get; set; } = 128 * 1024;  // 128KB 写缓冲
 
         /// <summary>
         /// 端口断开事件

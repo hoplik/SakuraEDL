@@ -10,6 +10,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.VisualBasic;
@@ -277,6 +278,8 @@ namespace SakuraEDL
                 mTK驱动ToolStripMenuItem.Click += (s, e) => OpenDriverInstaller("mtk");
                 // 高通驱动
                 高通驱动ToolStripMenuItem.Click += (s, e) => OpenDriverInstaller("qualcomm");
+                // 展讯驱动
+                展讯驱动ToolStripMenuItem.Click += (s, e) => OpenDriverInstaller("spreadtrum");
 
                 // ========== 停止按钮 ==========
                 uiButton1.Click += (s, e) => StopCurrentOperation();
@@ -285,9 +288,9 @@ namespace SakuraEDL
                 // 初始化时刷新端口列表（静默模式）
                 _lastEdlCount = _qualcommController.RefreshPorts(silent: true);
                 
-                // 启动端口自动检测定时器 (每2秒检测一次，只在端口列表变化时才刷新)
+                // 启动端口自动检测定时器 (根据性能配置调整间隔)
                 _portRefreshTimer = new System.Windows.Forms.Timer();
-                _portRefreshTimer.Interval = 2000;
+                _portRefreshTimer.Interval = Common.PerformanceConfig.PortRefreshInterval;
                 _portRefreshTimer.Tick += (s, e) => RefreshPortsIfIdle();
                 _portRefreshTimer.Start();
 
@@ -301,6 +304,7 @@ namespace SakuraEDL
 
         private string _storageType = "ufs";
         private string _authMode = "none";
+        private string _cloudLoaderAuthType = "none";  // 当前云端 Loader 的验证类型 (vip/demacia/miauth/none)
 
         /// <summary>
         /// 空闲时刷新端口（检测设备连接/断开）
@@ -351,13 +355,13 @@ namespace SakuraEDL
         {
             if (checkbox17.Checked && checkbox19.Checked)
             {
-                checkbox19.Checked = false; // 互斥，优先 OnePlus
+                checkbox17.Checked = false; // 互斥，优先 VIP
             }
             
             if (checkbox17.Checked)
-                _authMode = "oneplus";
+                _authMode = "demacia";  // oldoneplus = OnePlus/demacia 验证
             else if (checkbox19.Checked)
-                _authMode = "vip";
+                _authMode = "vip";      // oplus = VIP 验证
             else
                 _authMode = "none";
         }
@@ -506,97 +510,84 @@ namespace SakuraEDL
             }
         }
 
-        private void LoadMultipleRawprogramXml(string[] xmlPaths)
+        private async void LoadMultipleRawprogramXml(string[] xmlPaths)
         {
-            var allTasks = new List<Qualcomm.Common.FlashTask>();
-            string programmerPath = "";
-            string[] filesToLoad = xmlPaths;
-
-            // 如果用户只选择了一个文件，且文件名包含 rawprogram，则自动搜索同目录下的其他 LUN
-            if (xmlPaths.Length == 1 && Path.GetFileName(xmlPaths[0]).Contains("rawprogram"))
-            {
-                string dir = Path.GetDirectoryName(xmlPaths[0]);
-                // 只匹配 rawprogram0.xml, rawprogram1.xml 等数字后缀的文件
-                // 排除 _BLANK_GPT, _WIPE_PARTITIONS, _ERASE 等特殊文件
-                var siblingFiles = Directory.GetFiles(dir, "rawprogram*.xml")
-                    .Where(f => {
-                        string fileName = Path.GetFileNameWithoutExtension(f).ToLower();
-                        // 只接受 rawprogram + 数字 格式 (如 rawprogram0, rawprogram1, rawprogram_unsparse)
-                        // 排除包含 blank, wipe, erase 的文件
-                        if (fileName.Contains("blank") || fileName.Contains("wipe") || fileName.Contains("erase"))
-                            return false;
-                        return true;
-                    })
-                    .OrderBy(f => {
-                        // 按数字排序
-                        string name = Path.GetFileNameWithoutExtension(f);
-                        var numStr = new string(name.Where(char.IsDigit).ToArray());
-                        int num;
-                        return int.TryParse(numStr, out num) ? num : 999;
-                    })
-                    .ToArray();
-                
-                if (siblingFiles.Length > 1)
-                {
-                    filesToLoad = siblingFiles;
-                    AppendLog($"检测到多个 LUN，已自动加载同目录下的 {siblingFiles.Length} 个 XML 文件", Color.Blue);
-                }
-            }
+            AppendLog("正在解析 XML 文件...", Color.Blue);
             
-            foreach (var xmlPath in filesToLoad)
+            string selectedXmlDir = _selectedXmlDirectory;
+            
+            // 在后台线程执行 IO 密集型操作
+            var result = await Task.Run(() =>
             {
-                try
+                var allTasks = new List<Qualcomm.Common.FlashTask>();
+                string programmerPath = "";
+                string[] filesToLoad = xmlPaths;
+                var logMessages = new List<Tuple<string, Color>>();
+
+                // 如果用户只选择了一个文件，且文件名包含 rawprogram，则自动搜索同目录下的其他 LUN
+                if (xmlPaths.Length == 1 && Path.GetFileName(xmlPaths[0]).Contains("rawprogram"))
                 {
-                    string dir = Path.GetDirectoryName(xmlPath);
-                    var parser = new Qualcomm.Common.RawprogramParser(dir, msg => { /* 避免过多冗余日志 */ });
+                    string dir = Path.GetDirectoryName(xmlPaths[0]);
+                    // 只匹配 rawprogram0.xml, rawprogram1.xml 等数字后缀的文件
+                    // 排除 _BLANK_GPT, _WIPE_PARTITIONS, _ERASE 等特殊文件
+                    var siblingFiles = Directory.GetFiles(dir, "rawprogram*.xml")
+                        .Where(f => {
+                            string fileName = Path.GetFileNameWithoutExtension(f).ToLower();
+                            if (fileName.Contains("blank") || fileName.Contains("wipe") || fileName.Contains("erase"))
+                                return false;
+                            return true;
+                        })
+                        .OrderBy(f => {
+                            string name = Path.GetFileNameWithoutExtension(f);
+                            var numStr = new string(name.Where(char.IsDigit).ToArray());
+                            int num;
+                            return int.TryParse(numStr, out num) ? num : 999;
+                        })
+                        .ToArray();
                     
-                    // 解析当前 XML 文件
-                    var tasks = parser.ParseRawprogramXml(xmlPath);
-                    
-                    // 仅添加尚未存在的任务 (按 LUN + StartSector + Label 判定)
-                    foreach (var task in tasks)
+                    if (siblingFiles.Length > 1)
                     {
-                        if (!allTasks.Any(t => t.Lun == task.Lun && t.StartSector == task.StartSector && t.Label == task.Label))
+                        filesToLoad = siblingFiles;
+                        logMessages.Add(Tuple.Create($"检测到多个 LUN，已自动加载同目录下的 {siblingFiles.Length} 个 XML 文件", Color.Blue));
+                    }
+                }
+                
+                foreach (var xmlPath in filesToLoad)
+                {
+                    try
+                    {
+                        string dir = Path.GetDirectoryName(xmlPath);
+                        var parser = new Qualcomm.Common.RawprogramParser(dir, msg => { });
+                        
+                        var tasks = parser.ParseRawprogramXml(xmlPath);
+                        
+                        foreach (var task in tasks)
                         {
-                            allTasks.Add(task);
+                            if (!allTasks.Any(t => t.Lun == task.Lun && t.StartSector == task.StartSector && t.Label == task.Label))
+                            {
+                                allTasks.Add(task);
+                            }
+                        }
+
+                        logMessages.Add(Tuple.Create($"解析 {Path.GetFileName(xmlPath)}: {tasks.Count} 个任务 (当前累计: {allTasks.Count})", Color.Blue));
+                        
+                        if (string.IsNullOrEmpty(programmerPath))
+                        {
+                            programmerPath = parser.FindProgrammer();
                         }
                     }
-
-                    AppendLog($"解析 {Path.GetFileName(xmlPath)}: {tasks.Count} 个任务 (当前累计: {allTasks.Count})", Color.Blue);
-                    
-                    // 自动识别对应的 patch 文件
-                    string patchPath = FindMatchingPatchFile(xmlPath);
-                    if (!string.IsNullOrEmpty(patchPath))
+                    catch (Exception ex)
                     {
-                        // 记录到全局变量或后续处理中
-                    }
-                    
-                    // 自动识别 programmer 文件（只识别一次）
-                    if (string.IsNullOrEmpty(programmerPath))
-                    {
-                        programmerPath = parser.FindProgrammer();
+                        logMessages.Add(Tuple.Create($"解析 {Path.GetFileName(xmlPath)} 失败: {ex.Message}", Color.Red));
                     }
                 }
-                catch (Exception ex)
-                {
-                    AppendLog($"解析 {Path.GetFileName(xmlPath)} 失败: {ex.Message}", Color.Red);
-                }
-            }
-            
-            if (allTasks.Count > 0)
-            {
-                AppendLog($"共加载 {allTasks.Count} 个刷机任务", Color.Green);
                 
-                if (!string.IsNullOrEmpty(programmerPath))
+                // 检查 patch 文件
+                List<string> patchFiles = new List<string>();
+                string xmlDir = !string.IsNullOrEmpty(selectedXmlDir) ? selectedXmlDir : Path.GetDirectoryName(xmlPaths[0]);
+                if (!string.IsNullOrEmpty(xmlDir) && Directory.Exists(xmlDir))
                 {
-                    input8.Text = programmerPath;
-                    AppendLog($"自动识别引导文件: {Path.GetFileName(programmerPath)}", Color.Green);
-                }
-                
-                // 预先检查 patch 文件
-                if (!string.IsNullOrEmpty(_selectedXmlDirectory) && Directory.Exists(_selectedXmlDirectory))
-                {
-                    var patchFiles = Directory.GetFiles(_selectedXmlDirectory, "patch*.xml", SearchOption.TopDirectoryOnly)
+                    patchFiles = Directory.GetFiles(xmlDir, "patch*.xml", SearchOption.TopDirectoryOnly)
                         .Where(f => {
                             string fn = Path.GetFileName(f).ToLower();
                             return !fn.Contains("blank") && !fn.Contains("wipe") && !fn.Contains("erase");
@@ -608,19 +599,43 @@ namespace SakuraEDL
                             return int.TryParse(numStr, out num) ? num : 999;
                         })
                         .ToList();
-                    
-                    if (patchFiles.Count > 0)
-                    {
-                        AppendLog($"检测到 {patchFiles.Count} 个 Patch 文件: {string.Join(", ", patchFiles.Select(f => Path.GetFileName(f)))}", Color.Blue);
-                    }
-                    else
-                    {
-                        AppendLog("未检测到 Patch 文件", Color.Gray);
-                    }
                 }
                 
-                // 将所有任务填充到分区列表
-                FillPartitionListFromTasks(allTasks);
+                return new {
+                    Tasks = allTasks,
+                    ProgrammerPath = programmerPath,
+                    PatchFiles = patchFiles,
+                    LogMessages = logMessages
+                };
+            });
+            
+            // 回到 UI 线程输出日志
+            foreach (var log in result.LogMessages)
+            {
+                AppendLog(log.Item1, log.Item2);
+            }
+            
+            if (result.Tasks.Count > 0)
+            {
+                AppendLog($"共加载 {result.Tasks.Count} 个刷机任务", Color.Green);
+                
+                if (!string.IsNullOrEmpty(result.ProgrammerPath))
+                {
+                    input8.Text = result.ProgrammerPath;
+                    AppendLog($"自动识别引导文件: {Path.GetFileName(result.ProgrammerPath)}", Color.Green);
+                }
+                
+                if (result.PatchFiles.Count > 0)
+                {
+                    AppendLog($"检测到 {result.PatchFiles.Count} 个 Patch 文件: {string.Join(", ", result.PatchFiles.Select(f => Path.GetFileName(f)))}", Color.Blue);
+                }
+                else
+                {
+                    AppendLog("未检测到 Patch 文件", Color.Gray);
+                }
+                
+                // 将所有任务填充到分区列表（这个方法内部也是异步的）
+                FillPartitionListFromTasks(result.Tasks);
             }
             else
             {
@@ -655,12 +670,13 @@ namespace SakuraEDL
             }
         }
 
-        private void FillPartitionListFromTasks(List<Qualcomm.Common.FlashTask> tasks)
+        private async void FillPartitionListFromTasks(List<Qualcomm.Common.FlashTask> tasks)
         {
+            // 先快速填充列表，不检查文件存在性
             listView2.BeginUpdate();
             listView2.Items.Clear();
-
-            int checkedCount = 0;
+            
+            var itemsWithPaths = new List<Tuple<ListViewItem, string>>();
             
             foreach (var task in tasks)
             {
@@ -691,36 +707,60 @@ namespace SakuraEDL
                 item.SubItems.Add(string.IsNullOrEmpty(task.FilePath) ? task.Filename : task.FilePath);  // 文件路径
                 item.Tag = partition;
 
-                // 检查镜像文件是否存在
-                bool fileExists = !string.IsNullOrEmpty(task.FilePath) && File.Exists(task.FilePath);
-                
-                // 文件存在则自动勾选（排除敏感分区）
-                if (fileExists && !Qualcomm.Common.RawprogramParser.IsSensitivePartition(task.Label))
-                {
-                    item.Checked = true;
-                    checkedCount++;
-                }
-
                 // 敏感分区标记为灰色
                 if (Qualcomm.Common.RawprogramParser.IsSensitivePartition(task.Label))
                     item.ForeColor = Color.Gray;
-                // 文件不存在的分区不标红，只是不自动勾选（已在上面处理）
 
                 listView2.Items.Add(item);
+                
+                // 记录需要检查文件的项
+                if (!string.IsNullOrEmpty(task.FilePath) && !Qualcomm.Common.RawprogramParser.IsSensitivePartition(task.Label))
+                {
+                    itemsWithPaths.Add(Tuple.Create(item, task.FilePath));
+                }
             }
 
             listView2.EndUpdate();
-            AppendLog($"分区列表已更新: {tasks.Count} 个分区, 自动选中 {checkedCount} 个有效分区", Color.Green);
+            AppendLog($"分区列表已更新: {tasks.Count} 个分区", Color.Green);
+            
+            // 异步检查文件存在性并勾选
+            if (itemsWithPaths.Count > 0)
+            {
+                int checkedCount = 0;
+                await Task.Run(() =>
+                {
+                    foreach (var tuple in itemsWithPaths)
+                    {
+                        if (File.Exists(tuple.Item2))
+                        {
+                            Interlocked.Increment(ref checkedCount);
+                            // 在 UI 线程更新勾选状态
+                            listView2.BeginInvoke(new Action(() => tuple.Item1.Checked = true));
+                        }
+                    }
+                });
+                AppendLog($"自动选中 {checkedCount} 个有效分区（文件存在）", Color.Green);
+            }
         }
 
         private async Task QualcommReadPartitionTableAsync()
         {
             if (_qualcommController == null) return;
 
+            bool skipSahara = checkbox12.Checked;
+
             if (!_qualcommController.IsConnected)
             {
+                // 如果用户勾选了"跳过引导"，优先使用跳过引导模式连接
+                // 不要自动取消勾选，尊重用户的选择
+                if (skipSahara)
+                {
+                    // 日志在 QualcommConnectAsync 中输出，这里不重复
+                    bool connected = await QualcommConnectAsync();
+                    if (!connected) return;
+                }
                 // 检查是否可以快速重连（端口已释放但 Firehose 仍可用）
-                if (_qualcommController.CanQuickReconnect)
+                else if (_qualcommController.CanQuickReconnect)
                 {
                     AppendLog("尝试快速重连...", Color.Blue);
                     bool reconnected = await _qualcommController.QuickReconnectAsync();
@@ -737,7 +777,7 @@ namespace SakuraEDL
                     else
                     {
                         AppendLog("快速重连失败，需要重新完整配置", Color.Orange);
-                        checkbox12.Checked = false; // 取消跳过引导
+                        // 不自动取消勾选，让用户决定是否使用跳过引导模式
                     }
                 }
                 
@@ -771,19 +811,18 @@ namespace SakuraEDL
                 );
             }
 
-            // ========== 云端自动匹配模式 ==========
-            if (isCloudMatch)
+            // ========== 云端 Loader 模式（用户已选择具体 Loader）==========
+            if (_selectedCloudLoaderId > 0)
             {
-                return await QualcommConnectWithCloudMatchAsync();
+                return await QualcommConnectWithCloudLoaderAsync();
             }
 
-            // 普通模式 (自定义引导文件)
-            // input8 = 引导文件路径
+            // 本地文件模式
             string programmerPath = input8.Text?.Trim() ?? "";
 
             if (!skipSahara && string.IsNullOrEmpty(programmerPath))
             {
-                AppendLog("请选择引导文件或使用云端自动匹配", Color.Orange);
+                AppendLog("请先选择云端 Loader 或本地引导文件", Color.Orange);
                 return false;
             }
 
@@ -799,100 +838,189 @@ namespace SakuraEDL
         }
         
         /// <summary>
-        /// 云端自动匹配连接
+        /// 使用用户选择的云端 Loader 连接
         /// </summary>
-        private async Task<bool> QualcommConnectWithCloudMatchAsync()
+        private async Task<bool> QualcommConnectWithCloudLoaderAsync()
         {
-            AppendLog("[云端] 正在获取设备信息...", Color.Cyan);
-            
-            // 1. 执行 Sahara 握手获取设备信息 (不上传 Loader)
-            var deviceInfo = await _qualcommController.GetSaharaDeviceInfoAsync();
-            
-            if (deviceInfo == null)
-            {
-                AppendLog("[云端] 无法获取设备信息，请检查设备连接", Color.Red);
-                return false;
-            }
-            
-            AppendLog($"[云端] 设备: MSM={deviceInfo.MsmId}, OEM={deviceInfo.OemId}", Color.Blue);
-            if (!string.IsNullOrEmpty(deviceInfo.PkHash) && deviceInfo.PkHash.Length >= 16)
-            {
-                AppendLog($"[云端] PK Hash: {deviceInfo.PkHash.Substring(0, 16)}...", Color.Gray);
-            }
-            
-            // 2. 调用云端 API 匹配
             var cloudService = SakuraEDL.Qualcomm.Services.CloudLoaderService.Instance;
-            var result = await cloudService.MatchLoaderAsync(
-                deviceInfo.MsmId,
-                deviceInfo.PkHash,
-                deviceInfo.OemId,
-                _storageType
-            );
             
-            if (result == null || result.Data == null)
+            // 1. 检查端口是否已选择
+            if (uiComboBox1.SelectedIndex < 0 || string.IsNullOrEmpty(uiComboBox1.Text))
             {
-                AppendLog("[云端] 未找到匹配的 Loader", Color.Orange);
-                AppendLog("[云端] 请尝试手动选择引导文件", Color.Yellow);
-                
-                // 上报未匹配
-                cloudService.ReportDeviceLog(
-                    deviceInfo.MsmId,
-                    deviceInfo.PkHash,
-                    deviceInfo.OemId,
-                    _storageType,
-                    "not_found"
-                );
-                
+                AppendLog("[错误] 请先选择端口", Color.Red);
                 return false;
             }
             
-            // 3. 匹配成功
-            AppendLog($"[云端] 匹配成功: {result.Filename}", Color.Green);
-            AppendLog($"[云端] 厂商: {result.Vendor}, 芯片: {result.Chip}", Color.Blue);
-            AppendLog($"[云端] 置信度: {result.Confidence}%, 匹配类型: {result.MatchType}", Color.Gray);
+            byte[] loaderData = null;
+            byte[] digestData = null;
+            byte[] signatureData = null;
+            var selectedLoader = GetSelectedCloudLoader();
             
-            // 4. 根据认证类型选择连接方式
-            string authMode = result.AuthType?.ToLower() switch
+            // 2. 优先使用预下载的缓存数据 (避免 EDL 看门狗超时)
+            if (_cachedLoaderId == _selectedCloudLoaderId && _cachedLoaderData != null)
             {
-                "miauth" => "xiaomi",
-                "demacia" => "oneplus",
-                "vip" => "vip",
-                _ => "none"
-            };
-            
-            if (authMode != "none")
-            {
-                AppendLog($"[云端] 认证类型: {result.AuthType}", Color.Cyan);
-            }
-            
-            // 5. 继续连接 - 上传云端匹配的 Loader
-            AppendLog($"[云端] 发送 Loader ({result.Data.Length / 1024} KB)...", Color.Cyan);
-            
-            bool success = await _qualcommController.ContinueConnectWithCloudLoaderAsync(
-                result.Data,
-                _storageType,
-                authMode
-            );
-            
-            // 6. 上报设备日志
-            cloudService.ReportDeviceLog(
-                deviceInfo.MsmId,
-                deviceInfo.PkHash,
-                deviceInfo.OemId,
-                _storageType,
-                success ? "success" : "failed"
-            );
-            
-            if (success)
-            {
-                AppendLog("[云端] 设备连接成功", Color.Green);
+                AppendLog(string.Format("[云端] 使用已缓存的 Loader ({0} KB)", _cachedLoaderData.Length / 1024), Color.Green);
+                loaderData = _cachedLoaderData;
+                digestData = _cachedDigestData;
+                signatureData = _cachedSignatureData;
             }
             else
             {
-                AppendLog("[云端] 设备连接失败", Color.Red);
+                // 等待正在进行的预下载完成
+                if (_isPredownloading)
+                {
+                    AppendLog("[云端] 等待预下载完成...", Color.Cyan);
+                    int waitCount = 0;
+                    while (_isPredownloading && waitCount < 300) // 最多等待 30 秒
+                    {
+                        await Task.Delay(100);
+                        waitCount++;
+                    }
+                    
+                    // 预下载完成后检查缓存
+                    if (_cachedLoaderId == _selectedCloudLoaderId && _cachedLoaderData != null)
+                    {
+                        AppendLog(string.Format("[云端] 使用预下载的 Loader ({0} KB)", _cachedLoaderData.Length / 1024), Color.Green);
+                        loaderData = _cachedLoaderData;
+                        digestData = _cachedDigestData;
+                        signatureData = _cachedSignatureData;
+                    }
+                }
+                
+                // 如果仍然没有缓存，立即下载
+                if (loaderData == null)
+                {
+                    AppendLog("[云端] 正在下载 Loader...", Color.Cyan);
+                    
+                    // 进度回调
+                    Action<long, long, double> progressCallback = (downloaded, total, speed) =>
+                    {
+                        if (this.InvokeRequired)
+                        {
+                            this.BeginInvoke(new Action(() => UpdateDownloadProgress(downloaded, total, speed)));
+                        }
+                        else
+                        {
+                            UpdateDownloadProgress(downloaded, total, speed);
+                        }
+                    };
+                    
+                    loaderData = await cloudService.DownloadLoaderAsync(_selectedCloudLoaderId, progressCallback);
+                    ResetDownloadSpeed();
+                    
+                    if (loaderData == null || loaderData.Length == 0)
+                    {
+                        AppendLog("[云端] 下载 Loader 失败", Color.Red);
+                        return false;
+                    }
+                    
+                    AppendLog(string.Format("[云端] 下载完成 ({0} KB)", loaderData.Length / 1024), Color.Green);
+                    
+                    // 如果是 VIP 模式，下载 Digest 和 Sign 文件
+                    if (selectedLoader != null && selectedLoader.IsVip && selectedLoader.HasVipFiles)
+                    {
+                        AppendLog("[云端] 下载 VIP 验证文件...", Color.Cyan);
+                        var vipFiles = await cloudService.DownloadVipFilesAsync(_selectedCloudLoaderId);
+                        digestData = vipFiles.digest;
+                        signatureData = vipFiles.sign;
+                        
+                        if (digestData == null || signatureData == null)
+                        {
+                            AppendLog("[云端] VIP 验证文件下载失败，将以普通模式连接", Color.Orange);
+                        }
+                    }
+                }
+            }
+            
+            // 检查 VIP 文件
+            if (_authMode == "vip" && (selectedLoader == null || !selectedLoader.HasVipFiles))
+            {
+                AppendLog("[云端] 该 Loader 没有 VIP 验证文件，将以普通模式连接", Color.Orange);
+            }
+            
+            // 4. 连接设备 (正常 Sahara 通讯流程)
+            bool success = await _qualcommController.ConnectWithCloudLoaderDataAsync(
+                loaderData,
+                _storageType,
+                _authMode,
+                digestData,
+                signatureData
+            );
+            
+            // 5. 连接成功后上报设备信息 (用于统计)
+            if (success)
+            {
+                var chipInfo = _qualcommController.ChipInfo;
+                if (chipInfo != null)
+                {
+                    cloudService.ReportDeviceLogEx(
+                        0, // Sahara version
+                        chipInfo.MsmId.ToString("X8"),
+                        chipInfo.PkHash ?? "",
+                        "0x" + chipInfo.OemId.ToString("X4"),
+                        "", // ModelId
+                        chipInfo.HwIdHex ?? "",
+                        chipInfo.SerialHex ?? "",
+                        chipInfo.ChipName ?? "Unknown",
+                        chipInfo.Vendor ?? "Unknown",
+                        _storageType,
+                        "success"
+                    );
+                }
             }
             
             return success;
+        }
+        
+        /// <summary>
+        /// 更新下载进度条和速度显示
+        /// </summary>
+        private void UpdateDownloadProgress(long downloaded, long total, double speedKBps)
+        {
+            try
+            {
+                // 计算百分比
+                int percent = total > 0 ? (int)(downloaded * 100 / total) : 0;
+                
+                // 更新进度条
+                if (uiProcessBar2 != null)
+                {
+                    uiProcessBar2.Value = Math.Min(percent, 100);
+                }
+                
+                // 格式化速度显示并更新速度标签
+                string speedText;
+                if (speedKBps >= 1024)
+                {
+                    speedText = string.Format("{0:F1}MB/s", speedKBps / 1024);
+                }
+                else
+                {
+                    speedText = string.Format("{0:F0}KB/s", speedKBps);
+                }
+                
+                // 更新速度标签
+                if (uiLabel7 != null)
+                {
+                    uiLabel7.Text = "速度：" + speedText;
+                }
+            }
+            catch { }
+        }
+        
+        /// <summary>
+        /// 重置下载速度显示
+        /// </summary>
+        private void ResetDownloadSpeed()
+        {
+            if (uiLabel7 != null)
+            {
+                uiLabel7.Text = "速度：0KB/s";
+            }
+            if (uiProcessBar2 != null)
+            {
+                uiProcessBar2.Value = 0;
+            }
         }
 
         private void GeneratePartitionXml()
@@ -1013,7 +1141,7 @@ namespace SakuraEDL
 
         private async Task QualcommReadPartitionAsync()
         {
-            if (_qualcommController == null || !_qualcommController.IsConnected)
+            if (_qualcommController == null || !_qualcommController.CanOperatePartitions)
             {
                 AppendLog("请先连接设备并读取分区表", Color.Orange);
                 return;
@@ -1090,7 +1218,7 @@ namespace SakuraEDL
 
         private async Task QualcommWritePartitionAsync()
         {
-            if (_qualcommController == null || !_qualcommController.IsConnected)
+            if (_qualcommController == null || !_qualcommController.CanOperatePartitions)
             {
                 AppendLog("请先连接设备并读取分区表", Color.Orange);
                 return;
@@ -1190,168 +1318,247 @@ namespace SakuraEDL
             else
             {
                 // 批量写入 - 从 XML 解析的任务中获取文件路径
-                // 使用包含 LUN 和 StartSector 的元组，便于处理 PrimaryGPT/BackupGPT
-                var partitionsToWrite = new List<Tuple<string, string, int, long>>();
-                var missingFiles = new List<string>();
-
+                AppendLog("正在检查文件...", Color.Gray);
+                
+                // 收集所有勾选项的信息
+                var checkedPartitions = new List<Tuple<PartitionInfo, string>>();
                 foreach (ListViewItem item in listView2.CheckedItems)
                 {
                     var partition = item.Tag as PartitionInfo;
                     if (partition == null) continue;
-
-                    // 获取文件路径（从 SubItems 中）
                     string filePath = item.SubItems.Count > 8 ? item.SubItems[8].Text : "";
+                    checkedPartitions.Add(Tuple.Create(partition, filePath));
+                }
+                
+                string inputXmlPath = input6.Text?.Trim() ?? "";
+                
+                // 在后台线程检查文件存在性
+                var fileCheckResult = await Task.Run(() =>
+                {
+                    var partitionsToWrite = new List<Tuple<string, string, int, long>>();
+                    var missingFiles = new List<string>();
                     
-                    // 尝试从当前目录或 XML 目录查找文件
-                    if (!string.IsNullOrEmpty(filePath) && !File.Exists(filePath))
+                    string xmlDir = "";
+                    try
                     {
-                        // 尝试从 input6 (XML路径) 的目录查找
-                        try
+                        if (!string.IsNullOrEmpty(inputXmlPath))
+                            xmlDir = Path.GetDirectoryName(inputXmlPath) ?? "";
+                    }
+                    catch { }
+                    
+                    foreach (var item in checkedPartitions)
+                    {
+                        var partition = item.Item1;
+                        string filePath = item.Item2;
+                        
+                        // 尝试从当前目录或 XML 目录查找文件
+                        if (!string.IsNullOrEmpty(filePath) && !File.Exists(filePath))
                         {
-                            string xmlPath = input6.Text?.Trim() ?? "";
-                            if (!string.IsNullOrEmpty(xmlPath))
+                            // 尝试从 XML 目录查找
+                            if (!string.IsNullOrEmpty(xmlDir))
                             {
-                                string xmlDir = Path.GetDirectoryName(xmlPath) ?? "";
-                                if (!string.IsNullOrEmpty(xmlDir))
-                                {
-                                    string altPath = Path.Combine(xmlDir, Path.GetFileName(filePath));
-                                    if (File.Exists(altPath))
-                                        filePath = altPath;
-                                }
+                                string altPath = Path.Combine(xmlDir, Path.GetFileName(filePath));
+                                if (File.Exists(altPath))
+                                    filePath = altPath;
                             }
                         }
-                        catch (ArgumentException)
+
+                        if (!string.IsNullOrEmpty(filePath) && File.Exists(filePath))
                         {
-                            // 路径包含无效字符，忽略
+                            partitionsToWrite.Add(Tuple.Create(partition.Name, filePath, partition.Lun, partition.StartSector));
+                        }
+                        else
+                        {
+                            missingFiles.Add(partition.Name);
                         }
                     }
-
-                    if (!string.IsNullOrEmpty(filePath) && File.Exists(filePath))
-                    {
-                        // 传递 (分区名, 文件路径, LUN, StartSector)
-                        partitionsToWrite.Add(Tuple.Create(partition.Name, filePath, partition.Lun, partition.StartSector));
-                    }
-                    else
-                    {
-                        missingFiles.Add(partition.Name);
-                    }
-                }
+                    
+                    return new { PartitionsToWrite = partitionsToWrite, MissingFiles = missingFiles };
+                });
+                
+                var partitionsToWrite = fileCheckResult.PartitionsToWrite;
+                var missingFiles = fileCheckResult.MissingFiles;
 
                 if (missingFiles.Count > 0)
                 {
                     AppendLog($"以下分区缺少镜像文件: {string.Join(", ", missingFiles)}", Color.Orange);
                 }
 
-                if (partitionsToWrite.Count > 0)
+                // 检查 MetaSuper 功能
+                // 1. 用户勾选了 checkbox18
+                // 2. 或者自动检测到 META 目录中有 super_def.*.json
+                bool metaSuperEnabled = checkbox18.Checked;
+                string metaSuperFirmwareRoot = null;
+                
+                // 尝试从 XML 目录推断固件根目录
+                string xmlDir = _selectedXmlDirectory;
+                if (string.IsNullOrEmpty(xmlDir) && !string.IsNullOrEmpty(inputXmlPath))
                 {
-                    // 收集 Patch 文件
-                    List<string> patchFiles = new List<string>();
+                    try { xmlDir = Path.GetDirectoryName(inputXmlPath); } catch { }
+                }
+                
+                if (!string.IsNullOrEmpty(xmlDir))
+                {
+                    // OPLUS 固件结构: 根目录/IMAGES/rawprogram*.xml
+                    // 尝试找到包含 META 文件夹的固件根目录
+                    string possibleRoot = Path.GetDirectoryName(xmlDir); // IMAGES 的父目录
                     
-                    // 优先使用存储的 XML 目录，如果为空则尝试从 input6.Text 解析
-                    string xmlDir = _selectedXmlDirectory;
-                    if (string.IsNullOrEmpty(xmlDir))
+                    // 检查是否有 META/super_def.*.json
+                    string metaDir = null;
+                    if (Directory.Exists(Path.Combine(possibleRoot, "META")))
                     {
-                        try
-                        {
-                            string xmlPath = input6.Text?.Trim() ?? "";
-                            if (!string.IsNullOrEmpty(xmlPath) && File.Exists(xmlPath))
-                            {
-                                xmlDir = Path.GetDirectoryName(xmlPath) ?? "";
-                            }
-                        }
-                        catch (ArgumentException)
-                        {
-                            // 路径包含无效字符，忽略
-                        }
+                        metaDir = Path.Combine(possibleRoot, "META");
+                        metaSuperFirmwareRoot = possibleRoot;
+                    }
+                    else if (Directory.Exists(Path.Combine(xmlDir, "META")))
+                    {
+                        metaDir = Path.Combine(xmlDir, "META");
+                        metaSuperFirmwareRoot = xmlDir;
                     }
                     
-                    if (!string.IsNullOrEmpty(xmlDir) && Directory.Exists(xmlDir))
+                    // 自动检测 super_def.*.json 以启用 MetaSuper
+                    if (!string.IsNullOrEmpty(metaDir))
                     {
-                        AppendLog($"正在目录中搜索 Patch 文件: {xmlDir}", Color.Gray);
-                        
-                        // 1. 先搜索当前目录（同级目录）
                         try
                         {
-                            var sameDir = Directory.GetFiles(xmlDir, "patch*.xml", SearchOption.TopDirectoryOnly)
-                                .Where(f => {
-                                    string fn = Path.GetFileName(f).ToLower();
-                                    return !fn.Contains("blank") && !fn.Contains("wipe") && !fn.Contains("erase");
-                                })
-                                .ToList();
-                            patchFiles.AddRange(sameDir);
+                            var superDefFiles = Directory.GetFiles(metaDir, "super_def.*.json");
+                            if (superDefFiles.Length > 0 && !metaSuperEnabled)
+                            {
+                                metaSuperEnabled = true;  // 自动启用
+                                AppendLog($"[MetaSuper] 自动检测到 {Path.GetFileName(superDefFiles[0])}，启用 Super 逻辑分区刷写", Color.Blue);
+                            }
                         }
-                        catch (Exception ex)
-                        {
-                            System.Diagnostics.Debug.WriteLine($"搜索 Patch 文件异常: {ex.Message}");
-                        }
+                        catch { }
+                    }
+                    
+                    if (metaSuperEnabled && !string.IsNullOrEmpty(metaSuperFirmwareRoot))
+                    {
+                        AppendLog($"[MetaSuper] 固件目录: {metaSuperFirmwareRoot}", Color.Gray);
+                    }
+                }
+                
+                // 从批量写入列表中移除 super 分区（如果有的话，将用 MetaSuper 方式刷写）
+                if (metaSuperEnabled)
+                {
+                    partitionsToWrite.RemoveAll(p => 
+                        p.Item1.Equals("super", StringComparison.OrdinalIgnoreCase));
+                }
+                
+                if (partitionsToWrite.Count > 0)
+                {
+                    
+                    // 在后台线程搜索 Patch 文件，避免 UI 卡住
+                    AppendLog("正在搜索 Patch 文件...", Color.Gray);
+                    
+                    string selectedXmlDir = _selectedXmlDirectory;
+                    string xmlPathForPatch = inputXmlPath; // 复用前面已获取的变量
+                    
+                    var patchSearchResult = await Task.Run(() =>
+                    {
+                        var patchFiles = new List<string>();
+                        var logMessages = new List<Tuple<string, Color>>();
                         
-                        // 2. 如果当前目录没找到，搜索子目录（如 images 文件夹）
-                        if (patchFiles.Count == 0)
+                        // 优先使用存储的 XML 目录，如果为空则尝试从 input6.Text 解析
+                        string xmlDir = selectedXmlDir;
+                        if (string.IsNullOrEmpty(xmlDir))
                         {
                             try
                             {
-                                var subDirs = Directory.GetFiles(xmlDir, "patch*.xml", SearchOption.AllDirectories)
+                                if (!string.IsNullOrEmpty(xmlPathForPatch) && File.Exists(xmlPathForPatch))
+                                {
+                                    xmlDir = Path.GetDirectoryName(xmlPathForPatch) ?? "";
+                                }
+                            }
+                            catch (ArgumentException) { }
+                        }
+                        
+                        if (!string.IsNullOrEmpty(xmlDir) && Directory.Exists(xmlDir))
+                        {
+                            logMessages.Add(Tuple.Create($"正在目录中搜索 Patch 文件: {xmlDir}", Color.Gray));
+                            
+                            // 1. 先搜索当前目录
+                            try
+                            {
+                                var sameDir = Directory.GetFiles(xmlDir, "patch*.xml", SearchOption.TopDirectoryOnly)
                                     .Where(f => {
                                         string fn = Path.GetFileName(f).ToLower();
                                         return !fn.Contains("blank") && !fn.Contains("wipe") && !fn.Contains("erase");
                                     })
                                     .ToList();
-                                patchFiles.AddRange(subDirs);
+                                patchFiles.AddRange(sameDir);
                             }
-                            catch (Exception ex)
+                            catch { }
+                            
+                            // 2. 搜索子目录
+                            if (patchFiles.Count == 0)
                             {
-                                AppendLog($"搜索子目录 Patch 文件时出错: {ex.Message}", Color.Orange);
-                            }
-                        }
-
-                        // 3. 如果都没找到，尝试在父目录搜索
-                        if (patchFiles.Count == 0)
-                        {
-                            try
-                            {
-                                string parentDir = Path.GetDirectoryName(xmlDir);
-                                if (!string.IsNullOrEmpty(parentDir) && Directory.Exists(parentDir))
+                                try
                                 {
-                                    AppendLog($"当前目录未找到，搜索父目录: {parentDir}", Color.Gray);
-                                    var parentPatches = Directory.GetFiles(parentDir, "patch*.xml", SearchOption.AllDirectories)
+                                    var subDirs = Directory.GetFiles(xmlDir, "patch*.xml", SearchOption.AllDirectories)
                                         .Where(f => {
                                             string fn = Path.GetFileName(f).ToLower();
                                             return !fn.Contains("blank") && !fn.Contains("wipe") && !fn.Contains("erase");
                                         })
                                         .ToList();
-                                    patchFiles.AddRange(parentPatches);
+                                    patchFiles.AddRange(subDirs);
                                 }
+                                catch { }
                             }
-                            catch (Exception ex)
-                            {
-                                System.Diagnostics.Debug.WriteLine($"搜索父目录 Patch 文件异常: {ex.Message}");
-                            }
-                        }
-                        
-                        // 排序 patch 文件
-                        patchFiles = patchFiles.Distinct().OrderBy(f => {
-                            string name = Path.GetFileNameWithoutExtension(f);
-                            var numStr = new string(name.Where(char.IsDigit).ToArray());
-                            int num;
-                            return int.TryParse(numStr, out num) ? num : 999;
-                        }).ToList();
 
-                        if (patchFiles.Count > 0)
-                        {
-                            AppendLog($"检测到 {patchFiles.Count} 个 Patch 文件:", Color.Blue);
-                            foreach (var pf in patchFiles)
+                            // 3. 搜索父目录
+                            if (patchFiles.Count == 0)
                             {
-                                AppendLog($"  - {Path.GetFileName(pf)}", Color.Gray);
+                                try
+                                {
+                                    string parentDir = Path.GetDirectoryName(xmlDir);
+                                    if (!string.IsNullOrEmpty(parentDir) && Directory.Exists(parentDir))
+                                    {
+                                        logMessages.Add(Tuple.Create($"当前目录未找到，搜索父目录: {parentDir}", Color.Gray));
+                                        var parentPatches = Directory.GetFiles(parentDir, "patch*.xml", SearchOption.AllDirectories)
+                                            .Where(f => {
+                                                string fn = Path.GetFileName(f).ToLower();
+                                                return !fn.Contains("blank") && !fn.Contains("wipe") && !fn.Contains("erase");
+                                            })
+                                            .ToList();
+                                        patchFiles.AddRange(parentPatches);
+                                    }
+                                }
+                                catch { }
                             }
+                            
+                            // 排序 patch 文件
+                            patchFiles = patchFiles.Distinct().OrderBy(f => {
+                                string name = Path.GetFileNameWithoutExtension(f);
+                                var numStr = new string(name.Where(char.IsDigit).ToArray());
+                                int num;
+                                return int.TryParse(numStr, out num) ? num : 999;
+                            }).ToList();
                         }
                         else
                         {
-                            AppendLog("未检测到 Patch 文件，跳过补丁步骤", Color.Gray);
+                            logMessages.Add(Tuple.Create($"无法获取 XML 目录路径", Color.Orange));
+                        }
+                        
+                        return new { PatchFiles = patchFiles, LogMessages = logMessages };
+                    });
+                    
+                    // 输出日志
+                    foreach (var log in patchSearchResult.LogMessages)
+                    {
+                        AppendLog(log.Item1, log.Item2);
+                    }
+
+                    if (patchSearchResult.PatchFiles.Count > 0)
+                    {
+                        AppendLog($"检测到 {patchSearchResult.PatchFiles.Count} 个 Patch 文件:", Color.Blue);
+                        foreach (var pf in patchSearchResult.PatchFiles)
+                        {
+                            AppendLog($"  - {Path.GetFileName(pf)}", Color.Gray);
                         }
                     }
                     else
                     {
-                        AppendLog($"无法获取 XML 目录路径 (xmlDir={xmlDir ?? "null"})", Color.Orange);
+                        AppendLog("未检测到 Patch 文件，跳过补丁步骤", Color.Gray);
                     }
 
                     // UFS 设备需要激活启动 LUN，eMMC 只有 LUN0 不需要
@@ -1365,7 +1572,31 @@ namespace SakuraEDL
                         AppendLog("eMMC 设备: 仅 LUN0，无需激活启动分区", Color.Gray);
                     }
 
-                    int success = await _qualcommController.WritePartitionsBatchAsync(partitionsToWrite, patchFiles, activateBootLun);
+                    int success = 0;
+                    
+                    // 如果有普通分区需要写入 (MetaSuper 任务会在批量写入中按扇区位置自动合并)
+                    if (partitionsToWrite.Count > 0 || metaSuperEnabled)
+                    {
+                        // 如果启用 MetaSuper 但没找到固件目录，弹出选择对话框
+                        if (metaSuperEnabled && string.IsNullOrEmpty(metaSuperFirmwareRoot))
+                        {
+                            using (var fbd = new FolderBrowserDialog())
+                            {
+                                fbd.Description = "请选择 OPLUS 固件根目录 (包含 IMAGES 和 META)";
+                                if (fbd.ShowDialog() == DialogResult.OK)
+                                {
+                                    metaSuperFirmwareRoot = fbd.SelectedPath;
+                                }
+                            }
+                        }
+                        
+                        // 批量写入 (包含 MetaSuper 任务，按物理扇区位置统一排序执行)
+                        success = await _qualcommController.WritePartitionsBatchAsync(
+                            partitionsToWrite, 
+                            patchSearchResult.PatchFiles, 
+                            activateBootLun,
+                            metaSuperEnabled ? metaSuperFirmwareRoot : null);
+                    }
                     
                     if (success > 0 && checkbox15.Checked)
                     {
@@ -1382,7 +1613,7 @@ namespace SakuraEDL
 
         private async Task QualcommErasePartitionAsync()
         {
-            if (_qualcommController == null || !_qualcommController.IsConnected)
+            if (_qualcommController == null || !_qualcommController.CanOperatePartitions)
             {
                 AppendLog("请先连接设备并读取分区表", Color.Orange);
                 return;
@@ -1980,50 +2211,80 @@ namespace SakuraEDL
         // 日志计数器，用于限制条目数量
         private int _logEntryCount = 0;
         private readonly object _logLock = new object();
+        private System.Collections.Concurrent.ConcurrentQueue<string> _logFileQueue = new System.Collections.Concurrent.ConcurrentQueue<string>();
+        private volatile bool _logFileWriterRunning = false;
+        private DateTime _lastLogFlush = DateTime.MinValue;
 
         private void AppendLog(string message, Color? color = null)
         {
+            // 先将日志排队到后台线程写入文件（避免阻塞 UI）
+            string logLine = $"[{DateTime.Now:HH:mm:ss}] {message}";
+            _logFileQueue.Enqueue(logLine);
+            
+            // 启动后台日志写入（如果尚未运行）
+            if (!_logFileWriterRunning)
+            {
+                _logFileWriterRunning = true;
+                Task.Run(async () => await FlushLogFileAsync());
+            }
+
             if (uiRichTextBox1.InvokeRequired)
             {
-                uiRichTextBox1.BeginInvoke(new Action<string, Color?>(AppendLog), message, color);
+                uiRichTextBox1.BeginInvoke(new Action<string, Color?>(AppendLogToUI), message, color);
                 return;
             }
 
+            AppendLogToUI(message, color);
+        }
+        
+        private async Task FlushLogFileAsync()
+        {
+            try
+            {
+                while (!_logFileQueue.IsEmpty || (DateTime.Now - _lastLogFlush).TotalMilliseconds < 500)
+                {
+                    var lines = new System.Text.StringBuilder();
+                    string line;
+                    while (_logFileQueue.TryDequeue(out line))
+                    {
+                        lines.AppendLine(line);
+                    }
+                    
+                    if (lines.Length > 0)
+                    {
+                        try
+                        {
+                            await Task.Run(() => File.AppendAllText(logFilePath, lines.ToString()));
+                        }
+                        catch { }
+                        _lastLogFlush = DateTime.Now;
+                    }
+                    
+                    await Task.Delay(100); // 批量写入，减少 IO 操作
+                }
+            }
+            finally
+            {
+                _logFileWriterRunning = false;
+            }
+        }
+        
+        private void AppendLogToUI(string message, Color? color)
+        {
             // 白色背景下的颜色映射 (使颜色更清晰)
             Color logColor = MapLogColor(color ?? Color.Black);
 
-            // 写入文件
-            try
-            {
-                File.AppendAllText(logFilePath, $"[{DateTime.Now:HH:mm:ss}] {message}" + Environment.NewLine);
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"日志写入失败: {ex.Message}");
-            }
-
             // 检查并限制日志条目数量 (减少内存占用)
             int maxEntries = Common.PerformanceConfig.MaxLogEntries;
+            bool needsCleanup = false;
+            
             lock (_logLock)
             {
                 _logEntryCount++;
-                if (_logEntryCount > maxEntries)
+                // 只在超过阈值的 1.5 倍时才清理，减少清理频率
+                if (_logEntryCount > maxEntries * 1.5)
                 {
-                    // 清理前半部分日志
-                    try
-                    {
-                        string[] lines = uiRichTextBox1.Text.Split('\n');
-                        if (lines.Length > maxEntries / 2)
-                        {
-                            int removeCount = lines.Length - maxEntries / 2;
-                            uiRichTextBox1.Text = string.Join("\n", lines.Skip(removeCount));
-                            _logEntryCount = lines.Length - removeCount;
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"日志清理异常: {ex.Message}");
-                    }
+                    needsCleanup = true;
                 }
             }
 
@@ -2031,9 +2292,38 @@ namespace SakuraEDL
             uiRichTextBox1.SuspendLayout();
             try
             {
+                // 清理日志 - 使用更高效的方式
+                if (needsCleanup)
+                {
+                    try
+                    {
+                        // 直接删除前半部分文本，避免 Split/Join
+                        int textLen = uiRichTextBox1.TextLength;
+                        if (textLen > 0)
+                        {
+                            // 找到大约一半位置的换行符
+                            int halfPos = textLen / 2;
+                            int newlinePos = uiRichTextBox1.Text.IndexOf('\n', halfPos);
+                            if (newlinePos > 0 && newlinePos < textLen - 1)
+                            {
+                                uiRichTextBox1.Select(0, newlinePos + 1);
+                                uiRichTextBox1.SelectedText = "";
+                                lock (_logLock)
+                                {
+                                    _logEntryCount = _logEntryCount / 2;
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"日志清理异常: {ex.Message}");
+                    }
+                }
+                
+                uiRichTextBox1.SelectionStart = uiRichTextBox1.TextLength;
                 uiRichTextBox1.SelectionColor = logColor;
                 uiRichTextBox1.AppendText(message + "\n");
-                uiRichTextBox1.SelectionStart = uiRichTextBox1.Text.Length;
                 uiRichTextBox1.ScrollToCaret();
             }
             finally
@@ -2065,14 +2355,20 @@ namespace SakuraEDL
 
         /// <summary>
         /// 详细调试日志 - 只写入文件，不显示在 UI
+        /// 使用批量写入队列，避免频繁 IO 导致卡顿
         /// </summary>
         private void AppendLogDetail(string message)
         {
-            try
+            // 复用日志队列，避免频繁的同步 IO
+            string logLine = $"[{DateTime.Now:HH:mm:ss}] [DEBUG] {message}";
+            _logFileQueue.Enqueue(logLine);
+            
+            // 启动后台日志写入（如果尚未运行）
+            if (!_logFileWriterRunning)
             {
-                File.AppendAllText(logFilePath, $"[{DateTime.Now:HH:mm:ss}] [DEBUG] {message}" + Environment.NewLine);
+                _logFileWriterRunning = true;
+                Task.Run(async () => await FlushLogFileAsync());
             }
-            catch { /* 调试日志写入失败可忽略 */ }
         }
 
         /// <summary>
@@ -3238,54 +3534,72 @@ namespace SakuraEDL
 
         private void Select3_SelectedIndexChanged(object sender, EventArgs e)
         {
-            string selectedItem = select3.Text;                                   
-            bool isCloudMatch = selectedItem.Contains("云端自动匹配");
-            bool isLocalSelect = selectedItem.Contains("本地选择");
-            bool isSeparator = selectedItem.StartsWith("──");
+            string selectedItem = select3.Text;
             
-            // 忽略分隔符
+            // 判断选项类型
+            bool isDefaultAutoMatch = selectedItem.Contains("自动识别") || selectedItem.Contains("云端自动匹配");
+            bool isLocalSelect = selectedItem.Contains("本地选择") && !selectedItem.StartsWith("──");
+            bool isSeparator = selectedItem.StartsWith("──");
+            bool isRefresh = selectedItem.Contains("刷新云端列表");
+            
+            // 处理分隔符 - 如果选择了"── 本地选择 ──"，切换到本地模式
             if (isSeparator)
             {
+                if (selectedItem.Contains("本地选择"))
+                {
+                    // 选择了本地选择分隔符，启用本地选择模式
+                    input9.Enabled = true;
+                    input8.Enabled = true;
+                    input7.Enabled = true;
+                    input8.Text = "";
+                    input9.Text = "";
+                    input7.Text = "";
+                    _cloudLoaderAuthType = "none";
+                    checkbox17.Checked = false;
+                    checkbox19.Checked = false;
+                    _authMode = "none";
+                    AppendLog("[本地] 已切换到本地选择模式，请浏览选择引导文件", Color.Blue);
+                }
+                // 其他分隔符忽略
                 return;
             }
             
-            // 处理云端自动匹配模式
-            if (isCloudMatch)
+            // 处理刷新云端列表
+            if (isRefresh)
             {
-                // 禁用自定义引导文件输入
-                input9.Enabled = false;
-                input8.Enabled = false;
-                input7.Enabled = false;
-                
-                // 显示云端匹配提示
-                input8.Text = "[云端] 自动匹配 Loader";
-                input9.Text = "";
-                input7.Text = "";
-                
-                // 重置认证模式 (云端会自动检测)
-                checkbox17.Checked = false;
-                checkbox19.Checked = false;
-                _authMode = "none";
+                AppendLog("[云端] 正在刷新 Loader 列表...", Color.Cyan);
+                _cloudLoadersLoaded = false;  // 重置加载标志
+                LoadCloudLoadersAsync(true);  // 强制刷新
+                select3.SelectedIndex = 0;    // 重置选择
+                return;
             }
-            // 处理本地选择模式
-            else if (isLocalSelect)
+            
+            // 处理默认模式（提示用户选择 Loader）
+            if (isDefaultAutoMatch)
             {
-                // 启用自定义引导文件输入
+                // 启用自定义引导文件输入（可选本地文件）
                 input9.Enabled = true;
                 input8.Enabled = true;
                 input7.Enabled = true;
                 
-                // 清空输入框 (显示占位符)
+                // 显示提示
                 input8.Text = "";
                 input9.Text = "";
                 input7.Text = "";
                 
-                // 重置认证模式
+                // 重置选择的云端 Loader
+                _selectedCloudLoaderId = 0;
+                _cloudLoaderAuthType = "none";
                 checkbox17.Checked = false;
                 checkbox19.Checked = false;
                 _authMode = "none";
+                
+                // 清除预下载缓存
+                ClearLoaderCache();
+                
+                AppendLog("[提示] 请从下拉列表选择云端 Loader 或浏览本地引导文件", Color.Blue);
             }
-            // 处理云端 Loader 选择
+            // 处理云端 Loader 选择（从下拉列表中选择具体的 Loader）
             else
             {
                 var cloudLoader = GetSelectedCloudLoader();
@@ -3304,43 +3618,38 @@ namespace SakuraEDL
                     bool isOplusVendor = vendorLower.Contains("oplus") || vendorLower.Contains("oneplus") || vendorLower.Contains("oppo") || vendorLower.Contains("realme");
                     bool isXiaomiVendor = vendorLower.Contains("xiaomi") || vendorLower.Contains("redmi") || vendorLower.Contains("poco");
                     
-                    // OPLUS/OnePlus 设备 (不管 auth_type 是 vip 还是 demacia)
-                    if (isOplusVendor || cloudLoader.IsOnePlus)
+                    // 记录当前 Loader 的验证类型
+                    _cloudLoaderAuthType = cloudLoader.AuthType ?? "none";
+                    
+                    // VIP 验证 (auth_type = vip) -> 勾选 oplus checkbox
+                    if (cloudLoader.IsVip)
                     {
-                        // 一加/OPPO 验证 - 自动勾选 oplus checkbox
-                        AppendLog(string.Format("[云端] 选择了 OPLUS Loader: {0}", cloudLoader.DisplayName), Color.FromArgb(255, 100, 100));
-                        checkbox19.Checked = true;  // oplus
+                        AppendLog(string.Format("[云端] {0}", cloudLoader.DisplayName), Color.FromArgb(255, 100, 100));
                         checkbox17.Checked = false;
-                        _authMode = cloudLoader.IsVip ? "vip" : "oplus";
-                        
-                        if (cloudLoader.IsVip)
-                        {
-                            AppendLog("[云端] OPLUS VIP 验证将在连接时自动执行", Color.Cyan);
-                        }
+                        checkbox19.Checked = true;   // oplus = VIP 验证
+                    }
+                    // OnePlus/demacia 验证 -> 勾选 oldoneplus checkbox
+                    // 仅当 auth_type 明确是 demacia/oneplus 时才勾选，不能仅凭厂商名称
+                    else if (cloudLoader.IsOnePlus)
+                    {
+                        AppendLog(string.Format("[云端] {0}", cloudLoader.DisplayName), Color.FromArgb(255, 100, 100));
+                        checkbox19.Checked = false;
+                        checkbox17.Checked = true;   // oldoneplus = demacia 验证
                     }
                     // 小米设备
                     else if (isXiaomiVendor || cloudLoader.IsXiaomi)
                     {
-                        // 小米验证 - 连接时自动执行认证
-                        AppendLog(string.Format("[云端] 选择了小米 Loader: {0}", cloudLoader.DisplayName), Color.FromArgb(255, 165, 0));
-                        AppendLog("[云端] 小米验证将在连接时自动执行", Color.Cyan);
+                        AppendLog(string.Format("[云端] {0}", cloudLoader.DisplayName), Color.FromArgb(255, 165, 0));
+                        _cloudLoaderAuthType = "miauth";
                         checkbox17.Checked = false;
                         checkbox19.Checked = false;
                         _authMode = "xiaomi";
                     }
-                    // 纯 VIP 验证 (非 OPLUS/小米)
-                    else if (cloudLoader.IsVip)
-                    {
-                        AppendLog(string.Format("[云端] 选择了 VIP Loader: {0}", cloudLoader.DisplayName), Color.Orange);
-                        AppendLog("[云端] VIP 验证将在连接时自动执行", Color.Cyan);
-                        checkbox17.Checked = false;
-                        checkbox19.Checked = false;
-                        _authMode = "vip";
-                    }
                     // 无验证
                     else
                     {
-                        AppendLog(string.Format("[云端] 选择了 Loader: {0}", cloudLoader.DisplayName), Color.Green);
+                        AppendLog(string.Format("[云端] {0}", cloudLoader.DisplayName), Color.Green);
+                        _cloudLoaderAuthType = "none";
                         checkbox17.Checked = false;
                         checkbox19.Checked = false;
                         _authMode = "none";
@@ -3348,12 +3657,146 @@ namespace SakuraEDL
                     
                     // 存储选择的云端 Loader ID
                     _selectedCloudLoaderId = cloudLoader.Id;
+                    
+                    // 立即开始预下载 Loader (避免 EDL 看门狗超时)
+                    _ = PredownloadCloudLoaderAsync(cloudLoader);
+                    
+                    // 根据云端 Loader 的存储类型自动设置 UI
+                    if (!string.IsNullOrEmpty(cloudLoader.StorageType))
+                    {
+                        string loaderStorageType = cloudLoader.StorageType.ToLower();
+                        if (loaderStorageType == "emmc")
+                        {
+                            _storageType = "emmc";
+                            radio4.Checked = true;  // eMMC
+                            radio3.Checked = false; // UFS
+                        }
+                        else
+                        {
+                            _storageType = "ufs";
+                            radio3.Checked = true;  // UFS
+                            radio4.Checked = false; // eMMC
+                        }
+                    }
                 }
             }
         }
         
         // 选择的云端 Loader ID
         private int _selectedCloudLoaderId = 0;
+        
+        // 预下载缓存 (选择 Loader 时立即下载，避免 EDL 看门狗超时)
+        private byte[] _cachedLoaderData = null;
+        private byte[] _cachedDigestData = null;
+        private byte[] _cachedSignatureData = null;
+        private int _cachedLoaderId = 0;
+        private bool _isPredownloading = false;
+        
+        /// <summary>
+        /// 预下载云端 Loader (选择时立即下载，避免 EDL 看门狗超时)
+        /// </summary>
+        private async Task PredownloadCloudLoaderAsync(SakuraEDL.Qualcomm.Services.CloudLoaderInfo loader)
+        {
+            if (loader == null || loader.Id <= 0) return;
+            
+            // 如果已经缓存了相同的 Loader，跳过
+            if (_cachedLoaderId == loader.Id && _cachedLoaderData != null)
+            {
+                AppendLog("[云端] 使用已缓存的 Loader", Color.Gray);
+                return;
+            }
+            
+            // 如果正在下载，跳过
+            if (_isPredownloading) return;
+            
+            _isPredownloading = true;
+            
+            try
+            {
+                var cloudService = SakuraEDL.Qualcomm.Services.CloudLoaderService.Instance;
+                
+                // 清除旧缓存
+                _cachedLoaderData = null;
+                _cachedDigestData = null;
+                _cachedSignatureData = null;
+                _cachedLoaderId = 0;
+                
+                AppendLog("[云端] 正在下载 Loader...", Color.Cyan);
+                
+                // 进度回调
+                Action<long, long, double> progressCallback = (downloaded, total, speed) =>
+                {
+                    if (this.InvokeRequired)
+                    {
+                        this.BeginInvoke(new Action(() => UpdateDownloadProgress(downloaded, total, speed)));
+                    }
+                    else
+                    {
+                        UpdateDownloadProgress(downloaded, total, speed);
+                    }
+                };
+                
+                // 下载 Loader
+                byte[] loaderData = await cloudService.DownloadLoaderAsync(loader.Id, progressCallback);
+                ResetDownloadSpeed();
+                
+                if (loaderData == null || loaderData.Length == 0)
+                {
+                    AppendLog("[云端] 下载 Loader 失败", Color.Red);
+                    return;
+                }
+                
+                AppendLog(string.Format("[云端] 下载完成 ({0} KB)", loaderData.Length / 1024), Color.Green);
+                
+                // 如果是 VIP 模式，下载 Digest 和 Sign 文件
+                byte[] digestData = null;
+                byte[] signatureData = null;
+                
+                if (loader.IsVip && loader.HasVipFiles)
+                {
+                    AppendLog("[云端] 下载 VIP 验证文件...", Color.Cyan);
+                    var vipFiles = await cloudService.DownloadVipFilesAsync(loader.Id);
+                    digestData = vipFiles.digest;
+                    signatureData = vipFiles.sign;
+                    
+                    if (digestData != null && signatureData != null)
+                    {
+                        AppendLog(string.Format("[云端] VIP 文件下载完成 (Digest={0}B, Sign={1}B)", digestData.Length, signatureData.Length), Color.Green);
+                    }
+                    else
+                    {
+                        AppendLog("[云端] VIP 验证文件下载失败", Color.Orange);
+                    }
+                }
+                
+                // 缓存数据
+                _cachedLoaderData = loaderData;
+                _cachedDigestData = digestData;
+                _cachedSignatureData = signatureData;
+                _cachedLoaderId = loader.Id;
+                
+                AppendLog("[云端] Loader 已缓存，等待连接设备...", Color.Green);
+            }
+            catch (Exception ex)
+            {
+                AppendLog(string.Format("[云端] 预下载失败: {0}", ex.Message), Color.Red);
+            }
+            finally
+            {
+                _isPredownloading = false;
+            }
+        }
+        
+        /// <summary>
+        /// 清除 Loader 缓存
+        /// </summary>
+        private void ClearLoaderCache()
+        {
+            _cachedLoaderData = null;
+            _cachedDigestData = null;
+            _cachedSignatureData = null;
+            _cachedLoaderId = 0;
+        }
         
         /// <summary>
         /// 从 EDL 选择项中提取 Loader ID
@@ -3463,11 +3906,13 @@ namespace SakuraEDL
         /// <summary>
         /// 异步加载云端 Loader 列表
         /// </summary>
-        private async void LoadCloudLoadersAsync()
+        /// <param name="forceRefresh">是否强制刷新</param>
+        private async void LoadCloudLoadersAsync(bool forceRefresh = false)
         {
             try
             {
-                if (_cloudLoadersLoaded) return;
+                // 如果不是强制刷新且已加载，则跳过
+                if (!forceRefresh && _cloudLoadersLoaded) return;
                 
                 var cloudService = SakuraEDL.Qualcomm.Services.CloudLoaderService.Instance;
                 var loaders = await cloudService.GetLoaderListAsync();
@@ -3510,6 +3955,7 @@ namespace SakuraEDL
                 // 添加默认选项
                 select3.Items.Add("自动识别或自选引导");
                 select3.Items.Add("── 本地选择 ──");
+                select3.Items.Add("🔄 刷新云端列表");
                 
                 // 添加云端 Loader (按厂商分组)
                 if (_cloudLoaders.Count > 0)
@@ -3525,16 +3971,8 @@ namespace SakuraEDL
                     {
                         foreach (var loader in group.OrderBy(l => l.Chip))
                         {
-                            // 格式: [厂商] 芯片 - 文件名 | auth_type
-                            string authTag = "";
-                            if (loader.IsVip) authTag = "[VIP]";
-                            else if (loader.IsOnePlus) authTag = "[OnePlus]";
-                            else if (loader.IsXiaomi) authTag = "[小米]";
-                            
-                            string displayName = string.Format("{0} [{1}] {2} - {3}", 
-                                authTag, loader.Vendor, loader.Chip, loader.Filename).Trim();
-                            
-                            select3.Items.Add(displayName);
+                            // 使用 API 返回的 DisplayName
+                            select3.Items.Add(loader.ToString());
                         }
                     }
                 }
@@ -3549,7 +3987,7 @@ namespace SakuraEDL
                     select3.SelectedIndex = 0;
                 }
                 
-                AppendLog(string.Format("[云端] 已加载 {0} 个 Loader", _cloudLoaders.Count), Color.Green);
+                // 静默加载，不显示日志
             }
             catch (Exception ex)
             {
@@ -3565,12 +4003,10 @@ namespace SakuraEDL
             string selected = select3.Text;
             if (string.IsNullOrEmpty(selected)) return null;
             
-            // 查找匹配的 Loader
+            // 查找匹配的 Loader (使用 DisplayName 匹配)
             foreach (var loader in _cloudLoaders)
             {
-                if (selected.Contains(loader.Filename) && 
-                    selected.Contains(loader.Vendor) && 
-                    selected.Contains(loader.Chip))
+                if (selected == loader.ToString())
                 {
                     return loader;
                 }
@@ -3895,17 +4331,9 @@ namespace SakuraEDL
                 return;
             }
 
-            // 文本框为空时，弹出输入框
-            string url = Microsoft.VisualBasic.Interaction.InputBox(
-                "请输入 OTA 下载链接:\n\n支持 OPPO/OnePlus/Realme 官方链接\n或直接的 ZIP/Payload 链接",
-                "云端链接解析",
-                "");
-
-            if (!string.IsNullOrWhiteSpace(url))
-            {
-                uiTextBox1.Text = url.Trim();
-                FastbootParsePayloadInput(url.Trim());
-            }
+            // 文本框为空时，提示用户在输入框中输入链接
+            AppendLog("[提示] 请在上方输入框中粘贴 OTA 下载链接，然后点击云端解析", Color.Blue);
+            uiTextBox1.Focus();
         }
 
         /// <summary>
@@ -4806,66 +5234,166 @@ namespace SakuraEDL
         }
         
         /// <summary>
-        /// 打开驱动安装程序
+        /// 打开驱动安装程序 (支持云端下载)
         /// </summary>
-        /// <param name="driverType">驱动类型: android, mtk, qualcomm</param>
-        private void OpenDriverInstaller(string driverType)
+        /// <param name="driverType">驱动类型: android, mtk, qualcomm, spreadtrum</param>
+        private async void OpenDriverInstaller(string driverType)
         {
             try
             {
-                string appDir = AppDomain.CurrentDomain.BaseDirectory;
-                string driverPath = null;
+                // 转换为 DriverType 枚举
+                DriverType? type = null;
                 string driverName = null;
                 
                 switch (driverType.ToLower())
                 {
-                    case "android":
-                        driverName = "安卓驱动";
-                        // 尝试多个可能的路径
-                        string[] androidPaths = {
-                            Path.Combine(appDir, "drivers", "android_usb_driver.exe"),
-                            Path.Combine(appDir, "drivers", "adb_driver.exe"),
-                            Path.Combine(appDir, "ADB_Driver.exe")
-                        };
-                        driverPath = androidPaths.FirstOrDefault(File.Exists);
-                        break;
-                        
-                    case "mtk":
-                        driverName = "MTK驱动";
-                        string[] mtkPaths = {
-                            Path.Combine(appDir, "drivers", "mtk_usb_driver.exe"),
-                            Path.Combine(appDir, "drivers", "MediaTek_USB_VCOM_Driver.exe"),
-                            Path.Combine(appDir, "MTK_Driver.exe")
-                        };
-                        driverPath = mtkPaths.FirstOrDefault(File.Exists);
-                        break;
-                        
                     case "qualcomm":
-                        driverName = "高通驱动";
-                        string[] qcPaths = {
-                            Path.Combine(appDir, "drivers", "qualcomm_usb_driver.exe"),
-                            Path.Combine(appDir, "drivers", "Qualcomm_USB_Driver.exe"),
-                            Path.Combine(appDir, "QC_Driver.exe")
-                        };
-                        driverPath = qcPaths.FirstOrDefault(File.Exists);
+                        type = DriverType.Qualcomm;
+                        driverName = "高通 9008 驱动";
                         break;
+                    case "mtk":
+                        type = DriverType.MediaTek;
+                        driverName = "MTK USB 驱动";
+                        break;
+                    case "spreadtrum":
+                        type = DriverType.Spreadtrum;
+                        driverName = "展锐 USB 驱动";
+                        break;
+                    case "android":
+                        // 安卓驱动暂不支持云端下载，使用旧逻辑
+                        OpenAndroidDriver();
+                        return;
                 }
-                
-                if (string.IsNullOrEmpty(driverPath))
+
+                if (type == null)
                 {
-                    AppendLog($"{driverName}安装程序未找到，请手动安装", Color.Orange);
-                    MessageBox.Show($"{driverName}安装程序未找到。\n\n请前往官方网站下载对应驱动。", 
-                        "驱动未找到", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    AppendLog($"不支持的驱动类型: {driverType}", Color.Orange);
                     return;
                 }
-                
-                System.Diagnostics.Process.Start(driverPath);
-                AppendLog($"已启动{driverName}安装程序", Color.Blue);
+
+                // 创建驱动下载服务
+                var driverService = new DriverDownloadService(
+                    msg => AppendLog(msg, Color.Blue),
+                    progress => {
+                        // 更新进度条
+                        if (uiProcessBar1.InvokeRequired)
+                            uiProcessBar1.Invoke(new Action(() => uiProcessBar1.Value = progress));
+                        else
+                            uiProcessBar1.Value = progress;
+                    },
+                    detailProgress => {
+                        // 更新详细进度 (速度、已下载大小等)
+                        if (InvokeRequired)
+                        {
+                            Invoke(new Action(() => UpdateDriverDownloadProgress(detailProgress)));
+                        }
+                        else
+                        {
+                            UpdateDriverDownloadProgress(detailProgress);
+                        }
+                    }
+                );
+
+                // 直接从云端下载驱动 (始终下载最新版本)
+                uiButton1.Enabled = false;
+                AppendLog($"正在从云端下载 {driverName}，请稍候...", Color.Cyan);
+
+                try
+                {
+                    // 下载驱动
+                    bool downloaded = await driverService.DownloadDriverAsync(type.Value);
+                    
+                    if (!downloaded)
+                    {
+                        AppendLog($"{driverName} 下载失败", Color.Red);
+                        MessageBox.Show(
+                            $"{driverName} 下载失败。\n\n请检查网络连接，或前往官网手动下载：\nhttps://sakuraedl.org/download",
+                            "下载失败",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Warning
+                        );
+                        return;
+                    }
+
+                    // 以管理员权限运行安装程序
+                    bool success = driverService.RunDriverAsAdmin(type.Value);
+                    
+                    if (success)
+                    {
+                        AppendLog($"{driverName} 安装程序已启动", Color.Green);
+                    }
+                    else
+                    {
+                        AppendLog($"{driverName} 启动失败，请手动运行", Color.Orange);
+                        // 打开驱动所在目录
+                        string driverPath = driverService.GetLocalDriverPath(type.Value);
+                        if (File.Exists(driverPath))
+                        {
+                            System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{driverPath}\"");
+                        }
+                    }
+                }
+                finally
+                {
+                    uiButton1.Enabled = true;
+                    uiProcessBar1.Value = 0;
+                    uiLabel7.Text = "速度：--";
+                    uiLabel8.Text = "当前操作：待命";
+                    // 恢复一言
+                    _ = LoadHitokotoAsync();
+                }
             }
             catch (Exception ex)
             {
-                AppendLog($"启动驱动安装程序失败: {ex.Message}", Color.Red);
+                AppendLog($"驱动安装失败: {ex.Message}", Color.Red);
             }
+        }
+
+        /// <summary>
+        /// 打开安卓驱动 (旧逻辑，不支持云端下载)
+        /// </summary>
+        private void OpenAndroidDriver()
+        {
+            try
+            {
+                string appDir = AppDomain.CurrentDomain.BaseDirectory;
+                string[] androidPaths = {
+                    Path.Combine(appDir, "drivers", "android_usb_driver.exe"),
+                    Path.Combine(appDir, "drivers", "adb_driver.exe"),
+                    Path.Combine(appDir, "ADB_Driver.exe")
+                };
+                string driverPath = androidPaths.FirstOrDefault(File.Exists);
+
+                if (string.IsNullOrEmpty(driverPath))
+                {
+                    AppendLog("安卓驱动安装程序未找到，请手动安装", Color.Orange);
+                    MessageBox.Show("安卓驱动安装程序未找到。\n\n请前往官方网站下载对应驱动。",
+                        "驱动未找到", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                System.Diagnostics.Process.Start(driverPath);
+                AppendLog("已启动安卓驱动安装程序", Color.Blue);
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"启动安卓驱动安装程序失败: {ex.Message}", Color.Red);
+            }
+        }
+
+        /// <summary>
+        /// 更新驱动下载进度显示
+        /// </summary>
+        private void UpdateDriverDownloadProgress(DownloadProgress progress)
+        {
+            // 更新进度条
+            uiProcessBar1.Value = progress.Percentage;
+            
+            // 更新速度标签
+            uiLabel7.Text = $"速度：{progress.SpeedText}";
+            
+            // 更新当前操作标签 (uiLabel8) - 紧凑格式避免截断
+            uiLabel8.Text = $"下载驱动 [{progress.Percentage}%]";
         }
 
         #endregion

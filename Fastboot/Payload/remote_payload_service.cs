@@ -49,6 +49,11 @@ namespace SakuraEDL.Fastboot.Payload
         private readonly Action<string> _log;
         private readonly Action<string> _logDetail;
         private readonly Action<long, long> _progress;
+        
+        // 多线程下载配置 (类似 IDM/NDM)
+        private int _maxConnections = 8;           // 最大并发连接数
+        private long _minChunkSize = 512 * 1024;   // 最小分块大小 (512KB)
+        private bool _enableMultiThread = true;    // 是否启用多线程下载
 
         #endregion
 
@@ -59,6 +64,24 @@ namespace SakuraEDL.Fastboot.Payload
         public long TotalSize => _totalSize;
         public IReadOnlyList<RemotePayloadPartition> Partitions => _partitions;
         public uint BlockSize => _blockSize;
+        
+        /// <summary>
+        /// 最大并发连接数 (1-32, 默认8)
+        /// </summary>
+        public int MaxConnections
+        {
+            get => _maxConnections;
+            set => _maxConnections = Math.Max(1, Math.Min(32, value));
+        }
+        
+        /// <summary>
+        /// 是否启用多线程下载 (默认true)
+        /// </summary>
+        public bool EnableMultiThread
+        {
+            get => _enableMultiThread;
+            set => _enableMultiThread = value;
+        }
 
         #endregion
 
@@ -96,13 +119,33 @@ namespace SakuraEDL.Fastboot.Payload
             _httpClient.DefaultRequestHeaders.Clear();
             
             string ua = string.IsNullOrEmpty(userAgent)
-                ? "SakuraEDL/1.0 (Payload Extractor)"
+                ? "SakuraEDL/2.0 (Payload Extractor)"
                 : userAgent;
             
             _httpClient.DefaultRequestHeaders.Add("User-Agent", ua);
             _httpClient.DefaultRequestHeaders.Add("Accept", "*/*");
             _httpClient.DefaultRequestHeaders.Add("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8");
             _httpClient.DefaultRequestHeaders.Add("Connection", "keep-alive");
+        }
+        
+        /// <summary>
+        /// 重建 HttpClient (解决连接复用导致的卡死问题)
+        /// </summary>
+        private void RecreateHttpClient()
+        {
+            // 释放旧的 HttpClient
+            _httpClient?.Dispose();
+            
+            // 创建新的 HttpClient
+            var handler = new HttpClientHandler
+            {
+                AllowAutoRedirect = false,
+                AutomaticDecompression = DecompressionMethods.None
+            };
+            
+            _httpClient = new HttpClient(handler);
+            _httpClient.Timeout = TimeSpan.FromMinutes(30);
+            SetUserAgent(null);
         }
 
         #endregion
@@ -170,9 +213,16 @@ namespace SakuraEDL.Fastboot.Payload
 
             try
             {
+                // 重置状态
                 _currentUrl = url;
                 _partitions.Clear();
                 IsLoaded = false;
+                _totalSize = 0;
+                _payloadDataOffset = 0;
+                _dataStartOffset = 0;
+                
+                // 重建 HttpClient (避免连接复用问题导致卡死)
+                RecreateHttpClient();
 
                 _log($"正在连接: {GetUrlHost(url)}");
 
@@ -297,11 +347,15 @@ namespace SakuraEDL.Fastboot.Payload
 
                         if (operation.DataLength > 0)
                         {
-                            // 下载操作数据
+                            // 下载操作数据 (大文件使用多线程加速)
                             long absStart = _dataStartOffset + (long)operation.DataOffset;
                             long absEnd = absStart + (long)operation.DataLength - 1;
+                            long dataLen = absEnd - absStart + 1;
 
-                            byte[] compressedData = await FetchRangeAsync(_currentUrl, absStart, absEnd, ct);
+                            // 大于 2MB 的数据块使用多线程下载
+                            byte[] compressedData = dataLen > 2 * 1024 * 1024
+                                ? await FetchRangeMultiThreadAsync(_currentUrl, absStart, absEnd, ct)
+                                : await FetchRangeAsync(_currentUrl, absStart, absEnd, ct);
                             downloadedBytes += compressedData.Length;
 
                             // 解压数据
@@ -484,10 +538,15 @@ namespace SakuraEDL.Fastboot.Payload
 
                         if (operation.DataLength > 0)
                         {
+                            // 下载操作数据 (大文件使用多线程加速)
                             long absStart = _dataStartOffset + (long)operation.DataOffset;
                             long absEnd = absStart + (long)operation.DataLength - 1;
+                            long dataLen = absEnd - absStart + 1;
 
-                            byte[] compressedData = await FetchRangeAsync(_currentUrl, absStart, absEnd, ct);
+                            // 大于 2MB 的数据块使用多线程下载
+                            byte[] compressedData = dataLen > 2 * 1024 * 1024
+                                ? await FetchRangeMultiThreadAsync(_currentUrl, absStart, absEnd, ct)
+                                : await FetchRangeAsync(_currentUrl, absStart, absEnd, ct);
                             downloadedBytes += compressedData.Length;
 
                             decompressedData = DecompressData(operation.Type, compressedData,
@@ -997,6 +1056,141 @@ namespace SakuraEDL.Fastboot.Payload
                     {
                         Array.Resize(ref buffer, totalRead);
                     }
+                    return buffer;
+                }
+            }
+        }
+        
+        /// <summary>
+        /// 多线程分块下载 (类似 IDM/NDM)
+        /// 将大文件分成多个块并行下载，最大化带宽利用率
+        /// </summary>
+        private async Task<byte[]> FetchRangeMultiThreadAsync(string url, long start, long end, CancellationToken ct)
+        {
+            long totalBytes = end - start + 1;
+            
+            // 小文件或禁用多线程时，使用单线程下载
+            if (!_enableMultiThread || totalBytes < _minChunkSize * 2 || _maxConnections <= 1)
+            {
+                return await FetchRangeAsync(url, start, end, ct);
+            }
+            
+            // 计算最优分块大小和数量
+            int numChunks = Math.Min(_maxConnections, (int)Math.Ceiling((double)totalBytes / _minChunkSize));
+            long chunkSize = totalBytes / numChunks;
+            
+            // 创建结果缓冲区
+            byte[] result = new byte[totalBytes];
+            
+            // 创建下载任务
+            var downloadTasks = new List<Task>();
+            var chunkInfos = new List<(long chunkStart, long chunkEnd, int resultOffset)>();
+            
+            long currentStart = start;
+            int resultOffset = 0;
+            
+            for (int i = 0; i < numChunks; i++)
+            {
+                long chunkEnd = (i == numChunks - 1) ? end : (currentStart + chunkSize - 1);
+                int chunkLen = (int)(chunkEnd - currentStart + 1);
+                
+                chunkInfos.Add((currentStart, chunkEnd, resultOffset));
+                
+                resultOffset += chunkLen;
+                currentStart = chunkEnd + 1;
+            }
+            
+            // 使用信号量限制并发数
+            var semaphore = new SemaphoreSlim(_maxConnections);
+            var exceptions = new System.Collections.Concurrent.ConcurrentBag<Exception>();
+            
+            foreach (var (chunkStart, chunkEnd, offset) in chunkInfos)
+            {
+                var task = Task.Run(async () =>
+                {
+                    await semaphore.WaitAsync(ct);
+                    try
+                    {
+                        var chunkData = await FetchChunkAsync(url, chunkStart, chunkEnd, ct);
+                        if (chunkData != null)
+                        {
+                            lock (result)
+                            {
+                                Buffer.BlockCopy(chunkData, 0, result, offset, chunkData.Length);
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        exceptions.Add(ex);
+                    }
+                    finally
+                    {
+                        semaphore.Release();
+                    }
+                }, ct);
+                
+                downloadTasks.Add(task);
+            }
+            
+            await Task.WhenAll(downloadTasks);
+            
+            if (exceptions.Count > 0)
+            {
+                throw new AggregateException("多线程下载失败", exceptions);
+            }
+            
+            return result;
+        }
+        
+        /// <summary>
+        /// 下载单个分块 (使用独立的 HttpClient 避免连接复用限制)
+        /// </summary>
+        private async Task<byte[]> FetchChunkAsync(string url, long start, long end, CancellationToken ct)
+        {
+            // 为每个分块创建独立的请求
+            var handler = new HttpClientHandler
+            {
+                UseProxy = false,
+                AutomaticDecompression = DecompressionMethods.None
+            };
+            
+            using (var client = new HttpClient(handler))
+            {
+                client.Timeout = TimeSpan.FromMinutes(10);
+                client.DefaultRequestHeaders.Add("User-Agent", "SakuraEDL/2.0 (Payload Extractor)");
+                client.DefaultRequestHeaders.Add("Accept", "*/*");
+                
+                var request = new HttpRequestMessage(HttpMethod.Get, url);
+                request.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(start, end);
+                
+                var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
+                
+                if (response.StatusCode != HttpStatusCode.PartialContent && response.StatusCode != HttpStatusCode.OK)
+                {
+                    throw new Exception($"分块下载失败: HTTP {(int)response.StatusCode}");
+                }
+                
+                long bytesToRead = end - start + 1;
+                
+                using (var stream = await response.Content.ReadAsStreamAsync())
+                {
+                    byte[] buffer = new byte[bytesToRead];
+                    int totalRead = 0;
+                    
+                    while (totalRead < bytesToRead)
+                    {
+                        int read = await stream.ReadAsync(buffer, totalRead, 
+                            (int)Math.Min(bytesToRead - totalRead, 131072), ct); // 128KB 块
+                        if (read == 0) break;
+                        totalRead += read;
+                    }
+                    
+                    if (totalRead < bytesToRead)
+                    {
+                        Array.Resize(ref buffer, totalRead);
+                    }
+                    
                     return buffer;
                 }
             }

@@ -1,15 +1,54 @@
-# SakuraEDL Admin - 宝塔面板部署指南
+# SakuraEDL Admin - 宝塔面板部署指南 (MySQL 版)
 
 ## 前置要求
 
 - 宝塔面板 7.0+
 - 服务器系统：CentOS 7+ / Ubuntu 18.04+
+- MySQL 5.7+ 或 MySQL 8.0
 
 ---
 
-## 方式一：使用 Supervisor 进程守护（推荐）
+## 步骤 1：安装 MySQL
 
-### 步骤 1：上传文件
+1. 打开宝塔面板 → **软件商店**
+2. 搜索 **MySQL** 并安装（推荐 MySQL 8.0）
+3. 安装完成后点击 **设置** → 记住 root 密码
+
+---
+
+## 步骤 2：创建数据库
+
+### 方式 A：通过宝塔面板（推荐）
+
+1. 打开宝塔面板 → **数据库**
+2. 点击 **添加数据库**
+3. 填写：
+
+| 字段 | 值 |
+|------|-----|
+| 数据库名 | `sakuraedl` |
+| 用户名 | `sakuraedl` |
+| 密码 | `071123gan` |
+| 访问权限 | 本地服务器 |
+
+4. 点击 **提交**
+
+### 方式 B：通过命令行
+
+```bash
+mysql -u root -p
+
+# 执行以下 SQL
+CREATE DATABASE sakuraedl CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'sakuraedl'@'localhost' IDENTIFIED BY 'your_password_here';
+GRANT ALL PRIVILEGES ON sakuraedl.* TO 'sakuraedl'@'localhost';
+FLUSH PRIVILEGES;
+EXIT;
+```
+
+---
+
+## 步骤 3：上传程序文件
 
 1. 打开宝塔面板 → **文件**
 2. 进入 `/www/wwwroot/` 目录
@@ -23,32 +62,32 @@
 /www/wwwroot/sakuraedl-admin/
 ├── sakuraedl-admin          # 主程序
 ├── static/
-│   └── index.html            # 前端页面
-├── uploads/                  # 自动创建
-│   ├── loaders/
-│   ├── digest/
-│   └── sign/
-└── data/                     # 自动创建
-    └── sakuraedl.db
+│   └── index.html           # 前端页面
+└── uploads/                 # 自动创建
+    ├── loaders/
+    ├── digest/
+    └── sign/
 ```
 
-### 步骤 2：设置执行权限
+---
 
-1. 在宝塔文件管理器中，右键点击 `sakuraedl-admin`
-2. 选择 **权限** → 设置为 `755`
+## 步骤 4：设置执行权限
 
-或使用终端：
 ```bash
 chmod +x /www/wwwroot/sakuraedl-admin/sakuraedl-admin
 ```
 
-### 步骤 3：安装 Supervisor
+---
+
+## 步骤 5：配置 Supervisor 守护进程
+
+### 安装 Supervisor
 
 1. 打开宝塔面板 → **软件商店**
 2. 搜索 **Supervisor管理器**
 3. 点击 **安装**
 
-### 步骤 4：添加守护进程
+### 添加守护进程
 
 1. 打开 **Supervisor管理器**
 2. 点击 **添加守护进程**
@@ -62,14 +101,9 @@ chmod +x /www/wwwroot/sakuraedl-admin/sakuraedl-admin
 | 启动命令 | `/www/wwwroot/sakuraedl-admin/sakuraedl-admin` |
 | 进程数量 | `1` |
 
-4. 点击 **确定**
+4. **重要：添加环境变量**
 
-### 步骤 5：配置环境变量（可选）
-
-如需修改默认配置，编辑 Supervisor 配置文件：
-
-1. 打开 `/etc/supervisor/conf.d/sakuraedl-admin.conf`
-2. 添加环境变量：
+在 Supervisor 配置中添加环境变量（编辑 `/etc/supervisor/conf.d/sakuraedl-admin.conf`）：
 
 ```ini
 [program:sakuraedl-admin]
@@ -78,19 +112,32 @@ directory=/www/wwwroot/sakuraedl-admin
 user=root
 autostart=true
 autorestart=true
-environment=ADMIN_TOKEN="your-secure-token",ADMIN_USER="admin",ADMIN_PASS="your-password"
+startsecs=3
+startretries=3
+redirect_stderr=true
+stdout_logfile=/www/wwwlogs/sakuraedl-admin.log
+environment=DB_HOST="127.0.0.1",DB_PORT="3306",DB_USER="sakuraedl",DB_PASS="071123gan",DB_NAME="sakuraedl",ADMIN_TOKEN="sakuraedl-admin-2024",ADMIN_USER="admin",ADMIN_PASS="sakuraedl2024"
 ```
 
-3. 重启 Supervisor
+**⚠️ 请将 `your_db_password` 替换为步骤 2 中设置的数据库密码！**
 
-### 步骤 6：配置反向代理
+5. 重启 Supervisor：
+```bash
+supervisorctl reread
+supervisorctl update
+supervisorctl restart sakuraedl-admin
+```
+
+---
+
+## 步骤 6：配置反向代理
 
 1. 打开宝塔面板 → **网站** → **添加站点**
-2. 填写域名（如 `api.your-domain.com`）
-3. 选择 **纯静态** 或 **PHP** 都可以
+2. 填写域名（如 `api.sakuraedl.org`）
+3. 选择 **纯静态**
 4. 点击 **提交**
 
-5. 点击刚创建的站点 → **设置** → **反向代理**
+5. 点击站点 → **设置** → **反向代理**
 6. 点击 **添加反向代理**：
 
 | 字段 | 值 |
@@ -101,102 +148,23 @@ environment=ADMIN_TOKEN="your-secure-token",ADMIN_USER="admin",ADMIN_PASS="your-
 
 7. 点击 **提交**
 
-### 步骤 7：配置 SSL（可选）
+### 配置 Nginx（重要）
 
-1. 点击站点 → **设置** → **SSL**
-2. 选择 **Let's Encrypt** 或上传自己的证书
-3. 点击 **申请** 或 **保存**
-4. 开启 **强制HTTPS**
-
----
-
-## 方式二：使用 Docker（如已安装）
-
-### 步骤 1：安装 Docker
-
-1. 打开宝塔面板 → **软件商店**
-2. 搜索 **Docker管理器**
-3. 点击 **安装**
-
-### 步骤 2：上传文件
-
-上传以下文件到 `/www/wwwroot/sakuraedl-admin/`：
-- `Dockerfile`
-- `docker-compose.yml`
-- `main.go`
-- `go.mod`
-- `go.sum`
-- `static/` 文件夹
-
-### 步骤 3：构建并运行
-
-在宝塔终端执行：
-```bash
-cd /www/wwwroot/sakuraedl-admin
-docker-compose up -d --build
-```
-
-### 步骤 4：配置反向代理
-
-同方式一的步骤 6
-
----
-
-## 方式三：直接运行（测试用）
-
-### 使用宝塔终端
-
-```bash
-cd /www/wwwroot/sakuraedl-admin
-chmod +x sakuraedl-admin
-
-# 后台运行
-nohup ./sakuraedl-admin > app.log 2>&1 &
-
-# 查看日志
-tail -f app.log
-```
-
----
-
-## 防火墙配置
-
-### 方式 A：仅内网访问（推荐）
-
-不需要开放 8082 端口，通过 Nginx 反向代理访问
-
-### 方式 B：直接访问
-
-1. 打开宝塔面板 → **安全**
-2. 添加端口规则：`8082`
-3. 放行
-
----
-
-## Nginx 配置优化
-
-如需自定义 Nginx 配置，点击站点 → **配置文件**：
+点击站点 → **设置** → **配置文件**，在 `server {}` 块内添加：
 
 ```nginx
-location / {
-    proxy_pass http://127.0.0.1:8082;
-    proxy_http_version 1.1;
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto $scheme;
-    proxy_set_header Upgrade $http_upgrade;
-    proxy_set_header Connection "upgrade";
-    
-    # 上传文件大小限制
-    client_max_body_size 100M;
-    
-    # 超时设置
-    proxy_connect_timeout 60s;
-    proxy_send_timeout 60s;
-    proxy_read_timeout 60s;
-}
+# 文件上传大小限制
+client_max_body_size 100M;
 ```
+
+---
+
+## 步骤 7：配置 SSL（可选）
+
+1. 点击站点 → **设置** → **SSL**
+2. 选择 **Let's Encrypt**
+3. 点击 **申请**
+4. 开启 **强制HTTPS**
 
 ---
 
@@ -211,101 +179,106 @@ ps aux | grep sakuraedl
 # 查看端口
 netstat -tlnp | grep 8082
 
+# 查看日志
+tail -f /www/wwwlogs/sakuraedl-admin.log
+
 # 测试 API
 curl http://127.0.0.1:8082/api/loaders/list
 ```
 
+### 检查数据库连接
+
+```bash
+mysql -u sakuraedl -p -e "SHOW TABLES FROM sakuraedl;"
+```
+
+应该显示：
+```
++---------------------+
+| Tables_in_sakuraedl |
++---------------------+
+| device_logs         |
+| loaders             |
++---------------------+
+```
+
 ### 访问管理后台
 
-- 内网：`http://服务器IP:8082`
-- 域名：`https://api.your-domain.com`
-
-默认登录信息：
+- 地址：`https://api.sakuraedl.org`
 - 用户名：`admin`
-- 密码：`admin123`
+- 密码：`sakuraedl2024`（或你设置的密码）
 
 ---
 
-## 客户端配置
+## 环境变量说明
 
-部署完成后，修改 SakuraEDL 客户端连接地址：
-
-**文件：** `Qualcomm/Services/cloud_loader_service.cs`
-
-```csharp
-// 修改为你的服务器地址
-private const string API_BASE_PROD = "https://api.your-domain.com/api";
-```
-
-然后重新编译客户端。
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| `DB_HOST` | `127.0.0.1` | MySQL 主机 |
+| `DB_PORT` | `3306` | MySQL 端口 |
+| `DB_USER` | `sakuraedl` | MySQL 用户名 |
+| `DB_PASS` | `sakuraedl2024` | MySQL 密码 |
+| `DB_NAME` | `sakuraedl` | 数据库名 |
+| `ADMIN_USER` | `admin` | 管理后台用户名 |
+| `ADMIN_PASS` | `sakuraedl2024` | 管理后台密码 |
+| `ADMIN_TOKEN` | `sakuraedl-admin-2024` | API Token |
 
 ---
 
 ## 常见问题
 
-### Q: 服务启动失败
+### Q: 数据库连接失败
 
-```bash
-# 查看 Supervisor 日志
-tail -f /var/log/supervisor/sakuraedl-admin.log
-
-# 或查看程序日志
-tail -f /www/wwwroot/sakuraedl-admin/app.log
 ```
+数据库连接测试失败: dial tcp 127.0.0.1:3306: connect: connection refused
+```
+
+**解决：**
+1. 检查 MySQL 是否运行：`systemctl status mysql`
+2. 检查用户名密码是否正确
+3. 检查用户是否有权限连接
+
+### Q: 表不存在
+
+程序启动时会自动创建表。如果表不存在，检查日志中是否有错误。
 
 ### Q: 502 Bad Gateway
 
 1. 检查服务是否运行：`ps aux | grep sakuraedl`
-2. 检查端口是否监听：`netstat -tlnp | grep 8082`
-3. 重启服务：在 Supervisor 管理器中点击重启
+2. 检查日志：`tail -f /www/wwwlogs/sakuraedl-admin.log`
+3. 重启服务：`supervisorctl restart sakuraedl-admin`
 
-### Q: 权限问题
+### Q: 上传文件失败
 
-```bash
-chown -R www:www /www/wwwroot/sakuraedl-admin
-chmod -R 755 /www/wwwroot/sakuraedl-admin
-```
-
-### Q: 数据库错误
-
-确保 `data` 目录存在且有写入权限：
-```bash
-mkdir -p /www/wwwroot/sakuraedl-admin/data
-chmod 777 /www/wwwroot/sakuraedl-admin/data
+确保 Nginx 配置中有：
+```nginx
+client_max_body_size 100M;
 ```
 
 ---
 
 ## 备份数据
 
-在宝塔面板中设置定时任务：
+### MySQL 数据备份
 
-1. 打开 **计划任务**
-2. 添加任务：
-   - 任务类型：Shell 脚本
-   - 执行周期：每天
-   - 脚本内容：
+在宝塔面板 → **计划任务** 中添加：
 
 ```bash
 #!/bin/bash
-DATE=$(date +%Y%m%d)
+DATE=$(date +%Y%m%d_%H%M%S)
 BACKUP_DIR=/www/backup/sakuraedl
 mkdir -p $BACKUP_DIR
-tar -czvf $BACKUP_DIR/sakuraedl-$DATE.tar.gz \
-    /www/wwwroot/sakuraedl-admin/data \
-    /www/wwwroot/sakuraedl-admin/uploads
+
+# 备份数据库
+mysqldump -u sakuraedl -p'your_password' sakuraedl > $BACKUP_DIR/db_$DATE.sql
+
+# 备份上传文件
+tar -czvf $BACKUP_DIR/uploads_$DATE.tar.gz /www/wwwroot/sakuraedl-admin/uploads
+
 # 删除 7 天前的备份
+find $BACKUP_DIR -name "*.sql" -mtime +7 -delete
 find $BACKUP_DIR -name "*.tar.gz" -mtime +7 -delete
 ```
-
----
-
-## 更新部署
-
-1. 停止服务（在 Supervisor 管理器中）
-2. 上传新的 `sakuraedl-admin` 文件
-3. 设置权限：`chmod +x sakuraedl-admin`
-4. 启动服务
 
 ---
 

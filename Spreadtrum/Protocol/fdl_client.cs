@@ -153,67 +153,80 @@ namespace SakuraEDL.Spreadtrum.Protocol
         
         /// <summary>
         /// 查找 custom_exec_no_verify 文件
+        /// 支持多种文件名格式：小写/大写 hex，带/不带 '0x' 前缀
         /// 搜索顺序: 指定路径 > FDL1同目录 > 程序目录
         /// </summary>
         private byte[] LoadExecNoVerifyPayload(uint execAddr)
         {
-            string execFileName = string.Format("custom_exec_no_verify_{0:x}.bin", execAddr);
-            
-            // 1. 使用指定的文件
-            if (!string.IsNullOrEmpty(CustomExecNoVerifyPath) && System.IO.File.Exists(CustomExecNoVerifyPath))
+            // 支持多种文件名格式
+            var candidates = new List<string>
             {
-                Log("[FDL] 使用指定的 exec_no_verify: {0}", System.IO.Path.GetFileName(CustomExecNoVerifyPath));
-                return System.IO.File.ReadAllBytes(CustomExecNoVerifyPath);
+                string.Format("custom_exec_no_verify_{0:x}.bin", execAddr),      // lower hex (如 50000000)
+                string.Format("custom_exec_no_verify_{0:X}.bin", execAddr),      // UPPER HEX
+                string.Format("custom_exec_no_verify_{0:x8}.bin", execAddr),     // 8-digit lower (如 50000000)
+                string.Format("custom_exec_no_verify_{0:X8}.bin", execAddr),     // 8-digit UPPER
+                string.Format("custom_exec_no_verify_0x{0:x}.bin", execAddr),    // 带 0x 前缀
+                string.Format("custom_exec_no_verify_0x{0:X}.bin", execAddr),    // 带 0x 前缀大写
+                "exec_no_verify.bin",
+                "custom_exec_no_verify.bin"
+            };
+
+            // 搜索路径列表
+            var searchPaths = new List<string>();
+            
+            // 1. 自定义路径 (如果直接是文件)
+            if (!string.IsNullOrEmpty(CustomExecNoVerifyPath))
+            {
+                if (System.IO.File.Exists(CustomExecNoVerifyPath))
+                {
+                    Log("[FDL] 使用指定的 exec_no_verify: {0}", System.IO.Path.GetFileName(CustomExecNoVerifyPath));
+                    return System.IO.File.ReadAllBytes(CustomExecNoVerifyPath);
+                }
+                // 如果是目录，添加到搜索路径
+                if (System.IO.Directory.Exists(CustomExecNoVerifyPath))
+                    searchPaths.Add(CustomExecNoVerifyPath);
             }
             
-            // 2. 在 FDL1 同目录查找 (spd_dump 格式)
+            // 2. FDL1 所在目录
             if (!string.IsNullOrEmpty(CustomFdl1Path))
             {
                 string fdl1Dir = System.IO.Path.GetDirectoryName(CustomFdl1Path);
-                string execPath = System.IO.Path.Combine(fdl1Dir, execFileName);
-                
-                if (System.IO.File.Exists(execPath))
-                {
-                    Log("[FDL] 找到 exec_no_verify: {0} (FDL目录)", execFileName);
-                    return System.IO.File.ReadAllBytes(execPath);
-                }
-                
-                // 也查找简化名称
-                execPath = System.IO.Path.Combine(fdl1Dir, "exec_no_verify.bin");
-                if (System.IO.File.Exists(execPath))
-                {
-                    Log("[FDL] 找到 exec_no_verify.bin (FDL目录)");
-                    return System.IO.File.ReadAllBytes(execPath);
-                }
+                if (!string.IsNullOrEmpty(fdl1Dir))
+                    searchPaths.Add(fdl1Dir);
             }
-            
-            // 3. 在程序目录查找
+                
+            // 3. 程序运行目录
             string appDir = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
-            string appExecPath = System.IO.Path.Combine(appDir, execFileName);
-            
-            if (System.IO.File.Exists(appExecPath))
+            if (!string.IsNullOrEmpty(appDir))
+                searchPaths.Add(appDir);
+
+            // 在每个搜索路径中查找候选文件
+            foreach (var path in searchPaths)
             {
-                Log("[FDL] 找到 exec_no_verify: {0} (程序目录)", execFileName);
-                return System.IO.File.ReadAllBytes(appExecPath);
+                if (string.IsNullOrEmpty(path) || !System.IO.Directory.Exists(path))
+                    continue;
+
+                foreach (var fileName in candidates)
+                {
+                    string fullPath = System.IO.Path.Combine(path, fileName);
+                    if (System.IO.File.Exists(fullPath))
+                    {
+                        Log("[FDL] 找到 exec_no_verify: {0}", fileName);
+                        return System.IO.File.ReadAllBytes(fullPath);
+                    }
+                }
             }
-            
-            // 也查找简化名称
-            appExecPath = System.IO.Path.Combine(appDir, "exec_no_verify.bin");
-            if (System.IO.File.Exists(appExecPath))
-            {
-                Log("[FDL] 找到 exec_no_verify.bin (程序目录)");
-                return System.IO.File.ReadAllBytes(appExecPath);
-            }
-            
-            // 4. 没有找到外部文件
-            Log("[FDL] 未找到 exec_no_verify 文件，跳过签名绕过");
-            Log("[FDL] 提示: 需要 {0}", execFileName);
+
+            // 没有找到外部文件
+            Log("[FDL] 警告: 未找到地址 0x{0:X} 的 exec_no_verify 文件", execAddr);
+            Log("[FDL] 提示: 可命名为 exec_no_verify.bin 或 custom_exec_no_verify_{0:x}.bin", execAddr);
             return null;
         }
         
         /// <summary>
         /// 发送 custom_exec_no_verify payload
         /// 参考 spd_dump: 在 fdl1 发送后、EXEC 前发送
+        /// 支持分块发送以防止缓冲区溢出
         /// </summary>
         private async Task<bool> SendExecNoVerifyPayloadAsync(uint execAddr)
         {
@@ -228,13 +241,12 @@ namespace SakuraEDL.Spreadtrum.Protocol
                 return true;
             }
             
-            Log("[FDL] 发送 custom_exec_no_verify 到 0x{0:X8} ({1} bytes)...", execAddr, payload.Length);
+            Log("[FDL] 发送签名绕过 Payload 到 0x{0:X8} ({1} bytes)...", execAddr, payload.Length);
             
-                                                                                               // 注意: spd_dump 直接连续发送第二个 FDL，不需要重新 CONNECT
-            // 确保使用 BROM 模式 (CRC16)
+            // 强制切换到 BROM 模式 (使用 CRC16)
             _hdlc.SetBromMode();
             
-            // 发送 START_DATA
+            // 1. 发送 START_DATA (Big-Endian 格式)
             var startPayload = new byte[8];
             startPayload[0] = (byte)((execAddr >> 24) & 0xFF);
             startPayload[1] = (byte)((execAddr >> 16) & 0xFF);
@@ -245,63 +257,77 @@ namespace SakuraEDL.Spreadtrum.Protocol
             startPayload[6] = (byte)((payload.Length >> 8) & 0xFF);
             startPayload[7] = (byte)(payload.Length & 0xFF);
             
-            Log("[FDL] exec_no_verify START_DATA: addr=0x{0:X8}, size={1}", execAddr, payload.Length);
             var startFrame = _hdlc.BuildFrame((byte)BslCommand.BSL_CMD_START_DATA, startPayload);
             await WriteFrameAsync(startFrame);
             
             if (!await WaitAckAsync(5000))
             {
-                Log("[FDL] exec_no_verify START_DATA 失败");
+                Log("[FDL] Payload START_DATA 失败");
                 return false;
             }
-            Log("[FDL] exec_no_verify START_DATA OK");
+            Log("[FDL] Payload START_DATA OK");
             
-            // 发送数据 - exec_no_verify payload 通常很小，直接发送
-            var midstFrame = _hdlc.BuildFrame((byte)BslCommand.BSL_CMD_MIDST_DATA, payload);
-            await WriteFrameAsync(midstFrame);
+            // 2. 发送 MIDST_DATA (分块发送，确保安全)
+            int chunkSize = 512;  // 使用较小的块大小，确保不超过 BSL 缓冲区
+            int totalChunks = (payload.Length + chunkSize - 1) / chunkSize;
             
-            if (!await WaitAckAsync(5000))
+            for (int i = 0; i < totalChunks; i++)
             {
-                Log("[FDL] exec_no_verify MIDST_DATA 失败");
-                return false;
+                int offset = i * chunkSize;
+                int length = Math.Min(chunkSize, payload.Length - offset);
+                
+                byte[] chunk = new byte[length];
+                Array.Copy(payload, offset, chunk, 0, length);
+                
+                var midstFrame = _hdlc.BuildFrame((byte)BslCommand.BSL_CMD_MIDST_DATA, chunk);
+                await WriteFrameAsync(midstFrame);
+                
+                if (!await WaitAckAsync(5000))
+                {
+                    Log("[FDL] Payload 块 {0}/{1} 发送失败", i + 1, totalChunks);
+                    return false;
+                }
+                
+                // 仅在多块时显示进度
+                if (totalChunks > 1)
+                    Log("[FDL] Payload 块 {0}/{1} OK", i + 1, totalChunks);
             }
-            Log("[FDL] exec_no_verify MIDST_DATA OK");
             
-            // 发送 END_DATA
+            if (totalChunks == 1)
+                Log("[FDL] Payload MIDST_DATA OK");
+            
+            // 3. 发送 END_DATA
             var endFrame = _hdlc.BuildCommand((byte)BslCommand.BSL_CMD_END_DATA);
             await WriteFrameAsync(endFrame);
             
-            // 读取 END_DATA 响应并记录详细信息
+            // 读取响应 - 有些设备可能不返回 ACK
             var endResp = await ReadFrameAsyncSafe(5000);
             if (endResp != null && endResp.Length > 0)
             {
-                Log("[FDL] exec_no_verify END_DATA 响应: {0}", BitConverter.ToString(endResp).Replace("-", " "));
                 try
                 {
                     var parsed = _hdlc.ParseFrame(endResp);
                     if (parsed.Type == (byte)BslCommand.BSL_REP_ACK)
                     {
-                        Log("[FDL] exec_no_verify END_DATA OK");
+                        Log("[FDL] Payload END_DATA OK");
                     }
                     else
                     {
                         string errorMsg = GetBslErrorMessage(parsed.Type);
-                        Log("[FDL] exec_no_verify END_DATA 错误: 0x{0:X2} ({1})", parsed.Type, errorMsg);
-                        Log("[FDL] 警告: END_DATA 失败，但继续尝试 EXEC...");
+                        Log("[FDL] Payload END_DATA 响应: 0x{0:X2} ({1})", parsed.Type, errorMsg);
                     }
                 }
                 catch (Exception ex)
                 {
-                    Log("[FDL] exec_no_verify END_DATA 解析失败: {0}", ex.Message);
+                    Log("[FDL] Payload END_DATA 解析失败: {0}", ex.Message);
                 }
             }
             else
             {
-                Log("[FDL] exec_no_verify END_DATA 无响应");
-                Log("[FDL] 警告: END_DATA 无响应，但继续尝试 EXEC...");
+                Log("[FDL] Payload END_DATA 无响应 (可能正常)");
             }
             
-            Log("[FDL] exec_no_verify payload 发送成功");
+            Log("[FDL] 签名绕过 Payload 发送完成");
             return true;
         }
 
@@ -927,11 +953,15 @@ namespace SakuraEDL.Spreadtrum.Protocol
                         }
                     }
                     
-                    // 切换到 FDL 模式: 使用 checksum (关闭 CRC16)
+                    // 切换到 FDL 模式: 
+                    // 1. 使用 checksum (关闭 CRC16)
+                    // 2. 切换到 Little-Endian (FDL 协议要求)
+                    // 3. 禁用转码 (提高大文件传输效率)
                     _hdlc.SetFdlMode();
+                    _hdlc.SetLittleEndian();  // 关键: FDL 阶段使用小端序
                     DataChunkSize = FDL_CHUNK_SIZE;
                     _isBromMode = false;
-                    Log("[FDL] 切换到 FDL 模式: Checksum, 块大小={0}", DataChunkSize);
+                    Log("[FDL] 切换到 FDL 模式: Checksum, Little-Endian, 块大小={0}", DataChunkSize);
                     
                     // 参考 spd_dump: 发送 CHECK_BAUD 并重试
                     // CHECK_BAUD 第一次失败是正常的 (设备还在初始化)
@@ -1154,6 +1184,7 @@ namespace SakuraEDL.Spreadtrum.Protocol
 
         /// <summary>
         /// 写入分区 (带重试机制，参考 SPRDClientCore)
+        /// 大文件传输时自动禁用 HDLC 转码以提高效率
         /// </summary>
         public async Task<bool> WritePartitionAsync(string partitionName, byte[] data, CancellationToken cancellationToken = default)
         {
@@ -1165,11 +1196,28 @@ namespace SakuraEDL.Spreadtrum.Protocol
 
             Log("[FDL] 写入分区: {0}, 大小: {1}", partitionName, FormatSize((uint)data.Length));
 
+            // 大文件传输时禁用 HDLC 转码 (参考 spd_dump)
+            // 这可以显著提高传输效率并避免数据损坏
+            bool wasTranscodeEnabled = _hdlc.UseTranscode;
+            if (data.Length > 1024 * 1024)  // 大于 1MB 的文件
+            {
+                Log("[FDL] 大文件传输，禁用 HDLC 转码");
+                _hdlc.DisableTranscode();
+            }
+
             try
             {
                 // 判断是否需要 64 位模式
                 ulong size = (ulong)data.Length;
                 bool useMode64 = (size >> 32) != 0;
+                
+                // 确定最佳块大小 (参考开源项目)
+                // 保守起见，使用较小的块大小以防止 USB FIFO 溢出
+                int effectiveChunkSize = Math.Min(DataChunkSize, 2048);  // 最大 2KB
+                if (data.Length < 64 * 1024)
+                {
+                    effectiveChunkSize = Math.Min(DataChunkSize, 512);  // 小文件使用更小的块
+                }
                 
                 // 构建 START_DATA payload (参考 SPRDClientCore)
                 // 格式: [分区名 72字节 Unicode] + [大小 4字节 LE] + [大小高32位 4字节 LE, 仅64位]
@@ -1194,10 +1242,12 @@ namespace SakuraEDL.Spreadtrum.Protocol
                     return false;
                 }
 
-                // 分块写入
-                int totalChunks = (data.Length + DataChunkSize - 1) / DataChunkSize;
+                // 分块写入 (使用优化后的块大小)
+                int totalChunks = (data.Length + effectiveChunkSize - 1) / effectiveChunkSize;
                 int failedChunks = 0;
                 const int maxConsecutiveFailures = 3;
+                
+                Log("[FDL] 开始传输: {0} 块, 每块 {1} 字节", totalChunks, effectiveChunkSize);
 
                 for (int i = 0; i < totalChunks; i++)
                 {
@@ -1207,8 +1257,8 @@ namespace SakuraEDL.Spreadtrum.Protocol
                         return false;
                     }
 
-                    int offset = i * DataChunkSize;
-                    int length = Math.Min(DataChunkSize, data.Length - offset);
+                    int offset = i * effectiveChunkSize;
+                    int length = Math.Min(effectiveChunkSize, data.Length - offset);
 
                     var chunk = new byte[length];
                     Array.Copy(data, offset, chunk, 0, length);
@@ -1251,6 +1301,14 @@ namespace SakuraEDL.Spreadtrum.Protocol
             {
                 Log("[FDL] 写入分区异常: {0}", ex.Message);
                 return false;
+            }
+            finally
+            {
+                // 恢复转码设置
+                if (wasTranscodeEnabled && !_hdlc.UseTranscode)
+                {
+                    _hdlc.EnableTranscode();
+                }
             }
         }
 
@@ -2848,7 +2906,7 @@ namespace SakuraEDL.Spreadtrum.Protocol
         }
 
         /// <summary>
-        /// 安全从串口读取 (使用轮询方式，避免信号灯超时)
+        /// 安全从串口读取 (使用异步 IO，避免轮询)
         /// </summary>
         private async Task<byte[]> SafeReadFromPortAsync(int timeout, CancellationToken cancellationToken = default)
         {
@@ -2861,48 +2919,53 @@ namespace SakuraEDL.Spreadtrum.Protocol
             {
                 try
                 {
-            return await Task.Run(() =>
-            {
-                var ms = new MemoryStream();
-                bool inFrame = false;
-                        int retryCount = 0;
+                    // 使用端口锁保护读取操作
+                    bool lockAcquired = await _portLock.WaitAsync(timeout, linkedCts.Token);
+                    if (!lockAcquired)
+                        return null;
+
+                    try
+                    {
+                        if (_isDisposed || _port == null || !_port.IsOpen)
+                            return null;
+
+                        var ms = new MemoryStream();
+                        bool inFrame = false;
+                        byte[] buffer = new byte[4096];
+
+                        // 设置串口读取超时
+                        _port.ReadTimeout = Math.Min(timeout, 1000);
 
                         while (!linkedCts.Token.IsCancellationRequested)
                         {
                             try
                             {
                                 if (_isDisposed || _port == null || !_port.IsOpen)
-                                    return null;
+                                    return ms.Length > 0 ? ms.ToArray() : null;
 
-                                int available = 0;
+                                // 使用 BaseStream.ReadAsync 进行真正的异步读取
+                                int read = 0;
                                 try
                                 {
-                                    available = _port.BytesToRead;
+                                    read = await _port.BaseStream.ReadAsync(buffer, 0, buffer.Length, linkedCts.Token);
                                 }
-                                catch
+                                catch (OperationCanceledException)
                                 {
-                                    Thread.Sleep(10);
-                                    retryCount++;
-                                    if (retryCount > 10) return null;
-                                    continue;
+                                    break;
+                                }
+                                catch (IOException)
+                                {
+                                    // 设备可能已断开
+                                    return ms.Length > 0 ? ms.ToArray() : null;
+                                }
+                                catch (InvalidOperationException)
+                                {
+                                    // 端口已关闭
+                                    return ms.Length > 0 ? ms.ToArray() : null;
                                 }
 
-                                if (available > 0)
+                                if (read > 0)
                                 {
-                                    byte[] buffer = new byte[available];
-                                    int read = 0;
-                                    try
-                                    {
-                                        read = _port.Read(buffer, 0, available);
-                                    }
-                                    catch
-                                    {
-                                        Thread.Sleep(10);
-                                        retryCount++;
-                                        if (retryCount > 10) return null;
-                                        continue;
-                                    }
-
                                     for (int i = 0; i < read; i++)
                                     {
                                         byte b = buffer[i];
@@ -2923,28 +2986,21 @@ namespace SakuraEDL.Spreadtrum.Protocol
                                             ms.WriteByte(b);
                                         }
                                     }
-                                    
-                                    retryCount = 0;  // 重置重试计数
-                                }
-                                else
-                                {
-                                    Thread.Sleep(5);
                                 }
                             }
-                            catch
+                            catch (TimeoutException)
                             {
-                                Thread.Sleep(10);
-                                retryCount++;
-                                if (retryCount > 10) return null;
+                                // 继续等待
+                                continue;
                             }
                         }
 
-                        // 超时但有部分数据
-                        if (ms.Length > 0)
-                            return ms.ToArray();
-                            
-                        return null;
-                    }, linkedCts.Token);
+                        return ms.Length > 0 ? ms.ToArray() : null;
+                    }
+                    finally
+                    {
+                        _portLock.Release();
+                    }
                 }
                 catch (OperationCanceledException)
                 {

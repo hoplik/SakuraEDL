@@ -195,14 +195,18 @@ namespace SakuraEDL.MediaTek.Protocol
         }
 
         /// <summary>
-        /// 发送 ACK
+        /// 发送 ACK (根据 mtkclient xflash_lib.py ack() 修正)
+        /// mtkclient: tmp = pack("<III", MAGIC, DT_PROTOCOL_FLOW, 4)
+        ///            data = pack("<I", 0)
         /// </summary>
         private async Task<bool> SendAckAsync(CancellationToken ct = default)
         {
-            byte[] ack = new byte[12];
+            // ★ 修正: 长度应为 4，且需要发送 4 字节的数据 (值为 0)
+            byte[] ack = new byte[16];  // 12 字节头 + 4 字节数据
             MtkDataPacker.WriteUInt32LE(ack, 0, XFlashCmd.MAGIC);
-            MtkDataPacker.WriteUInt32LE(ack, 4, (uint)XFlashDataType.ProtocolResponse);
-            MtkDataPacker.WriteUInt32LE(ack, 8, 0);
+            MtkDataPacker.WriteUInt32LE(ack, 4, (uint)XFlashDataType.ProtocolFlow);  // DT_PROTOCOL_FLOW
+            MtkDataPacker.WriteUInt32LE(ack, 8, 4);  // 长度 = 4
+            MtkDataPacker.WriteUInt32LE(ack, 12, 0); // data = 0
 
             await _portLock.WaitAsync(ct);
             try
@@ -217,21 +221,34 @@ namespace SakuraEDL.MediaTek.Protocol
         }
 
         /// <summary>
-        /// 发送原始数据
+        /// 发送数据 (根据 mtkclient xflash_lib.py send_data() 修正)
+        /// mtkclient: pkt2 = pack("<III", MAGIC, DT_PROTOCOL_FLOW, len(data))
         /// </summary>
         private async Task<bool> SendRawDataAsync(byte[] data, CancellationToken ct = default)
         {
             await _portLock.WaitAsync(ct);
             try
             {
-                // 数据包头
+                // ★ 修正: 使用 ProtocolFlow (1) 而不是 ProtocolRaw (2)
                 byte[] header = new byte[12];
                 MtkDataPacker.WriteUInt32LE(header, 0, XFlashCmd.MAGIC);
-                MtkDataPacker.WriteUInt32LE(header, 4, (uint)XFlashDataType.ProtocolRaw);
+                MtkDataPacker.WriteUInt32LE(header, 4, (uint)XFlashDataType.ProtocolFlow);  // DT_PROTOCOL_FLOW
                 MtkDataPacker.WriteUInt32LE(header, 8, (uint)data.Length);
 
                 _port.Write(header, 0, header.Length);
-                _port.Write(data, 0, data.Length);
+                
+                // 分块发送数据 (参考 mtkclient: maxoutsize = EP_OUT.wMaxPacketSize)
+                int maxPacketSize = 0x200;  // 默认 512 字节
+                int bytesToWrite = data.Length;
+                int pos = 0;
+                
+                while (bytesToWrite > 0)
+                {
+                    int chunkSize = Math.Min(bytesToWrite, maxPacketSize);
+                    _port.Write(data, pos, chunkSize);
+                    pos += chunkSize;
+                    bytesToWrite -= chunkSize;
+                }
 
                 // 发送校验和 (如果启用)
                 if (_checksumLevel == ChecksumAlgorithm.CRC32)

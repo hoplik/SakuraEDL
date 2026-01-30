@@ -181,33 +181,19 @@ namespace SakuraEDL.Fastboot.Image
         
         /// <summary>
         /// 分割为多个 Sparse 块用于传输
-        /// Sparse 镜像会被 resparse 成多个独立的 Sparse 文件
+        /// - Raw 镜像：转换为 Sparse 格式（带偏移量），确保正确写入
+        /// - Sparse 镜像：resparse 成多个独立的 Sparse 文件
         /// </summary>
         /// <param name="maxSize">每块最大大小</param>
         public IEnumerable<SparseChunkData> SplitForTransfer(long maxSize)
         {
             if (!_isSparse)
             {
-                // 非 Sparse 镜像，直接分块
-                _stream.Position = 0;
-                long remaining = _stream.Length;
-                int chunkIndex = 0;
-                
-                while (remaining > 0)
+                // 非 Sparse 镜像：转换为 Sparse 格式发送（关键修复）
+                // 这样 Bootloader 才能知道每块数据应该写入的偏移量
+                foreach (var chunk in RawToSparseSplitTransfer(maxSize))
                 {
-                    int chunkSize = (int)Math.Min(remaining, maxSize);
-                    byte[] data = new byte[chunkSize];
-                    _stream.Read(data, 0, chunkSize);
-                    
-                    yield return new SparseChunkData
-                    {
-                        Index = chunkIndex++,
-                        TotalChunks = (int)((_stream.Length + maxSize - 1) / maxSize),
-                        Data = data,
-                        Size = chunkSize
-                    };
-                    
-                    remaining -= chunkSize;
+                    yield return chunk;
                 }
             }
             else
@@ -240,45 +226,203 @@ namespace SakuraEDL.Fastboot.Image
         }
         
         /// <summary>
+        /// 将 Raw 镜像转换为 Sparse 格式分块发送（关键修复）
+        /// 每个分块都是一个完整的 Sparse 文件，包含正确的偏移量信息
+        /// </summary>
+        private IEnumerable<SparseChunkData> RawToSparseSplitTransfer(long maxSize)
+        {
+            const int SPARSE_HEADER_SIZE = 28;
+            const int CHUNK_HEADER_SIZE = 12;
+            uint blockSize = 4096;  // 标准块大小
+            
+            // 计算每个分片的最大数据量（预留 header 空间）
+            long maxDataPerChunk = maxSize - SPARSE_HEADER_SIZE - CHUNK_HEADER_SIZE;
+            // 对齐到块大小
+            maxDataPerChunk = (maxDataPerChunk / blockSize) * blockSize;
+            
+            _stream.Position = 0;
+            long totalSize = _stream.Length;
+            uint totalBlocks = (uint)((totalSize + blockSize - 1) / blockSize);
+            int totalChunks = (int)((totalSize + maxDataPerChunk - 1) / maxDataPerChunk);
+            
+            long remaining = totalSize;
+            int chunkIndex = 0;
+            uint currentBlockOffset = 0;
+            
+            while (remaining > 0)
+            {
+                // 计算本次传输的数据量
+                long dataSize = Math.Min(remaining, maxDataPerChunk);
+                uint blocksInChunk = (uint)((dataSize + blockSize - 1) / blockSize);
+                
+                // Sparse 格式要求：RAW chunk 的数据大小必须等于 ChunkBlocks * BlockSize
+                // 所以 actualDataSize 必须对齐到块大小，不足部分补零
+                long actualDataSize = (long)blocksInChunk * blockSize;
+                
+                // 分配缓冲区
+                int sparseSize = SPARSE_HEADER_SIZE + CHUNK_HEADER_SIZE + (int)actualDataSize;
+                byte[] sparseData = new byte[sparseSize];
+                int offset = 0;
+                
+                // 写入 Sparse Header (28 bytes)
+                Buffer.BlockCopy(BitConverter.GetBytes(SPARSE_HEADER_MAGIC), 0, sparseData, offset, 4); offset += 4;
+                Buffer.BlockCopy(BitConverter.GetBytes((ushort)1), 0, sparseData, offset, 2); offset += 2;  // major
+                Buffer.BlockCopy(BitConverter.GetBytes((ushort)0), 0, sparseData, offset, 2); offset += 2;  // minor
+                Buffer.BlockCopy(BitConverter.GetBytes((ushort)SPARSE_HEADER_SIZE), 0, sparseData, offset, 2); offset += 2;
+                Buffer.BlockCopy(BitConverter.GetBytes((ushort)CHUNK_HEADER_SIZE), 0, sparseData, offset, 2); offset += 2;
+                Buffer.BlockCopy(BitConverter.GetBytes(blockSize), 0, sparseData, offset, 4); offset += 4;
+                Buffer.BlockCopy(BitConverter.GetBytes(totalBlocks), 0, sparseData, offset, 4); offset += 4;  // 总块数
+                Buffer.BlockCopy(BitConverter.GetBytes(1u), 0, sparseData, offset, 4); offset += 4;  // chunk count = 1
+                Buffer.BlockCopy(BitConverter.GetBytes(0u), 0, sparseData, offset, 4); offset += 4;  // checksum
+                
+                // 如果不是第一块，先写入 DONT_CARE chunk 来跳过前面的块
+                if (currentBlockOffset > 0)
+                {
+                    // 需要重新分配更大的缓冲区以容纳 DONT_CARE chunk
+                    int newSize = sparseSize + CHUNK_HEADER_SIZE;
+                    byte[] newData = new byte[newSize];
+                    Buffer.BlockCopy(sparseData, 0, newData, 0, SPARSE_HEADER_SIZE);
+                    sparseData = newData;
+                    offset = SPARSE_HEADER_SIZE;
+                    
+                    // 更新 chunk count
+                    Buffer.BlockCopy(BitConverter.GetBytes(2u), 0, sparseData, 20, 4);  // chunk count = 2
+                    
+                    // 写入 DONT_CARE Chunk Header (跳过前面的块)
+                    Buffer.BlockCopy(BitConverter.GetBytes(CHUNK_TYPE_DONT_CARE), 0, sparseData, offset, 2); offset += 2;
+                    Buffer.BlockCopy(BitConverter.GetBytes((ushort)0), 0, sparseData, offset, 2); offset += 2;  // reserved
+                    Buffer.BlockCopy(BitConverter.GetBytes(currentBlockOffset), 0, sparseData, offset, 4); offset += 4;  // blocks to skip
+                    Buffer.BlockCopy(BitConverter.GetBytes((uint)CHUNK_HEADER_SIZE), 0, sparseData, offset, 4); offset += 4;  // total size
+                    
+                    sparseSize = newSize;
+                }
+                
+                // 写入 RAW Chunk Header (12 bytes)
+                Buffer.BlockCopy(BitConverter.GetBytes(CHUNK_TYPE_RAW), 0, sparseData, offset, 2); offset += 2;
+                Buffer.BlockCopy(BitConverter.GetBytes((ushort)0), 0, sparseData, offset, 2); offset += 2;  // reserved
+                Buffer.BlockCopy(BitConverter.GetBytes(blocksInChunk), 0, sparseData, offset, 4); offset += 4;
+                Buffer.BlockCopy(BitConverter.GetBytes((uint)(CHUNK_HEADER_SIZE + actualDataSize)), 0, sparseData, offset, 4); offset += 4;
+                
+                // 读取并写入数据
+                int readSize = (int)Math.Min(actualDataSize, remaining);
+                _stream.Read(sparseData, offset, readSize);
+                
+                // 如果读取的数据不够块对齐，填充零
+                if (readSize < actualDataSize)
+                {
+                    Array.Clear(sparseData, offset + readSize, (int)(actualDataSize - readSize));
+                }
+                
+                yield return new SparseChunkData
+                {
+                    Index = chunkIndex++,
+                    TotalChunks = totalChunks,
+                    Data = sparseData,
+                    Size = sparseSize
+                };
+                
+                remaining -= readSize;
+                currentBlockOffset += blocksInChunk;
+                sparseData = null;  // 帮助 GC
+            }
+        }
+        
+        /// <summary>
         /// Resparse：将大的 Sparse 镜像分割成多个小的 Sparse 镜像
-        /// 优化内存使用：每次只分配必要的内存
+        /// 支持拆分过大的单个 Chunk（关键修复）
         /// </summary>
         private IEnumerable<SparseChunkData> ResparseSplitTransfer(long maxSize)
         {
-            // 计算每个分片可以容纳多少数据（预留 header 空间）
             int headerSize = _header.FileHeaderSize;
             int chunkHeaderSize = _header.ChunkHeaderSize;
+            uint blockSize = _header.BlockSize;
             
-            // 分组 chunks - 先计算分组信息，避免保存大量数据
-            var groups = new List<List<int>>();
-            var currentGroup = new List<int>();
+            // 计算每个传输包的最大数据量
+            // 预留空间：Sparse Header (28) + DONT_CARE chunk header (12) + RAW chunk header (12)
+            long maxDataPerPacket = maxSize - headerSize - chunkHeaderSize * 2;
+            uint maxBlocksPerPacket = (uint)(maxDataPerPacket / blockSize);
+            
+            // 展平所有 chunks，处理需要拆分的 RAW chunks
+            var flatChunks = new List<FlatChunkInfo>();
+            uint cumulativeBlockOffset = 0;
+            
+            foreach (var chunk in _chunks)
+            {
+                if (chunk.Type == CHUNK_TYPE_RAW && chunk.DataSize > maxDataPerPacket)
+                {
+                    // RAW chunk 过大，需要拆分
+                    uint remainingBlocks = chunk.ChunkBlocks;
+                    long dataOffset = chunk.DataOffset;
+                    uint splitBlockOffset = cumulativeBlockOffset;
+                    
+                    while (remainingBlocks > 0)
+                    {
+                        uint blocksThisSplit = Math.Min(remainingBlocks, maxBlocksPerPacket);
+                        uint dataSizeThisSplit = blocksThisSplit * blockSize;
+                        
+                        flatChunks.Add(new FlatChunkInfo
+                        {
+                            Type = CHUNK_TYPE_RAW,
+                            ChunkBlocks = blocksThisSplit,
+                            DataSize = dataSizeThisSplit,
+                            DataOffset = dataOffset,
+                            BlockOffset = splitBlockOffset
+                        });
+                        
+                        remainingBlocks -= blocksThisSplit;
+                        dataOffset += dataSizeThisSplit;
+                        splitBlockOffset += blocksThisSplit;
+                    }
+                }
+                else
+                {
+                    // 其他类型或大小合适的 chunk，直接添加
+                    flatChunks.Add(new FlatChunkInfo
+                    {
+                        Type = chunk.Type,
+                        ChunkBlocks = chunk.ChunkBlocks,
+                        DataSize = chunk.DataSize,
+                        DataOffset = chunk.DataOffset,
+                        BlockOffset = cumulativeBlockOffset,
+                        OriginalChunk = chunk
+                    });
+                }
+                
+                cumulativeBlockOffset += chunk.ChunkBlocks;
+            }
+            
+            // 分组 chunks
+            // 每个组需要：Sparse Header + (可能的 DONT_CARE) + 数据 chunks
+            var groups = new List<List<FlatChunkInfo>>();
+            var currentGroup = new List<FlatChunkInfo>();
             long currentGroupSize = headerSize;
             
-            for (int i = 0; i < _chunks.Count; i++)
+            foreach (var fchunk in flatChunks)
             {
-                var chunk = _chunks[i];
-                long chunkTotalSize = chunk.TotalSize;
+                // 计算此 chunk 需要的空间
+                long chunkTotalSize = chunkHeaderSize + (fchunk.Type == CHUNK_TYPE_RAW ? fchunk.DataSize : 
+                                      fchunk.Type == CHUNK_TYPE_FILL ? 4 : 0);
                 
-                // 如果单个 chunk 超过 maxSize，需要单独处理
-                if (chunkTotalSize + headerSize > maxSize && currentGroup.Count == 0)
+                // 计算如果开始新组需要多少空间（包括可能的 DONT_CARE 块）
+                long newGroupBaseSize = headerSize;
+                if (fchunk.BlockOffset > 0)
                 {
-                    // 单个 chunk 太大，单独作为一组
-                    currentGroup.Add(i);
-                    groups.Add(currentGroup);
-                    currentGroup = new List<int>();
-                    currentGroupSize = headerSize;
-                    continue;
+                    newGroupBaseSize += chunkHeaderSize;  // DONT_CARE header
                 }
                 
                 if (currentGroup.Count > 0 && currentGroupSize + chunkTotalSize > maxSize)
                 {
-                    // 当前组已满，开始新组
                     groups.Add(currentGroup);
-                    currentGroup = new List<int>();
-                    currentGroupSize = headerSize;
+                    currentGroup = new List<FlatChunkInfo>();
+                    currentGroupSize = newGroupBaseSize;  // 新组的基础大小（含可能的 DONT_CARE）
+                }
+                else if (currentGroup.Count == 0 && fchunk.BlockOffset > 0)
+                {
+                    // 第一个组且需要 DONT_CARE，更新基础大小
+                    currentGroupSize = newGroupBaseSize;
                 }
                 
-                currentGroup.Add(i);
+                currentGroup.Add(fchunk);
                 currentGroupSize += chunkTotalSize;
             }
             
@@ -294,49 +438,103 @@ namespace SakuraEDL.Fastboot.Image
             {
                 var group = groups[groupIndex];
                 
-                // 计算此组的总大小
+                // 计算此组的总大小和 DONT_CARE 需求
                 long groupDataSize = headerSize;
                 uint groupTotalBlocks = 0;
-                foreach (int idx in group)
+                int chunkCount = 0;
+                uint firstBlockOffset = group[0].BlockOffset;
+                
+                // 如果不是从 0 开始，需要添加 DONT_CARE
+                if (firstBlockOffset > 0)
                 {
-                    groupDataSize += _chunks[idx].TotalSize;
-                    groupTotalBlocks += _chunks[idx].ChunkBlocks;
+                    groupDataSize += chunkHeaderSize;  // DONT_CARE header
+                    chunkCount++;
+                }
+                
+                foreach (var fchunk in group)
+                {
+                    long chunkSize = chunkHeaderSize;
+                    if (fchunk.Type == CHUNK_TYPE_RAW)
+                        chunkSize += fchunk.DataSize;
+                    else if (fchunk.Type == CHUNK_TYPE_FILL)
+                        chunkSize += 4;
+                    
+                    groupDataSize += chunkSize;
+                    groupTotalBlocks += fchunk.ChunkBlocks;
+                    chunkCount++;
                 }
                 
                 // 预分配缓冲区
                 byte[] sparseData = new byte[groupDataSize];
                 int writeOffset = 0;
                 
-                // 写入 Sparse header (28 bytes)
-                Buffer.BlockCopy(BitConverter.GetBytes(SPARSE_HEADER_MAGIC), 0, sparseData, writeOffset, 4);
-                writeOffset += 4;
-                Buffer.BlockCopy(BitConverter.GetBytes(_header.MajorVersion), 0, sparseData, writeOffset, 2);
-                writeOffset += 2;
-                Buffer.BlockCopy(BitConverter.GetBytes(_header.MinorVersion), 0, sparseData, writeOffset, 2);
-                writeOffset += 2;
-                Buffer.BlockCopy(BitConverter.GetBytes(_header.FileHeaderSize), 0, sparseData, writeOffset, 2);
-                writeOffset += 2;
-                Buffer.BlockCopy(BitConverter.GetBytes(_header.ChunkHeaderSize), 0, sparseData, writeOffset, 2);
-                writeOffset += 2;
-                Buffer.BlockCopy(BitConverter.GetBytes(_header.BlockSize), 0, sparseData, writeOffset, 4);
-                writeOffset += 4;
-                Buffer.BlockCopy(BitConverter.GetBytes(groupTotalBlocks), 0, sparseData, writeOffset, 4);
-                writeOffset += 4;
-                Buffer.BlockCopy(BitConverter.GetBytes((uint)group.Count), 0, sparseData, writeOffset, 4);
-                writeOffset += 4;
-                Buffer.BlockCopy(BitConverter.GetBytes(0u), 0, sparseData, writeOffset, 4); // checksum = 0
-                writeOffset += 4;
+                // 写入 Sparse header
+                Buffer.BlockCopy(BitConverter.GetBytes(SPARSE_HEADER_MAGIC), 0, sparseData, writeOffset, 4); writeOffset += 4;
+                Buffer.BlockCopy(BitConverter.GetBytes(_header.MajorVersion), 0, sparseData, writeOffset, 2); writeOffset += 2;
+                Buffer.BlockCopy(BitConverter.GetBytes(_header.MinorVersion), 0, sparseData, writeOffset, 2); writeOffset += 2;
+                Buffer.BlockCopy(BitConverter.GetBytes(_header.FileHeaderSize), 0, sparseData, writeOffset, 2); writeOffset += 2;
+                Buffer.BlockCopy(BitConverter.GetBytes(_header.ChunkHeaderSize), 0, sparseData, writeOffset, 2); writeOffset += 2;
+                Buffer.BlockCopy(BitConverter.GetBytes(_header.BlockSize), 0, sparseData, writeOffset, 4); writeOffset += 4;
+                Buffer.BlockCopy(BitConverter.GetBytes(_header.TotalBlocks), 0, sparseData, writeOffset, 4); writeOffset += 4;
+                Buffer.BlockCopy(BitConverter.GetBytes((uint)chunkCount), 0, sparseData, writeOffset, 4); writeOffset += 4;
+                Buffer.BlockCopy(BitConverter.GetBytes(0u), 0, sparseData, writeOffset, 4); writeOffset += 4;
                 
-                // 直接读取每个 chunk 数据到预分配的缓冲区
-                foreach (int idx in group)
+                // 如果需要，写入 DONT_CARE chunk 跳过前面的块
+                if (firstBlockOffset > 0)
                 {
-                    var chunk = _chunks[idx];
-                    
-                    // 定位到 chunk 数据（包含 header）
-                    _stream.Position = chunk.DataOffset - chunkHeaderSize;
-                    _stream.Read(sparseData, writeOffset, (int)chunk.TotalSize);
-                    writeOffset += (int)chunk.TotalSize;
+                    Buffer.BlockCopy(BitConverter.GetBytes(CHUNK_TYPE_DONT_CARE), 0, sparseData, writeOffset, 2); writeOffset += 2;
+                    Buffer.BlockCopy(BitConverter.GetBytes((ushort)0), 0, sparseData, writeOffset, 2); writeOffset += 2;
+                    Buffer.BlockCopy(BitConverter.GetBytes(firstBlockOffset), 0, sparseData, writeOffset, 4); writeOffset += 4;
+                    Buffer.BlockCopy(BitConverter.GetBytes((uint)chunkHeaderSize), 0, sparseData, writeOffset, 4); writeOffset += 4;
                 }
+                
+                // 写入每个 chunk
+                foreach (var fchunk in group)
+                {
+                    // Chunk header
+                    Buffer.BlockCopy(BitConverter.GetBytes(fchunk.Type), 0, sparseData, writeOffset, 2); writeOffset += 2;
+                    Buffer.BlockCopy(BitConverter.GetBytes((ushort)0), 0, sparseData, writeOffset, 2); writeOffset += 2;
+                    Buffer.BlockCopy(BitConverter.GetBytes(fchunk.ChunkBlocks), 0, sparseData, writeOffset, 4); writeOffset += 4;
+                    
+                    uint totalSize = (uint)chunkHeaderSize;
+                    if (fchunk.Type == CHUNK_TYPE_RAW)
+                        totalSize += fchunk.DataSize;
+                    else if (fchunk.Type == CHUNK_TYPE_FILL)
+                        totalSize += 4;
+                    // DONT_CARE: totalSize = chunkHeaderSize (no data)
+                    
+                    Buffer.BlockCopy(BitConverter.GetBytes(totalSize), 0, sparseData, writeOffset, 4); writeOffset += 4;
+                    
+                    // Chunk data
+                    if (fchunk.Type == CHUNK_TYPE_RAW)
+                    {
+                        _stream.Position = fchunk.DataOffset;
+                        int bytesRead = _stream.Read(sparseData, writeOffset, (int)fchunk.DataSize);
+                        if (bytesRead != (int)fchunk.DataSize)
+                            throw new InvalidOperationException($"Sparse read error: expected {fchunk.DataSize}, got {bytesRead}");
+                        writeOffset += (int)fchunk.DataSize;
+                    }
+                    else if (fchunk.Type == CHUNK_TYPE_FILL)
+                    {
+                        // FILL 块需要读取 4 字节的填充值
+                        if (fchunk.OriginalChunk != null)
+                        {
+                            _stream.Position = fchunk.DataOffset;
+                            _stream.Read(sparseData, writeOffset, 4);
+                        }
+                        else
+                        {
+                            // 如果没有原始块引用，使用 0 作为填充值
+                            Buffer.BlockCopy(BitConverter.GetBytes(0u), 0, sparseData, writeOffset, 4);
+                        }
+                        writeOffset += 4;
+                    }
+                    // DONT_CARE: 不需要写入数据
+                }
+                
+                // 验证写入的字节数是否正确
+                if (writeOffset != groupDataSize)
+                    throw new InvalidOperationException($"Sparse size mismatch: expected {groupDataSize}, wrote {writeOffset}");
                 
                 yield return new SparseChunkData
                 {
@@ -346,9 +544,21 @@ namespace SakuraEDL.Fastboot.Image
                     Size = (int)groupDataSize
                 };
                 
-                // 显式释放引用，帮助 GC
                 sparseData = null;
             }
+        }
+        
+        /// <summary>
+        /// 展平后的 Chunk 信息（用于 Resparse）
+        /// </summary>
+        private class FlatChunkInfo
+        {
+            public ushort Type;
+            public uint ChunkBlocks;
+            public uint DataSize;
+            public long DataOffset;
+            public uint BlockOffset;  // 在原始镜像中的块偏移
+            public SparseChunk OriginalChunk;  // 原始 chunk（如果有）
         }
         
         public void Dispose()

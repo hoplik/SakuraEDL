@@ -132,13 +132,18 @@ namespace SakuraEDL.MediaTek.Protocol
     }
 
     /// <summary>
-    /// 数据类型
+    /// 数据类型 (根据 mtkclient xflash_param.py 修正)
+    /// mtkclient: DT_PROTOCOL_FLOW = 1, DT_MESSAGE = 2
     /// </summary>
     public enum XFlashDataType : uint
     {
-        ProtocolFlow = 0,
-        ProtocolResponse = 1,
+        /// <summary>协议流数据 (命令/响应) - DT_PROTOCOL_FLOW</summary>
+        ProtocolFlow = 1,
+        /// <summary>协议响应 (ACK)</summary>
+        ProtocolResponse = 1,  // 同 ProtocolFlow
+        /// <summary>原始数据/消息 - DT_MESSAGE</summary>
         ProtocolRaw = 2,
+        /// <summary>消息数据</summary>
         Message = 2
     }
 

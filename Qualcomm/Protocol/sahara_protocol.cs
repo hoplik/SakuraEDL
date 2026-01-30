@@ -388,6 +388,26 @@ namespace SakuraEDL.Qualcomm.Protocol
         private bool _deviceInfoObtained = false;
         
         /// <summary>
+        /// 执行完整握手并上传 Loader (一步完成)
+        /// </summary>
+        /// <param name="loaderData">Loader 数据</param>
+        /// <param name="ct">取消令牌</param>
+        /// <returns>是否成功</returns>
+        public async Task<bool> HandshakeAndUploadLoaderAsync(byte[] loaderData, CancellationToken ct = default(CancellationToken))
+        {
+            if (loaderData == null || loaderData.Length == 0)
+            {
+                _log("[Sahara] Loader 数据为空");
+                return false;
+            }
+            
+            _log($"[Sahara] 上传 Loader ({loaderData.Length / 1024} KB)...");
+            
+            // 使用已有的握手上传核心逻辑
+            return await HandshakeAndUploadCoreAsync(loaderData, ct, 2);
+        }
+        
+        /// <summary>
         /// 继续上传 Loader (在 GetDeviceInfoOnlyAsync 之后调用)
         /// </summary>
         /// <param name="loaderData">Loader 数据</param>

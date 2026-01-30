@@ -382,7 +382,13 @@ namespace SakuraEDL
                     if (mtkChkExploit.Checked)
                     {
                         MtkUpdateProgress(0, 0, "加载 DA...");
-                        await _mtkService.LoadDaAsync(_mtkCts.Token);
+                        bool daLoaded = await _mtkService.LoadDaAsync(_mtkCts.Token);
+                        if (!daLoaded)
+                        {
+                            MtkUpdateProgress(0, 0, "DA 加载失败");
+                            MtkLogError("DA 加载失败，设备可能需要签名的 DA");
+                            return;
+                        }
                     }
 
                     MtkUpdateProgress(100, 100, "已连接");
@@ -580,7 +586,12 @@ namespace SakuraEDL
             if (mtkChkExploit.Checked)
             {
                 MtkUpdateProgress(0, 0, "加载 DA...");
-                await _mtkService.LoadDaAsync(_mtkCts.Token);
+                bool daLoaded = await _mtkService.LoadDaAsync(_mtkCts.Token);
+                if (!daLoaded)
+                {
+                    AppendLog("[MTK] DA 加载失败，设备可能需要签名的 DA", Color.Red);
+                    return false;
+                }
             }
 
             AppendLog("[MTK] 设备连接成功", Color.Green);

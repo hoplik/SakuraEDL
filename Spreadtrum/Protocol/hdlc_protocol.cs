@@ -41,10 +41,58 @@ namespace SakuraEDL.Spreadtrum.Protocol
         /// FDL2 执行后通常需要禁用转码以提高传输效率
         /// </summary>
         public bool UseTranscode { get; set; } = true;
+        
+        /// <summary>
+        /// Raw 模式: true = 直接发送原始数据（无 HDLC 封装）
+        /// 用于 FDL2 阶段发送大块分区数据
+        /// </summary>
+        public bool RawMode { get; set; } = false;
+        
+        /// <summary>
+        /// 端序模式: true = Big-Endian (BROM), false = Little-Endian (FDL)
+        /// BROM 阶段使用大端序，FDL1 执行后切换为小端序
+        /// </summary>
+        public bool UseBigEndian { get; set; } = true;
 
         public HdlcProtocol(Action<string> log = null)
         {
             _log = log;
+        }
+        
+        /// <summary>
+        /// 启用 Raw 模式（大文件传输）
+        /// </summary>
+        public void EnableRawMode()
+        {
+            RawMode = true;
+            _log?.Invoke("[HDLC] Raw 模式已启用 (无 HDLC 封装)");
+        }
+        
+        /// <summary>
+        /// 禁用 Raw 模式
+        /// </summary>
+        public void DisableRawMode()
+        {
+            RawMode = false;
+            _log?.Invoke("[HDLC] Raw 模式已禁用");
+        }
+        
+        /// <summary>
+        /// 切换到小端序 (FDL 阶段)
+        /// </summary>
+        public void SetLittleEndian()
+        {
+            UseBigEndian = false;
+            _log?.Invoke("[HDLC] 切换到 Little-Endian 模式");
+        }
+        
+        /// <summary>
+        /// 切换到大端序 (BROM 阶段)
+        /// </summary>
+        public void SetBigEndian()
+        {
+            UseBigEndian = true;
+            _log?.Invoke("[HDLC] 切换到 Big-Endian 模式");
         }
         
         /// <summary>
@@ -95,6 +143,7 @@ namespace SakuraEDL.Spreadtrum.Protocol
 
         /// <summary>
         /// 构建 HDLC 帧
+        /// 支持动态端序切换和 Raw 模式
         /// </summary>
         /// <param name="type">命令类型</param>
         /// <param name="payload">数据负载</param>
@@ -106,21 +155,43 @@ namespace SakuraEDL.Spreadtrum.Protocol
 
             using (var ms = new MemoryStream())
             {
+                // Raw 模式: 直接返回 payload（无 HDLC 封装）
+                if (RawMode)
+                {
+                    return payload;
+                }
+                
                 // 帧头
                 ms.WriteByte(HDLC_FLAG);
 
-                // 构建数据部分 (Big-Endian 格式，与 Spreadtrum 协议匹配)
-                // 格式: Type(2, big-endian) + Length(2, big-endian) + Payload + CRC(2, big-endian)
+                // 构建数据部分
+                // 格式: Type(2) + Length(2) + Payload + CRC(2)
                 var data = new List<byte>();
                 
-                // Type: 2 bytes, big-endian (高字节在前)
-                data.Add(0x00);  // Type high byte (SubType)
-                data.Add(type);  // Type low byte (Command)
+                // Type: 2 bytes
+                if (UseBigEndian)
+                {
+                    data.Add(0x00);  // Type high byte (SubType)
+                    data.Add(type);  // Type low byte (Command)
+                }
+                else
+                {
+                    data.Add(type);  // Type low byte (Command)
+                    data.Add(0x00);  // Type high byte (SubType)
+                }
                 
-                // Length: 2 bytes, big-endian
+                // Length: 2 bytes
                 ushort length = (ushort)payload.Length;
-                data.Add((byte)((length >> 8) & 0xFF));  // Length high byte
-                data.Add((byte)(length & 0xFF));         // Length low byte
+                if (UseBigEndian)
+                {
+                    data.Add((byte)((length >> 8) & 0xFF));  // Length high byte
+                    data.Add((byte)(length & 0xFF));         // Length low byte
+                }
+                else
+                {
+                    data.Add((byte)(length & 0xFF));         // Length low byte
+                    data.Add((byte)((length >> 8) & 0xFF));  // Length high byte
+                }
                 
                 // 添加 payload
                 if (payload.Length > 0)
@@ -139,9 +210,17 @@ namespace SakuraEDL.Spreadtrum.Protocol
                     checksum = CalculateSprdChecksum(data.ToArray());
                 }
                 
-                // 校验和 (Big-Endian，与开源 spd_dump 实现一致)
-                data.Add((byte)((checksum >> 8) & 0xFF));  // high byte (Big-Endian)
-                data.Add((byte)(checksum & 0xFF));         // low byte (Big-Endian)
+                // 校验和
+                if (UseBigEndian)
+                {
+                    data.Add((byte)((checksum >> 8) & 0xFF));  // high byte
+                    data.Add((byte)(checksum & 0xFF));         // low byte
+                }
+                else
+                {
+                    data.Add((byte)(checksum & 0xFF));         // low byte
+                    data.Add((byte)((checksum >> 8) & 0xFF));  // high byte
+                }
 
                 // 转义写入
                 foreach (byte b in data)
@@ -154,6 +233,14 @@ namespace SakuraEDL.Spreadtrum.Protocol
 
                 return ms.ToArray();
             }
+        }
+        
+        /// <summary>
+        /// 构建 Raw 数据帧（无 HDLC 封装，用于大文件传输）
+        /// </summary>
+        public byte[] BuildRawData(byte[] data)
+        {
+            return data;
         }
 
         /// <summary>
@@ -372,10 +459,12 @@ namespace SakuraEDL.Spreadtrum.Protocol
 
         /// <summary>
         /// 写入转义字节
+        /// 当 UseTranscode = false 时，直接写入原始字节（FDL2 模式）
         /// </summary>
         private void WriteEscaped(Stream stream, byte b)
         {
-            if (b == HDLC_FLAG || b == HDLC_ESCAPE)
+            // 关键修复: 检查转码标志
+            if (UseTranscode && (b == HDLC_FLAG || b == HDLC_ESCAPE))
             {
                 stream.WriteByte(HDLC_ESCAPE);
                 stream.WriteByte((byte)(b ^ HDLC_ESCAPE_XOR));

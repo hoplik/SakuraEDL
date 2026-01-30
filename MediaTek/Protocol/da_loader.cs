@@ -235,16 +235,14 @@ namespace SakuraEDL.MediaTek.Protocol
             // 在 Preloader 模式下，设备可能会重新枚举或重启
             if (uploadStatus == 0x7017 || uploadStatus == 0x7015)
             {
-                _log($"[DA] 状态 0x{uploadStatus:X4}: DAA 安全保护触发");
+                _log($"[DA] ✗ 状态 0x{uploadStatus:X4}: DAA 安全保护触发");
                 _log("[DA] ⚠ 设备启用了 DAA (Download Agent Authentication)");
-                _log("[DA] ⚠ 需要使用官方签名的 DA 或通过漏洞绕过");
-                _log("[DA] 尝试等待 USB 重新枚举...");
-                
-                // 等待一小段时间让设备处理
-                await System.Threading.Tasks.Task.Delay(1500, ct);
-                
-                // 返回成功让上层处理 USB 重新枚举
-                return true;
+                _log("[DA] ⚠ 需要使用官方签名的 DA 或通过 Kamakiri/Carbonara 漏洞绕过");
+                _log("[DA] 提示: 请尝试启用 '漏洞利用' 选项或使用签名的 DA 文件");
+
+                // DAA 失败是明确的错误，不应返回 true
+                // 抛出异常让上层明确知道是 DAA 问题
+                throw new DaaSecurityException($"DAA 安全验证失败 (0x{uploadStatus:X4})，需要签名的 DA 或漏洞利用");
             }
 
             // 跳转执行 DA1
@@ -524,5 +522,15 @@ namespace SakuraEDL.MediaTek.Protocol
         }
 
         #endregion
+    }
+    
+    /// <summary>
+    /// DAA (Download Agent Authentication) 安全验证异常
+    /// 当设备启用了 DAA 保护且 DA 验证失败时抛出
+    /// </summary>
+    public class DaaSecurityException : Exception
+    {
+        public DaaSecurityException(string message) : base(message) { }
+        public DaaSecurityException(string message, Exception innerException) : base(message, innerException) { }
     }
 }

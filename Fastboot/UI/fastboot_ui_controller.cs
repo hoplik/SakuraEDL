@@ -2410,6 +2410,61 @@ namespace SakuraEDL.Fastboot.UI
         }
 
         /// <summary>
+        /// 根据脚本内容自动勾选复选框
+        /// </summary>
+        /// <param name="hasSetActive">脚本是否包含切换槽位命令</param>
+        /// <param name="hasReboot">脚本是否包含重启命令</param>
+        private void AutoCheckOptionsFromScript(bool hasSetActive, bool hasReboot)
+        {
+            try
+            {
+                // 自动勾选切换槽位（脚本包含 set_active 命令）
+                if (_switchSlotCheckbox != null)
+                {
+                    if (_switchSlotCheckbox.InvokeRequired)
+                    {
+                        _switchSlotCheckbox.Invoke(new Action(() => {
+                            _switchSlotCheckbox.Checked = hasSetActive;
+                        }));
+                    }
+                    else
+                    {
+                        _switchSlotCheckbox.Checked = hasSetActive;
+                    }
+                    
+                    if (hasSetActive)
+                    {
+                        Log("脚本包含槽位切换命令，已自动勾选 [切换A槽]", Color.Gray);
+                    }
+                }
+
+                // 自动勾选自动重启（脚本包含 reboot 命令）
+                if (_autoRebootCheckbox != null)
+                {
+                    if (_autoRebootCheckbox.InvokeRequired)
+                    {
+                        _autoRebootCheckbox.Invoke(new Action(() => {
+                            _autoRebootCheckbox.Checked = hasReboot;
+                        }));
+                    }
+                    else
+                    {
+                        _autoRebootCheckbox.Checked = hasReboot;
+                    }
+                    
+                    if (hasReboot)
+                    {
+                        Log("脚本包含重启命令，已自动勾选 [自动重启]", Color.Gray);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logDetail($"自动勾选复选框失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
         /// 刷写完成后执行附加操作（切换槽位、擦除谷歌锁等）
         /// </summary>
         private async Task ExecutePostFlashOperationsAsync()
@@ -2508,11 +2563,16 @@ namespace SakuraEDL.Fastboot.UI
                 // 统计信息
                 int flashCount = _flashTasks.Count(t => t.Operation == "flash");
                 int eraseCount = _flashTasks.Count(t => t.Operation == "erase");
+                int setActiveCount = _flashTasks.Count(t => t.Operation == "set_active");
+                int rebootCount = _flashTasks.Count(t => t.Operation == "reboot");
                 int existCount = _flashTasks.Count(t => t.ImageExists);
                 long totalSize = _flashTasks.Where(t => t.ImageExists).Sum(t => t.FileSize);
 
                 Log($"解析完成: {flashCount} 个刷写, {eraseCount} 个擦除", Color.Green);
                 Log($"镜像文件: {existCount} 个存在, 总大小 {FormatSize(totalSize)}", Color.Blue);
+
+                // 根据脚本内容自动勾选复选框
+                AutoCheckOptionsFromScript(setActiveCount > 0, rebootCount > 0);
 
                 // 更新分区列表显示
                 UpdatePartitionListFromScript();

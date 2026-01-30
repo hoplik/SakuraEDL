@@ -73,6 +73,7 @@ namespace SakuraEDL
             this.安卓驱动ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.mTK驱动ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.高通驱动ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.展讯驱动ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.查看日志ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.tabs1 = new AntdUI.Tabs();
             this.tabPage2 = new AntdUI.TabPage();
@@ -474,16 +475,16 @@ namespace SakuraEDL
             this.uiLabel6.Text = "时间：00:00";
             this.uiLabel6.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
-            // uiLabel7
+            // uiLabel7 (速度标签)
             // 
             this.uiLabel7.BackColor = System.Drawing.Color.Gainsboro;
             this.uiLabel7.Font = new System.Drawing.Font("微软雅黑", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
             this.uiLabel7.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(48)))), ((int)(((byte)(48)))), ((int)(((byte)(48)))));
-            this.uiLabel7.Location = new System.Drawing.Point(622, 791);
+            this.uiLabel7.Location = new System.Drawing.Point(606, 791);
             this.uiLabel7.Name = "uiLabel7";
-            this.uiLabel7.Size = new System.Drawing.Size(118, 25);
+            this.uiLabel7.Size = new System.Drawing.Size(150, 25);
             this.uiLabel7.TabIndex = 15;
-            this.uiLabel7.Text = "速度：0KB/s";
+            this.uiLabel7.Text = "速度：--";
             this.uiLabel7.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
             // uiLabel8
@@ -705,6 +706,7 @@ namespace SakuraEDL
             this.安卓驱动ToolStripMenuItem,
             this.mTK驱动ToolStripMenuItem,
             this.高通驱动ToolStripMenuItem,
+            this.展讯驱动ToolStripMenuItem,
             this.查看日志ToolStripMenuItem});
             this.其他ToolStripMenuItem.Name = "其他ToolStripMenuItem";
             this.其他ToolStripMenuItem.Size = new System.Drawing.Size(49, 24);
@@ -739,6 +741,12 @@ namespace SakuraEDL
             this.高通驱动ToolStripMenuItem.Name = "高通驱动ToolStripMenuItem";
             this.高通驱动ToolStripMenuItem.Size = new System.Drawing.Size(154, 24);
             this.高通驱动ToolStripMenuItem.Text = "高通驱动";
+            // 
+            // 展讯驱动ToolStripMenuItem
+            // 
+            this.展讯驱动ToolStripMenuItem.Name = "展讯驱动ToolStripMenuItem";
+            this.展讯驱动ToolStripMenuItem.Size = new System.Drawing.Size(154, 24);
+            this.展讯驱动ToolStripMenuItem.Text = "展讯驱动";
             // 
             // 查看日志ToolStripMenuItem
             // 
@@ -3284,6 +3292,7 @@ namespace SakuraEDL
         private System.Windows.Forms.ToolStripMenuItem 安卓驱动ToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem mTK驱动ToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem 高通驱动ToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem 展讯驱动ToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem 查看日志ToolStripMenuItem;
         private AntdUI.Button button7;
         private System.Windows.Forms.ToolStripMenuItem eDL到EDLToolStripMenuItem;

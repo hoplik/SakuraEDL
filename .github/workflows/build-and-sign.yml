@@ -1,0 +1,83 @@
+name: Build and Sign
+
+on:
+  push:
+    tags:
+      - 'v*'  # 只在发布版本标签时触发
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v2
+      
+    - name: Setup NuGet
+      uses: NuGet/setup-nuget@v2
+      
+    - name: Restore NuGet packages
+      run: nuget restore SakuraEDL.sln
+      
+    - name: Build Release
+      run: msbuild SakuraEDL.csproj /p:Configuration=Release /p:Platform=AnyCPU
+      
+    - name: Upload unsigned artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: SakuraEDL-unsigned
+        path: bin/Release/SakuraEDL.exe
+
+  sign:
+    needs: build
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Download unsigned artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: SakuraEDL-unsigned
+        path: unsigned
+        
+    - name: Sign with SignPath
+      uses: signpath/github-action-submit-signing-request@v1
+      with:
+        api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+        organization-id: ${{ secrets.SIGNPATH_ORGANIZATION_ID }}
+        project-slug: 'sakura-edl'
+        signing-policy-slug: 'release-signing'
+        artifact-configuration-slug: 'exe'
+        github-artifact-id: 'SakuraEDL-unsigned'
+        wait-for-completion: true
+        output-artifact-directory: 'signed'
+        
+    - name: Upload signed artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: SakuraEDL-signed
+        path: signed/SakuraEDL.exe
+
+  release:
+    needs: sign
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    
+    steps:
+    - name: Download signed artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: SakuraEDL-signed
+        path: release
+        
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: release/SakuraEDL.exe
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

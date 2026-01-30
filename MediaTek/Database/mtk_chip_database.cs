@@ -58,6 +58,66 @@ namespace SakuraEDL.MediaTek.Database
         /// 芯片代号 (用于 Loader 匹配)
         /// </summary>
         public string Codename { get; set; }
+        
+        /// <summary>
+        /// MISC_LOCK 寄存器地址 (用于 reset_to_brom)
+        /// </summary>
+        public uint MiscLockAddr { get; set; }
+        
+        /// <summary>
+        /// 芯片名称 (别名)
+        /// </summary>
+        public string Name => ChipName;
+        
+        // ═══════════════════════════════════════════════════════════════════════
+        // 漏洞支持标记 (基于 mtkclient 分析)
+        // ═══════════════════════════════════════════════════════════════════════
+        
+        /// <summary>
+        /// 是否支持 Kamakiri2 漏洞 (BROM 层, 需要 libusb)
+        /// 适用于 LEGACY/XFLASH 协议的老芯片, 需要 BROM 模式 (PID=0x0003)
+        /// </summary>
+        public bool SupportsKamakiri2 { get; set; }
+        
+        /// <summary>
+        /// 是否支持 Carbonara 漏洞 (DA1 层, 串口执行)
+        /// 适用于 XFLASH/XML 协议芯片, Dimensity 9200 及以前
+        /// </summary>
+        public bool SupportsCarbonara { get; set; }
+        
+        /// <summary>
+        /// 是否支持 AllinoneSignature 漏洞 (DA2 层, 串口执行)
+        /// 适用于 XML 协议新芯片
+        /// </summary>
+        public bool SupportsAllinoneSignature { get; set; }
+        
+        /// <summary>
+        /// Carbonara 是否已被修补 (DA1 包含修补特征码)
+        /// </summary>
+        public bool CarbonaraPatched { get; set; }
+        
+        /// <summary>
+        /// 获取推荐的漏洞类型
+        /// </summary>
+        public string GetRecommendedExploit(bool isBromMode)
+        {
+            // BROM 模式优先使用 Kamakiri2
+            if (isBromMode && SupportsKamakiri2)
+                return "Kamakiri2";
+            
+            // Preloader/DA 模式
+            if (SupportsCarbonara && !CarbonaraPatched)
+                return "Carbonara";
+            
+            if (SupportsAllinoneSignature)
+                return "AllinoneSignature";
+            
+            // 如果支持 Kamakiri2 但需要 Crash to BROM
+            if (SupportsKamakiri2)
+                return "CrashToBrom+Kamakiri2";
+            
+            return null;
+        }
     }
 
     /// <summary>
@@ -88,6 +148,11 @@ namespace SakuraEDL.MediaTek.Database
         /// </summary>
         private static void InitializeDatabase()
         {
+            // ═══════════════════════════════════════════════════════════════════════
+            // LEGACY 协议芯片 - 支持 Kamakiri2 (BROM 层漏洞)
+            // 这些芯片需要进入 BROM 模式 (PID=0x0003) 才能使用 Kamakiri2
+            // ═══════════════════════════════════════════════════════════════════════
+            
             // MT6261 系列 (功能机)
             AddChip(new MtkChipRecord
             {
@@ -96,7 +161,9 @@ namespace SakuraEDL.MediaTek.Database
                 Description = "功能机芯片",
                 WatchdogAddr = 0xA0030000,
                 DaMode = (int)DaMode.Legacy,
-                Is64Bit = false
+                Is64Bit = false,
+                SupportsKamakiri2 = true,
+                MiscLockAddr = 0x10001838
             });
 
             // MT6572/MT6582 系列
@@ -110,7 +177,9 @@ namespace SakuraEDL.MediaTek.Database
                 BromPayloadAddr = 0x100A00,
                 DaPayloadAddr = 0x200000,
                 DaMode = (int)DaMode.Legacy,
-                Is64Bit = false
+                Is64Bit = false,
+                SupportsKamakiri2 = true,
+                MiscLockAddr = 0x1000141C
             });
 
             AddChip(new MtkChipRecord
@@ -123,9 +192,16 @@ namespace SakuraEDL.MediaTek.Database
                 BromPayloadAddr = 0x100A00,
                 DaPayloadAddr = 0x200000,
                 DaMode = (int)DaMode.Legacy,
-                Is64Bit = false
+                Is64Bit = false,
+                SupportsKamakiri2 = true,
+                MiscLockAddr = 0x10002050
             });
 
+            // ═══════════════════════════════════════════════════════════════════════
+            // XFLASH 协议芯片 - 支持 Kamakiri2 (BROM) + Carbonara (DA1)
+            // Carbonara 可在 Preloader 模式直接执行, 不需要 BROM 模式
+            // ═══════════════════════════════════════════════════════════════════════
+            
             // MT6735/MT6737 系列
             AddChip(new MtkChipRecord
             {
@@ -137,7 +213,10 @@ namespace SakuraEDL.MediaTek.Database
                 BromPayloadAddr = 0x100A00,
                 DaPayloadAddr = 0x200000,
                 DaMode = (int)DaMode.XFlash,
-                Is64Bit = true
+                Is64Bit = true,
+                SupportsKamakiri2 = true,
+                SupportsCarbonara = true,
+                MiscLockAddr = 0x10001838
             });
 
             AddChip(new MtkChipRecord
@@ -150,7 +229,10 @@ namespace SakuraEDL.MediaTek.Database
                 BromPayloadAddr = 0x100A00,
                 DaPayloadAddr = 0x200000,
                 DaMode = (int)DaMode.XFlash,
-                Is64Bit = true
+                Is64Bit = true,
+                SupportsKamakiri2 = true,
+                SupportsCarbonara = true,
+                MiscLockAddr = 0x10001838
             });
 
             // MT6755/MT6757 系列 (Helio P10/P20)
@@ -165,7 +247,10 @@ namespace SakuraEDL.MediaTek.Database
                 DaPayloadAddr = 0x200000,
                 CqDmaBase = 0x10212000,
                 DaMode = (int)DaMode.XFlash,
-                Is64Bit = true
+                Is64Bit = true,
+                SupportsKamakiri2 = true,
+                SupportsCarbonara = true,
+                MiscLockAddr = 0x10001838
             });
 
             AddChip(new MtkChipRecord
@@ -179,7 +264,10 @@ namespace SakuraEDL.MediaTek.Database
                 DaPayloadAddr = 0x200000,
                 CqDmaBase = 0x10212000,
                 DaMode = (int)DaMode.XFlash,
-                Is64Bit = true
+                Is64Bit = true,
+                SupportsKamakiri2 = true,
+                SupportsCarbonara = true,
+                MiscLockAddr = 0x10001838
             });
 
             // MT6761/MT6762/MT6763 系列 (Helio A/P22/P23)
@@ -193,10 +281,13 @@ namespace SakuraEDL.MediaTek.Database
                 BromPayloadAddr = 0x100A00,
                 DaPayloadAddr = 0x200000,
                 CqDmaBase = 0x10212000,
-                DaMode = (int)DaMode.Xml,
+                DaMode = (int)DaMode.XFlash,
                 Is64Bit = true,
                 HasExploit = true,
-                ExploitType = "Carbonara"
+                ExploitType = "Carbonara",
+                SupportsKamakiri2 = true,
+                SupportsCarbonara = true,
+                MiscLockAddr = 0x1001a100
             });
 
             AddChip(new MtkChipRecord
@@ -209,10 +300,13 @@ namespace SakuraEDL.MediaTek.Database
                 BromPayloadAddr = 0x100A00,
                 DaPayloadAddr = 0x200000,
                 CqDmaBase = 0x10212000,
-                DaMode = (int)DaMode.Xml,
+                DaMode = (int)DaMode.XFlash,
                 Is64Bit = true,
                 HasExploit = true,
-                ExploitType = "Carbonara"
+                ExploitType = "Carbonara",
+                SupportsKamakiri2 = true,
+                SupportsCarbonara = true,
+                MiscLockAddr = 0x1001a100
             });
 
             AddChip(new MtkChipRecord
@@ -225,27 +319,33 @@ namespace SakuraEDL.MediaTek.Database
                 BromPayloadAddr = 0x100A00,
                 DaPayloadAddr = 0x200000,
                 CqDmaBase = 0x10212000,
-                DaMode = (int)DaMode.Xml,
+                DaMode = (int)DaMode.XFlash,
                 Is64Bit = true,
                 HasExploit = true,
-                ExploitType = "Carbonara"
+                ExploitType = "Carbonara",
+                SupportsKamakiri2 = true,
+                SupportsCarbonara = true,
+                MiscLockAddr = 0x1001a100
             });
 
-            // MT6765 (Helio P35)
+            // MT6765 (Helio P35/G35)
             AddChip(new MtkChipRecord
             {
                 HwCode = 0x0717,
                 ChipName = "MT6765",
-                Description = "Helio P35",
+                Description = "Helio P35/G35",
                 WatchdogAddr = 0x10007000,
                 UartAddr = 0x11002000,
                 BromPayloadAddr = 0x100A00,
                 DaPayloadAddr = 0x200000,
                 CqDmaBase = 0x10212000,
-                DaMode = (int)DaMode.Xml,
+                DaMode = (int)DaMode.XFlash,
                 Is64Bit = true,
                 HasExploit = true,
-                ExploitType = "Carbonara"
+                ExploitType = "Carbonara",
+                SupportsKamakiri2 = true,
+                SupportsCarbonara = true,
+                MiscLockAddr = 0x1001a100
             });
 
             AddChip(new MtkChipRecord
@@ -258,10 +358,13 @@ namespace SakuraEDL.MediaTek.Database
                 BromPayloadAddr = 0x100A00,
                 DaPayloadAddr = 0x200000,
                 CqDmaBase = 0x10212000,
-                DaMode = (int)DaMode.Xml,
+                DaMode = (int)DaMode.XFlash,
                 Is64Bit = true,
                 HasExploit = true,
-                ExploitType = "Carbonara"
+                ExploitType = "Carbonara",
+                SupportsKamakiri2 = true,
+                SupportsCarbonara = true,
+                MiscLockAddr = 0x1001a100
             });
 
             // MT6768 (Helio G85)
@@ -275,27 +378,33 @@ namespace SakuraEDL.MediaTek.Database
                 BromPayloadAddr = 0x100A00,
                 DaPayloadAddr = 0x200000,
                 CqDmaBase = 0x10212000,
-                DaMode = (int)DaMode.Xml,
+                DaMode = (int)DaMode.XFlash,
                 Is64Bit = true,
                 HasExploit = true,
-                ExploitType = "Carbonara"
+                ExploitType = "Carbonara",
+                SupportsKamakiri2 = true,
+                SupportsCarbonara = true,
+                MiscLockAddr = 0x1001a100
             });
 
-            // MT6771 (Helio P60)
+            // MT6771 (Helio P60/P70/G80)
             AddChip(new MtkChipRecord
             {
                 HwCode = 0x0688,
                 ChipName = "MT6771",
-                Description = "Helio P60",
+                Description = "Helio P60/P70/G80",
                 WatchdogAddr = 0x10007000,
                 UartAddr = 0x11002000,
                 BromPayloadAddr = 0x100A00,
                 DaPayloadAddr = 0x200000,
                 CqDmaBase = 0x10212000,
-                DaMode = (int)DaMode.Xml,
+                DaMode = (int)DaMode.XFlash,
                 Is64Bit = true,
                 HasExploit = true,
-                ExploitType = "Carbonara"
+                ExploitType = "Carbonara",
+                SupportsKamakiri2 = true,
+                SupportsCarbonara = true,
+                MiscLockAddr = 0x1001a100
             });
 
             // MT6779 (Helio P90)
@@ -309,10 +418,33 @@ namespace SakuraEDL.MediaTek.Database
                 BromPayloadAddr = 0x100A00,
                 DaPayloadAddr = 0x200000,
                 CqDmaBase = 0x10212000,
-                DaMode = (int)DaMode.Xml,
+                DaMode = (int)DaMode.XFlash,
                 Is64Bit = true,
                 HasExploit = true,
-                ExploitType = "Carbonara"
+                ExploitType = "Carbonara",
+                SupportsKamakiri2 = true,
+                SupportsCarbonara = true,
+                MiscLockAddr = 0x1001a100
+            });
+
+            // MT6781 (Helio G96)
+            AddChip(new MtkChipRecord
+            {
+                HwCode = 0x0781,
+                ChipName = "MT6781",
+                Description = "Helio G96",
+                WatchdogAddr = 0x10007000,
+                UartAddr = 0x11002000,
+                BromPayloadAddr = 0x100A00,
+                DaPayloadAddr = 0x200000,
+                CqDmaBase = 0x10212000,
+                DaMode = (int)DaMode.XFlash,
+                Is64Bit = true,
+                HasExploit = true,
+                ExploitType = "Carbonara",
+                SupportsKamakiri2 = true,
+                SupportsCarbonara = true,
+                MiscLockAddr = 0x1001a100
             });
 
             // MT6785 (Helio G90/G95)
@@ -326,25 +458,33 @@ namespace SakuraEDL.MediaTek.Database
                 BromPayloadAddr = 0x100A00,
                 DaPayloadAddr = 0x200000,
                 CqDmaBase = 0x10212000,
-                DaMode = (int)DaMode.Xml,
+                DaMode = (int)DaMode.XFlash,
                 Is64Bit = true,
                 HasExploit = true,
-                ExploitType = "Carbonara"
+                ExploitType = "Carbonara",
+                SupportsKamakiri2 = true,
+                SupportsCarbonara = true,
+                MiscLockAddr = 0x1001a100
             });
 
-            // MT6797 (Helio X20/X25)
+            // MT6797 (Helio X20/X25/X27)
             AddChip(new MtkChipRecord
             {
                 HwCode = 0x0279,
                 ChipName = "MT6797",
-                Description = "Helio X20/X25",
+                Description = "Helio X20/X25/X27",
                 WatchdogAddr = 0x10007000,
                 UartAddr = 0x11002000,
                 BromPayloadAddr = 0x100A00,
                 DaPayloadAddr = 0x200000,
                 CqDmaBase = 0x10212000,
                 DaMode = (int)DaMode.XFlash,
-                Is64Bit = true
+                Is64Bit = true,
+                HasExploit = true,
+                ExploitType = "Carbonara",
+                SupportsKamakiri2 = true,
+                SupportsCarbonara = true,
+                MiscLockAddr = 0x10002050
             });
 
             // MT6739
@@ -357,282 +497,517 @@ namespace SakuraEDL.MediaTek.Database
                 UartAddr = 0x11002000,
                 BromPayloadAddr = 0x100A00,
                 DaPayloadAddr = 0x200000,
-                CqDmaBase = 0x10212000,
-                DaMode = (int)DaMode.Xml,
+                CqDmaBase = 0x10212C00,
+                DaMode = (int)DaMode.XFlash,
                 Is64Bit = true,
                 HasExploit = true,
-                ExploitType = "Carbonara"
+                ExploitType = "Carbonara",
+                SupportsKamakiri2 = true,
+                SupportsCarbonara = true,
+                MiscLockAddr = 0x1001a100
             });
 
+            // ═══════════════════════════════════════════════════════════════════════
+            // Dimensity 系列 (5G 芯片) - 支持 Carbonara
+            // XFLASH/XML 协议, Dimensity 9200 及以前支持 Carbonara
+            // ═══════════════════════════════════════════════════════════════════════
+            
             // MT6833 (Dimensity 700)
             AddChip(new MtkChipRecord
             {
                 HwCode = 0x0813,
                 ChipName = "MT6833",
-                Description = "Dimensity 700",
+                Description = "Dimensity 700 5G",
                 WatchdogAddr = 0x10007000,
                 UartAddr = 0x11002000,
                 BromPayloadAddr = 0x100A00,
                 DaPayloadAddr = 0x200000,
-                CqDmaBase = 0x10212000,
-                DaMode = (int)DaMode.Xml,
-                Is64Bit = true,
-                HasExploit = true,
-                ExploitType = "Carbonara"
-            });
-
-            // MT6853 (Dimensity 720)
-            AddChip(new MtkChipRecord
-            {
-                HwCode = 0x0600,
-                ChipName = "MT6853",
-                Description = "Dimensity 720",
-                WatchdogAddr = 0x10007000,
-                UartAddr = 0x11002000,
-                BromPayloadAddr = 0x100A00,
-                DaPayloadAddr = 0x200000,
-                CqDmaBase = 0x10212000,
-                DaMode = (int)DaMode.Xml,
-                Is64Bit = true,
-                HasExploit = true,
-                ExploitType = "Carbonara"
-            });
-
-            // MT6873 (Dimensity 800)
-            AddChip(new MtkChipRecord
-            {
-                HwCode = 0x0788,
-                ChipName = "MT6873",
-                Description = "Dimensity 800/820",
-                WatchdogAddr = 0x10007000,
-                UartAddr = 0x11002000,
-                BromPayloadAddr = 0x100A00,
-                DaPayloadAddr = 0x200000,
-                CqDmaBase = 0x10212000,
-                DaMode = (int)DaMode.Xml,
-                Is64Bit = true,
-                HasExploit = true,
-                ExploitType = "Carbonara"
-            });
-
-            // MT6877 (Dimensity 900) - BROM 模式
-            // 参考 Config.xml: DA1Address=2097152 (0x200000)
-            AddChip(new MtkChipRecord
-            {
-                HwCode = 0x0766,
-                ChipName = "MT6877",
-                Description = "Dimensity 900",
-                WatchdogAddr = 0x10007000,
-                UartAddr = 0x11002000,
-                BromPayloadAddr = 0x100A00,
-                DaPayloadAddr = 0x200000,   // Config.xml: 0x200000
                 CqDmaBase = 0x10212000,
                 DaMode = (int)DaMode.XFlash,
                 Is64Bit = true,
                 HasExploit = true,
-                ExploitType = "Carbonara"
+                ExploitType = "Carbonara",
+                SupportsKamakiri2 = true,
+                SupportsCarbonara = true,
+                MiscLockAddr = 0x1001A100
+            });
+
+            // ═══════════════════════════════════════════════════════════════════════
+            // ★★★ 以下根据 mtkclient brom_config.py 修正 ★★★
+            // HW Code 到芯片名称的映射关系
+            // ═══════════════════════════════════════════════════════════════════════
+            
+            // 0x0766 = MT6765 (不是 MT6877!)
+            // mtkclient: dacode=0x6765, name="MT6765/MT8768t"
+            AddChip(new MtkChipRecord
+            {
+                HwCode = 0x0766,
+                ChipName = "MT6765",
+                Description = "Helio P35/G35 (HW 0x0766)",
+                WatchdogAddr = 0x10007000,
+                UartAddr = 0x11002000,
+                BromPayloadAddr = 0x100A00,
+                DaPayloadAddr = 0x201000,
+                CqDmaBase = 0x10212000,
+                DaMode = (int)DaMode.XFlash,
+                Is64Bit = true,
+                HasExploit = true,
+                ExploitType = "Carbonara",
+                SupportsKamakiri2 = true,
+                SupportsCarbonara = true,
+                MiscLockAddr = 0x1001a100
             });
             
-            // MT6877 (Dimensity 900) - Preloader 模式 HW Code
-            // 参考 Config.xml: DA1Address=2097152 (0x200000)
+            // 0x0788 = MT6771 (Helio P60/P70/G80)
+            // mtkclient: dacode=0x6771, name="MT6771/MT8385/MT8183/MT8666"
+            AddChip(new MtkChipRecord
+            {
+                HwCode = 0x0788,
+                ChipName = "MT6771",
+                Description = "Helio P60/P70/G80",
+                WatchdogAddr = 0x10007000,
+                UartAddr = 0x11002000,
+                BromPayloadAddr = 0x100A00,
+                DaPayloadAddr = 0x201000,
+                CqDmaBase = 0x10212000,
+                DaMode = (int)DaMode.XFlash,
+                Is64Bit = true,
+                HasExploit = true,
+                ExploitType = "Carbonara",
+                SupportsKamakiri2 = true,
+                SupportsCarbonara = true,
+                MiscLockAddr = 0x1001a100
+            });
+            
+            // 0x0996 = MT6853 (Dimensity 720) - 不是 MT6895!
+            // mtkclient: dacode=0x6853, name="MT6853"
+            AddChip(new MtkChipRecord
+            {
+                HwCode = 0x0996,
+                ChipName = "MT6853",
+                Description = "Dimensity 720 5G (HW 0x0996)",
+                WatchdogAddr = 0x10007000,
+                UartAddr = 0x11002000,
+                BromPayloadAddr = 0x100A00,
+                DaPayloadAddr = 0x201000,
+                CqDmaBase = 0x10212000,
+                DaMode = (int)DaMode.XFlash,
+                Is64Bit = true,
+                HasExploit = true,
+                ExploitType = "Carbonara",
+                SupportsKamakiri2 = true,
+                SupportsCarbonara = true,
+                MiscLockAddr = 0x1001A100
+            });
+            
+            // 0x0886 = MT6873 (Dimensity 800/820) - 不是 MT6885!
+            // mtkclient: dacode=0x6873, name="MT6873"
+            AddChip(new MtkChipRecord
+            {
+                HwCode = 0x0886,
+                ChipName = "MT6873",
+                Description = "Dimensity 800/820 5G (HW 0x0886)",
+                WatchdogAddr = 0x10007000,
+                UartAddr = 0x11002000,
+                BromPayloadAddr = 0x100A00,
+                DaPayloadAddr = 0x201000,
+                CqDmaBase = 0x10212000,
+                DaMode = (int)DaMode.XFlash,
+                Is64Bit = true,
+                HasExploit = true,
+                ExploitType = "Carbonara",
+                SupportsKamakiri2 = true,
+                SupportsCarbonara = true,
+                MiscLockAddr = 0x1001A100
+            });
+
+            // 0x0959 = MT6877 (Dimensity 900/1080/7050)
+            // mtkclient: dacode=0x6877, name="MT6877/MT6877V/MT8791N"
             AddChip(new MtkChipRecord
             {
                 HwCode = 0x0959,
                 ChipName = "MT6877",
-                Description = "Dimensity 900 (Preloader)",
+                Description = "Dimensity 900/1080/7050",
                 WatchdogAddr = 0x10007000,
                 UartAddr = 0x11002000,
                 BromPayloadAddr = 0x100A00,
-                DaPayloadAddr = 0x200000,   // Config.xml: 0x200000
+                DaPayloadAddr = 0x201000,
                 CqDmaBase = 0x10212000,
                 DaMode = (int)DaMode.XFlash,
                 Is64Bit = true,
                 HasExploit = true,
-                ExploitType = "Carbonara"
+                ExploitType = "Carbonara",
+                SupportsKamakiri2 = true,
+                SupportsCarbonara = true,
+                MiscLockAddr = 0x1001A100
             });
 
-            // MT6885 (Dimensity 1000)
-            AddChip(new MtkChipRecord
-            {
-                HwCode = 0x0886,
-                ChipName = "MT6885",
-                Description = "Dimensity 1000/1000+",
-                WatchdogAddr = 0x10007000,
-                UartAddr = 0x11002000,
-                BromPayloadAddr = 0x100A00,
-                DaPayloadAddr = 0x200000,
-                CqDmaBase = 0x10212000,
-                DaMode = (int)DaMode.Xml,
-                Is64Bit = true,
-                HasExploit = true,
-                ExploitType = "Carbonara"
-            });
-
-            // MT6891 (Dimensity 1100)
-            AddChip(new MtkChipRecord
-            {
-                HwCode = 0x0989,
-                ChipName = "MT6891",
-                Description = "Dimensity 1100",
-                WatchdogAddr = 0x10007000,
-                UartAddr = 0x11002000,
-                BromPayloadAddr = 0x100A00,
-                DaPayloadAddr = 0x200000,
-                CqDmaBase = 0x10212000,
-                DaMode = (int)DaMode.Xml,
-                Is64Bit = true,
-                HasExploit = true,
-                ExploitType = "Carbonara"
-            });
-
-            // MT6893 (Dimensity 1200)
+            // 0x0816 = MT6885 (Dimensity 1000/1000+) - 不是 MT6893!
+            // mtkclient: dacode=0x6885, name="MT6885/MT6883/MT6889/MT6880/MT6890"
             AddChip(new MtkChipRecord
             {
                 HwCode = 0x0816,
-                ChipName = "MT6893",
-                Description = "Dimensity 1200",
+                ChipName = "MT6885",
+                Description = "Dimensity 1000/1000+ (HW 0x0816)",
                 WatchdogAddr = 0x10007000,
                 UartAddr = 0x11002000,
                 BromPayloadAddr = 0x100A00,
-                DaPayloadAddr = 0x200000,
+                DaPayloadAddr = 0x201000,
                 CqDmaBase = 0x10212000,
-                DaMode = (int)DaMode.Xml,
+                DaMode = (int)DaMode.XFlash,
                 Is64Bit = true,
                 HasExploit = true,
-                ExploitType = "Carbonara"
+                ExploitType = "Carbonara",
+                SupportsKamakiri2 = true,
+                SupportsCarbonara = true,
+                MiscLockAddr = 0x1001A100
             });
 
-            // MT6895 (Dimensity 8000)
+            // 0x0950 = MT6891/MT6893 (Dimensity 1200) - 不是 MT6989!
+            // mtkclient: dacode=0x6893, name="MT6891/MT6893"
             AddChip(new MtkChipRecord
             {
-                HwCode = 0x0996,
-                ChipName = "MT6895",
-                Description = "Dimensity 8000/8100",
+                HwCode = 0x0950,
+                ChipName = "MT6893",
+                Description = "Dimensity 1100/1200 (HW 0x0950)",
                 WatchdogAddr = 0x10007000,
                 UartAddr = 0x11002000,
                 BromPayloadAddr = 0x100A00,
-                DaPayloadAddr = 0x200000,
+                DaPayloadAddr = 0x201000,
+                CqDmaBase = 0x10212000,
+                DaMode = (int)DaMode.XFlash,
+                Is64Bit = true,
+                HasExploit = true,
+                ExploitType = "Carbonara",
+                SupportsKamakiri2 = true,
+                SupportsCarbonara = true,
+                MiscLockAddr = 0x1001A100
+            });
+            
+            // ═══════════════════════════════════════════════════════════════════════
+            // 保留原有 0x0813, 0x0600 等其他已验证的芯片
+            // ═══════════════════════════════════════════════════════════════════════
+            
+            // 0x0813 = MT6833 (Dimensity 700)
+            // mtkclient: dacode=0x6833
+            AddChip(new MtkChipRecord
+            {
+                HwCode = 0x0813,
+                ChipName = "MT6833",
+                Description = "Dimensity 700 5G",
+                WatchdogAddr = 0x10007000,
+                UartAddr = 0x11002000,
+                BromPayloadAddr = 0x100A00,
+                DaPayloadAddr = 0x201000,
+                CqDmaBase = 0x10212000,
+                DaMode = (int)DaMode.XFlash,
+                Is64Bit = true,
+                HasExploit = true,
+                ExploitType = "Carbonara",
+                SupportsKamakiri2 = true,
+                SupportsCarbonara = true,
+                MiscLockAddr = 0x1001A100
+            });
+            
+            // 0x1066 = MT6781 (Helio G96)
+            // mtkclient: name="MT6781"
+            AddChip(new MtkChipRecord
+            {
+                HwCode = 0x1066,
+                ChipName = "MT6781",
+                Description = "Helio G96",
+                WatchdogAddr = 0x10007000,
+                UartAddr = 0x11002000,
+                BromPayloadAddr = 0x100A00,
+                DaPayloadAddr = 0x201000,
+                CqDmaBase = 0x10212000,
+                DaMode = (int)DaMode.XFlash,
+                Is64Bit = true,
+                HasExploit = true,
+                ExploitType = "Carbonara",
+                SupportsKamakiri2 = true,
+                SupportsCarbonara = true,
+                MiscLockAddr = 0x1001A100
+            });
+
+            // ═══════════════════════════════════════════════════════════════════════
+            // XML 协议芯片 (Dimensity 8000+ 系列)
+            // 不支持 Kamakiri2, 支持 Carbonara (直到 9200)
+            // ═══════════════════════════════════════════════════════════════════════
+
+            // 0x0907 = MT6983 (Dimensity 9000/9000+) - XML 协议
+            AddChip(new MtkChipRecord
+            {
+                HwCode = 0x0907,
+                ChipName = "MT6983",
+                Description = "Dimensity 9000/9000+",
+                WatchdogAddr = 0x1C007000,
+                UartAddr = 0x11001000,
+                BromPayloadAddr = 0x100A00,
+                DaPayloadAddr = 0x201000,
                 CqDmaBase = 0x10212000,
                 DaMode = (int)DaMode.Xml,
                 Is64Bit = true,
                 HasExploit = true,
-                ExploitType = "Carbonara"
+                ExploitType = "Carbonara",
+                SupportsCarbonara = true,
+                SupportsAllinoneSignature = true
+            });
+            
+            // 0x1129 = MT6855 (Dimensity 7020/930) - XML 协议
+            AddChip(new MtkChipRecord
+            {
+                HwCode = 0x1129,
+                ChipName = "MT6855",
+                Description = "Dimensity 7020/930",
+                WatchdogAddr = 0x1C007000,
+                UartAddr = 0x11001000,
+                BromPayloadAddr = 0x100A00,
+                DaPayloadAddr = 0x201000,
+                CqDmaBase = 0x10212000,
+                DaMode = (int)DaMode.Xml,
+                Is64Bit = true,
+                HasExploit = true,
+                ExploitType = "Carbonara",
+                SupportsCarbonara = true,
+                SupportsAllinoneSignature = true
             });
 
-            // MT6895 (Dimensity 8200) - HW Code 0x1172
-            // 注意: 之前误标为 MT6983，根据实际测试 HW Code 0x1172 = MT6895
+            // 0x1172 = MT6895 (Dimensity 8200) - XML 协议
             AddChip(new MtkChipRecord
             {
                 HwCode = 0x1172,
                 ChipName = "MT6895",
                 Description = "Dimensity 8200",
-                WatchdogAddr = 0x1C007000,  // 根据截图修正
-                UartAddr = 0x11001000,      // 根据截图修正
-                BromPayloadAddr = 0x100A00,
-                DaPayloadAddr = 0x201000,   // 根据截图: 0x201000
-                CqDmaBase = 0x10212000,
-                DaMode = (int)DaMode.Xml,
-                Var1 = 0x0A,                // 根据截图: Var1 = A
-                Is64Bit = true,
-                HasExploit = true,
-                ExploitType = "Carbonara"
-            });
-
-            // ═══════════════════════════════════════════════════════════════
-            // MT6989 (Dimensity 9300) - iQOO Z9 Turbo, VIVO 等
-            // 支持 ALLINONE-SIGNATURE 漏洞
-            // ChimeraTool 日志确认 DA1 地址: 0x02000000
-            // ═══════════════════════════════════════════════════════════════
-            AddChip(new MtkChipRecord
-            {
-                HwCode = 0x0950,
-                ChipName = "MT6989",
-                Description = "Dimensity 9300",
                 WatchdogAddr = 0x1C007000,
                 UartAddr = 0x11001000,
                 BromPayloadAddr = 0x100A00,
-                DaPayloadAddr = 0x02000000,  // DA1 地址 (ChimeraTool 确认)
+                DaPayloadAddr = 0x201000,
                 CqDmaBase = 0x10212000,
                 DaMode = (int)DaMode.Xml,
                 Var1 = 0x0A,
                 Is64Bit = true,
                 HasExploit = true,
-                ExploitType = "AllinoneSignature"
+                ExploitType = "Carbonara",
+                SupportsCarbonara = true,
+                SupportsAllinoneSignature = true
             });
-
-            // MT6989 Preloader 模式 HW Code - 0x1236 (实测确认)
-            // VIVO 设备在 Preloader 模式下报告此 HW Code
-            // ChimeraTool 日志确认 DA1 地址: 0x02000000
+            
+            // 0x1203 = MT6897 (Dimensity 8300 Ultra) - XML 协议
             AddChip(new MtkChipRecord
             {
-                HwCode = 0x1236,
-                ChipName = "MT6989",
-                Description = "Dimensity 9300 (Preloader)",
-                WatchdogAddr = 0x1C007000,  // Preloader 模式下可能无法访问
-                UartAddr = 0x11001000,
-                BromPayloadAddr = 0x100A00,
-                DaPayloadAddr = 0x02000000,  // DA1 地址 (ChimeraTool 确认)
-                CqDmaBase = 0x10212000,
-                DaMode = (int)DaMode.Xml,
-                Var1 = 0x0A,
-                Is64Bit = true,
-                HasExploit = true,
-                ExploitType = "AllinoneSignature"  // 使用 DA2 级别漏洞
-            });
-
-            // MT6989 其他可能的 Preloader HW Code
-            AddChip(new MtkChipRecord
-            {
-                HwCode = 0x0951,
-                ChipName = "MT6989",
-                Description = "Dimensity 9300 (Preloader Alt)",
+                HwCode = 0x1203,
+                ChipName = "MT6897",
+                Description = "Dimensity 8300 Ultra",
                 WatchdogAddr = 0x1C007000,
                 UartAddr = 0x11001000,
                 BromPayloadAddr = 0x100A00,
-                DaPayloadAddr = 0x02000000,  // DA1 地址
+                DaPayloadAddr = 0x201000,
                 CqDmaBase = 0x10212000,
                 DaMode = (int)DaMode.Xml,
-                Var1 = 0x0A,
                 Is64Bit = true,
                 HasExploit = true,
-                ExploitType = "AllinoneSignature"
+                ExploitType = "Carbonara",
+                SupportsCarbonara = true,
+                SupportsAllinoneSignature = true
             });
-
-            // MT6983 (Dimensity 9000) - 可能也支持 ALLINONE-SIGNATURE
+            
+            // 0x1208 = MT6789 (Helio G99) - XML 协议
             AddChip(new MtkChipRecord
             {
-                HwCode = 0x0900,
-                ChipName = "MT6983",
-                Description = "Dimensity 9000",
+                HwCode = 0x1208,
+                ChipName = "MT6789",
+                Description = "Helio G99",
                 WatchdogAddr = 0x1C007000,
                 UartAddr = 0x11001000,
                 BromPayloadAddr = 0x100A00,
-                DaPayloadAddr = 0x40000000,
+                DaPayloadAddr = 0x201000,
                 CqDmaBase = 0x10212000,
                 DaMode = (int)DaMode.Xml,
                 Is64Bit = true,
                 HasExploit = true,
-                ExploitType = "AllinoneSignature"
+                ExploitType = "Carbonara",
+                SupportsCarbonara = true,
+                SupportsAllinoneSignature = true
             });
-
-            // MT6985 (Dimensity 9200) - 可能也支持 ALLINONE-SIGNATURE
+            
+            // 0x1209 = MT6835 (Dimensity 6100+) - XML 协议
             AddChip(new MtkChipRecord
             {
-                HwCode = 0x0930,
+                HwCode = 0x1209,
+                ChipName = "MT6835",
+                Description = "Dimensity 6100+",
+                WatchdogAddr = 0x1C007000,
+                UartAddr = 0x11001000,
+                BromPayloadAddr = 0x100A00,
+                DaPayloadAddr = 0x201000,
+                CqDmaBase = 0x10212000,
+                DaMode = (int)DaMode.Xml,
+                Is64Bit = true,
+                HasExploit = true,
+                ExploitType = "Carbonara",
+                SupportsCarbonara = true,
+                SupportsAllinoneSignature = true
+            });
+            
+            // 0x1229 = MT6886 (Dimensity 7200 Ultra) - XML 协议
+            AddChip(new MtkChipRecord
+            {
+                HwCode = 0x1229,
+                ChipName = "MT6886",
+                Description = "Dimensity 7200 Ultra",
+                WatchdogAddr = 0x1C007000,
+                UartAddr = 0x11001000,
+                BromPayloadAddr = 0x100A00,
+                DaPayloadAddr = 0x201000,
+                CqDmaBase = 0x10212000,
+                DaMode = (int)DaMode.Xml,
+                Is64Bit = true,
+                HasExploit = true,
+                ExploitType = "Carbonara",
+                SupportsCarbonara = true,
+                SupportsAllinoneSignature = true
+            });
+
+            // 0x1296 = MT6985 (Dimensity 9200/9200+) - Carbonara 最后支持的芯片
+            AddChip(new MtkChipRecord
+            {
+                HwCode = 0x1296,
                 ChipName = "MT6985",
-                Description = "Dimensity 9200",
-                WatchdogAddr = 0x1C007000,
+                Description = "Dimensity 9200/9200+",
+                WatchdogAddr = 0x1C00A000,
+                UartAddr = 0x1C011000,
+                BromPayloadAddr = 0x100A00,
+                DaPayloadAddr = 0x201000,
+                CqDmaBase = 0x10212000,
+                DaMode = (int)DaMode.Xml,
+                Is64Bit = true,
+                HasExploit = true,
+                ExploitType = "Carbonara",
+                SupportsCarbonara = true,  // ★ Carbonara 最后支持的芯片
+                SupportsAllinoneSignature = true,
+                Codename = "rubens"
+            });
+            
+            // 0x1375 = MT6878 (Dimensity 7300) - XML 协议, Carbonara 可能已修补
+            AddChip(new MtkChipRecord
+            {
+                HwCode = 0x1375,
+                ChipName = "MT6878",
+                Description = "Dimensity 7300",
+                WatchdogAddr = 0x1C00A000,
                 UartAddr = 0x11001000,
                 BromPayloadAddr = 0x100A00,
-                DaPayloadAddr = 0x40000000,
+                DaPayloadAddr = 0x2010000,
                 CqDmaBase = 0x10212000,
                 DaMode = (int)DaMode.Xml,
                 Is64Bit = true,
                 HasExploit = true,
                 ExploitType = "AllinoneSignature",
-                BromPatched = true,
-                RequiresLoader = true,
-                Codename = "rubens"
+                CarbonaraPatched = true,  // 可能已修补
+                SupportsAllinoneSignature = true
+            });
+
+            // ═══════════════════════════════════════════════════════════════════════
+            // MT6989 (Dimensity 9300) - 需要确认真实 HW Code
+            // 注意: mtkclient 中 0x0950 = MT6891/MT6893, 不是 MT6989!
+            // MT6989 的 HW Code 可能是 0x1236 或其他值，需要设备验证
+            // ═══════════════════════════════════════════════════════════════════════
+            
+            // MT6989 Preloader 模式 HW Code - 0x1236 (实测确认)
+            AddChip(new MtkChipRecord
+            {
+                HwCode = 0x1236,
+                ChipName = "MT6989",
+                Description = "Dimensity 9300 (Preloader)",
+                WatchdogAddr = 0x1C007000,
+                UartAddr = 0x11001000,
+                BromPayloadAddr = 0x100A00,
+                DaPayloadAddr = 0x02000000,
+                CqDmaBase = 0x10212000,
+                DaMode = (int)DaMode.Xml,
+                Var1 = 0x0A,
+                Is64Bit = true,
+                HasExploit = true,
+                ExploitType = "AllinoneSignature",
+                CarbonaraPatched = true,
+                SupportsAllinoneSignature = true
+            });
+            
+            // MT6855 (Dimensity 7020/930) - XML 协议
+            AddChip(new MtkChipRecord
+            {
+                HwCode = 0x1129,
+                ChipName = "MT6855",
+                Description = "Dimensity 7020/930",
+                WatchdogAddr = 0x1C007000,
+                UartAddr = 0x11001000,
+                BromPayloadAddr = 0x100A00,
+                DaPayloadAddr = 0x201000,
+                CqDmaBase = 0x10212000,
+                DaMode = (int)DaMode.Xml,
+                Is64Bit = true,
+                HasExploit = true,
+                ExploitType = "Carbonara",
+                SupportsCarbonara = true,
+                SupportsAllinoneSignature = true
+            });
+            
+            // MT6897 (Dimensity 8300 Ultra) - XML 协议
+            AddChip(new MtkChipRecord
+            {
+                HwCode = 0x1203,
+                ChipName = "MT6897",
+                Description = "Dimensity 8300 Ultra",
+                WatchdogAddr = 0x1C007000,
+                UartAddr = 0x11001000,
+                BromPayloadAddr = 0x100A00,
+                DaPayloadAddr = 0x201000,
+                CqDmaBase = 0x10212000,
+                DaMode = (int)DaMode.Xml,
+                Is64Bit = true,
+                HasExploit = true,
+                ExploitType = "Carbonara",
+                SupportsCarbonara = true,
+                SupportsAllinoneSignature = true
+            });
+            
+            // MT6789 (Helio G99) - XML 协议
+            AddChip(new MtkChipRecord
+            {
+                HwCode = 0x1208,
+                ChipName = "MT6789",
+                Description = "Helio G99",
+                WatchdogAddr = 0x1C007000,
+                UartAddr = 0x11001000,
+                BromPayloadAddr = 0x100A00,
+                DaPayloadAddr = 0x201000,
+                CqDmaBase = 0x10212000,
+                DaMode = (int)DaMode.Xml,
+                Is64Bit = true,
+                HasExploit = true,
+                ExploitType = "Carbonara",
+                SupportsCarbonara = true,
+                SupportsAllinoneSignature = true
+            });
+            
+            // MT6878 (Dimensity 7300) - XML 协议, 可能已修补
+            AddChip(new MtkChipRecord
+            {
+                HwCode = 0x1375,
+                ChipName = "MT6878",
+                Description = "Dimensity 7300",
+                WatchdogAddr = 0x1C00A000,
+                UartAddr = 0x11001000,
+                BromPayloadAddr = 0x100A00,
+                DaPayloadAddr = 0x2010000,
+                CqDmaBase = 0x10212000,
+                DaMode = (int)DaMode.Xml,
+                Is64Bit = true,
+                HasExploit = true,
+                ExploitType = "AllinoneSignature",
+                CarbonaraPatched = true,  // 可能已修补
+                SupportsAllinoneSignature = true
             });
 
             // ═══════════════════════════════════════════════════════════════

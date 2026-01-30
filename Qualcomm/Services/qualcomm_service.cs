@@ -18,6 +18,7 @@ using SakuraEDL.Qualcomm.Database;
 using SakuraEDL.Qualcomm.Models;
 using SakuraEDL.Qualcomm.Protocol;
 using SakuraEDL.Qualcomm.Authentication;
+// 已合并到 SakuraEDL.Qualcomm.Common 和 SakuraEDL.Qualcomm.Protocol
 
 namespace SakuraEDL.Qualcomm.Services
 {
@@ -55,6 +56,7 @@ namespace SakuraEDL.Qualcomm.Services
         // 状态
         public QualcommConnectionState State { get; private set; }
         public QualcommChipInfo ChipInfo { get { return _sahara != null ? _sahara.ChipInfo : null; } }
+        public uint SaharaProtocolVersion { get { return _sahara != null ? _sahara.ProtocolVersion : 0; } }
         public bool IsVipDevice { get; private set; }
         public string StorageType { get { return _firehose != null ? _firehose.StorageType : "ufs"; } }
         public int SectorSize { get { return _firehose != null ? _firehose.SectorSize : 4096; } }
@@ -71,6 +73,12 @@ namespace SakuraEDL.Qualcomm.Services
         private bool _portClosed = false;          // 端口是否已关闭
         private bool _keepPortOpen = false;        // 是否保持端口打开 (用于连续操作)
         private QualcommChipInfo _cachedChipInfo;  // 缓存的芯片信息 (端口关闭后保留)
+        
+        // 新增: Diag 客户端、Loader 检测器、Motorola 支持
+        private DiagClient _diagClient;
+        private LoaderFeatureDetector _loaderDetector;
+        private MotorolaSupport _motorolaSupport;
+        private LoaderFeatures _loaderFeatures;
 
         /// <summary>
         /// 状态变化事件
@@ -758,6 +766,210 @@ namespace SakuraEDL.Qualcomm.Services
         }
 
         /// <summary>
+        /// 使用云端 Loader 数据连接设备 (支持各种认证模式)
+        /// </summary>
+        /// <param name="portName">端口名</param>
+        /// <param name="loaderData">Loader 二进制数据</param>
+        /// <param name="storageType">存储类型</param>
+        /// <param name="authMode">认证模式: none, vip, oneplus, xiaomi</param>
+        /// <param name="digestData">VIP 认证的 Digest 数据 (可选)</param>
+        /// <param name="signatureData">VIP 认证的 Signature 数据 (可选)</param>
+        /// <param name="ct">取消令牌</param>
+        public async Task<bool> ConnectWithCloudLoaderAsync(string portName, byte[] loaderData, string storageType = "ufs", 
+            string authMode = "none", byte[] digestData = null, byte[] signatureData = null, CancellationToken ct = default(CancellationToken))
+        {
+            try
+            {
+                SetState(QualcommConnectionState.Connecting);
+                _log(string.Format("USB 端口 : {0}", portName));
+
+                if (loaderData == null || loaderData.Length == 0)
+                {
+                    _log("Loader 数据为空");
+                    SetState(QualcommConnectionState.Error);
+                    return false;
+                }
+
+                // 初始化串口
+                _portManager = new SerialPortManager();
+                bool opened = await _portManager.OpenAsync(portName, 3, false, ct);
+                if (!opened)
+                {
+                    _log("无法打开端口");
+                    SetState(QualcommConnectionState.Error);
+                    return false;
+                }
+
+                // Sahara 握手并上传 Loader
+                SetState(QualcommConnectionState.SaharaMode);
+                Action<double> saharaProgress = null;
+                if (_progress != null)
+                {
+                    saharaProgress = percent => _progress((long)percent, 100);
+                }
+                _sahara = new SaharaClient(_portManager, _log, _logDetail, saharaProgress);
+                
+                bool saharaOk = await _sahara.HandshakeAndUploadAsync(loaderData, "Cloud_Loader", ct);
+                if (!saharaOk)
+                {
+                    _log("Sahara 握手/Loader 上传失败");
+                    SetState(QualcommConnectionState.Error);
+                    return false;
+                }
+
+                // 保存芯片信息
+                _cachedChipInfo = _sahara.ChipInfo;
+                
+                // 显示 Sahara 阶段收集的设备信息
+                if (_cachedChipInfo != null)
+                {
+                    // 协议版本
+                    uint protocolVersion = _sahara != null ? _sahara.ProtocolVersion : 0;
+                    if (protocolVersion > 0)
+                        _log($"[Sahara] 协议版本: V{protocolVersion}");
+                    
+                    // MSM ID 和 OEM ID
+                    string msmHex = _cachedChipInfo.MsmId.ToString("X8");
+                    string oemHex = _cachedChipInfo.OemId.ToString("X4");
+                    _log($"[Sahara] 设备: MSM={msmHex}, OEM=0x{oemHex}");
+                    
+                    // 芯片名称
+                    if (!string.IsNullOrEmpty(_cachedChipInfo.ChipName) && _cachedChipInfo.ChipName != "Unknown")
+                        _log($"[Sahara] 芯片: {_cachedChipInfo.ChipName}");
+                    
+                    // 厂商
+                    string vendor = QualcommDatabase.GetVendorByPkHash(_cachedChipInfo.PkHash);
+                    if (!string.IsNullOrEmpty(vendor) && vendor != "Unknown")
+                        _log($"[Sahara] 厂商: {vendor}");
+                    
+                    // PK Hash (显示前16位)
+                    if (!string.IsNullOrEmpty(_cachedChipInfo.PkHash) && _cachedChipInfo.PkHash.Length >= 16)
+                        _log($"[Sahara] PK Hash: {_cachedChipInfo.PkHash.Substring(0, 16)}...");
+                    
+                    // 序列号
+                    if (!string.IsNullOrEmpty(_cachedChipInfo.SerialHex))
+                        _log($"[Sahara] 序列号: {_cachedChipInfo.SerialHex}");
+                }
+
+                // 设置 VIP 标志
+                string authModeLower = authMode.ToLowerInvariant();
+                IsVipDevice = (authModeLower == "vip" || authModeLower == "oplus");
+
+                // 等待 Firehose 就绪
+                _log("正在发送 Firehose 引导文件 : 成功");
+                await Task.Delay(1000, ct);
+
+                // 重新打开端口 (Firehose 模式)
+                _portManager.Close();
+                await Task.Delay(500, ct);
+
+                opened = await _portManager.OpenAsync(portName, 5, true, ct);
+                if (!opened)
+                {
+                    _log("无法重新打开端口");
+                    SetState(QualcommConnectionState.Error);
+                    return false;
+                }
+
+                // 创建 Firehose 客户端
+                SetState(QualcommConnectionState.FirehoseMode);
+                _firehose = new FirehoseClient(_portManager, _log, _progress, _logDetail);
+
+                // 传递芯片信息
+                if (ChipInfo != null)
+                {
+                    _firehose.ChipSerial = ChipInfo.SerialHex;
+                    _firehose.ChipHwId = ChipInfo.HwIdHex;
+                    _firehose.ChipPkHash = ChipInfo.PkHash;
+                }
+
+                // 执行认证 (根据模式) - 注意：VIP 认证必须在 Firehose 配置之前执行
+                if (authModeLower == "vip" || authModeLower == "oplus")
+                {
+                    // VIP 认证 (OPLUS)
+                    if (digestData != null && digestData.Length > 0 && signatureData != null && signatureData.Length > 0)
+                    {
+                        _log(string.Format("[高通] 执行 VIP 认证 (Digest={0}B, Sign={1}B)...", digestData.Length, signatureData.Length));
+                        bool vipOk = await _firehose.PerformVipAuthAsync(digestData, signatureData, ct);
+                        if (vipOk)
+                        {
+                            _log("[高通] VIP 认证成功，已激活高权限模式");
+                            IsVipDevice = true;
+                        }
+                        else
+                        {
+                            _log("[高通] VIP 认证失败，回退到普通模式");
+                            IsVipDevice = false;
+                        }
+                    }
+                    else
+                    {
+                        _log("[高通] VIP 认证需要 Digest 和 Sign 文件，但未提供");
+                        _log("[高通] 将以普通模式继续（某些操作可能受限）");
+                        IsVipDevice = false;
+                    }
+                }
+                else if (authModeLower == "xiaomi" || authModeLower == "miauth" || (authModeLower == "none" && IsXiaomiDevice()))
+                {
+                    _log("执行小米认证...");
+                    var xiaomi = new XiaomiAuthStrategy(_log);
+                    xiaomi.OnAuthTokenRequired += token => XiaomiAuthTokenRequired?.Invoke(token);
+                    bool authOk = await xiaomi.AuthenticateAsync(_firehose, null, ct);
+                    if (authOk)
+                        _log("小米认证成功");
+                    else
+                        _log("小米认证失败");
+                }
+                else if (authModeLower == "oneplus" || authModeLower == "demacia")
+                {
+                    _log("执行 OnePlus 认证...");
+                    var oneplus = new OnePlusAuthStrategy(_log);
+                    bool authOk = await oneplus.AuthenticateAsync(_firehose, null, ct);
+                    if (authOk)
+                        _log("OnePlus 认证成功");
+                    else
+                        _log("OnePlus 认证失败");
+                }
+
+                // Firehose 配置
+                _log("正在配置 Firehose...");
+                bool configOk = await _firehose.ConfigureAsync(storageType, 0, ct);
+                if (!configOk)
+                {
+                    _log("配置 Firehose : 失败");
+                    SetState(QualcommConnectionState.Error);
+                    return false;
+                }
+                _log("配置 Firehose : 成功");
+
+                // 保存连接参数
+                LastPortName = portName;
+                LastStorageType = storageType;
+
+                // 注册端口断开事件
+                if (_portManager != null)
+                {
+                    _portManager.PortDisconnected += (s, e) => HandlePortDisconnected();
+                }
+
+                SetState(QualcommConnectionState.Ready);
+                return true;
+            }
+            catch (OperationCanceledException)
+            {
+                _log("连接已取消");
+                SetState(QualcommConnectionState.Disconnected);
+                return false;
+            }
+            catch (Exception ex)
+            {
+                _log(string.Format("连接错误 - {0}", ex.Message));
+                SetState(QualcommConnectionState.Error);
+                return false;
+            }
+        }
+
+        /// <summary>
         /// 直接连接 Firehose (跳过 Sahara)
         /// </summary>
         public async Task<bool> ConnectFirehoseDirectAsync(string portName, string storageType = "ufs", CancellationToken ct = default(CancellationToken))
@@ -911,8 +1123,13 @@ namespace SakuraEDL.Qualcomm.Services
                 return false;
             }
             
-            // 检查端口是否在系统中可用
-            if (_portManager != null && !_portManager.IsPortAvailable())
+            // 检查端口是否在系统中可用（使用 LastPortName 而不是 _portManager.IsPortAvailable()）
+            // 因为 ReleasePort 会清除 _portManager._currentPortName
+            var availablePorts = System.IO.Ports.SerialPort.GetPortNames();
+            bool portExists = Array.Exists(availablePorts, p => 
+                p.Equals(LastPortName, StringComparison.OrdinalIgnoreCase));
+            
+            if (!portExists)
             {
                 _log("[高通] 端口已从系统中移除，设备可能已断开");
                 HandlePortDisconnected();
@@ -1641,13 +1858,15 @@ namespace SakuraEDL.Qualcomm.Services
                 long totalBytes = partition.Size;
                 long readBytes = 0;
 
-                using (var fs = new FileStream(outputPath, FileMode.Create, FileAccess.Write, FileShare.None, 4 * 1024 * 1024))
+                // 使用异步文件流，避免阻塞
+                using (var fs = new FileStream(outputPath, FileMode.Create, FileAccess.Write, FileShare.None, 4 * 1024 * 1024, FileOptions.Asynchronous))
                 {
                     while (readSectors < totalSectors && !ct.IsCancellationRequested)
                     {
                         int toRead = (int)Math.Min(sectorsPerChunk, totalSectors - readSectors);
+                        // ConfigureAwait(false) 避免回到 UI 线程
                         byte[] data = await _firehose.ReadSectorsAsync(
-                            partition.Lun, partition.StartSector + readSectors, toRead, ct, IsVipDevice, partitionName);
+                            partition.Lun, partition.StartSector + readSectors, toRead, ct, IsVipDevice, partitionName).ConfigureAwait(false);
 
                         if (data == null)
                         {
@@ -1655,7 +1874,8 @@ namespace SakuraEDL.Qualcomm.Services
                             return false;
                         }
 
-                        fs.Write(data, 0, data.Length);
+                        // 使用异步写入
+                        await fs.WriteAsync(data, 0, data.Length, ct).ConfigureAwait(false);
                         readSectors += toRead;
                         readBytes += data.Length;
 
@@ -1695,13 +1915,14 @@ namespace SakuraEDL.Qualcomm.Services
 
             // OPLUS 某些分区需要 SHA256 校验环绕
             bool useSha256 = IsOplusDevice && (partitionName.ToLower() == "xbl" || partitionName.ToLower() == "abl" || partitionName.ToLower() == "imagefv");
-            if (useSha256) await _firehose.Sha256InitAsync(ct);
+            if (useSha256) await _firehose.Sha256InitAsync(ct).ConfigureAwait(false);
 
             // VIP 设备使用伪装模式写入
+            // ConfigureAwait(false) 避免回到 UI 线程，提高 IO 性能
             bool success = await _firehose.FlashPartitionFromFileAsync(
-                partitionName, filePath, partition.Lun, partition.StartSector, progress, ct, IsVipDevice);
+                partitionName, filePath, partition.Lun, partition.StartSector, progress, ct, IsVipDevice).ConfigureAwait(false);
 
-            if (useSha256) await _firehose.Sha256FinalAsync(ct);
+            if (useSha256) await _firehose.Sha256FinalAsync(ct).ConfigureAwait(false);
 
             return success;
         }
@@ -1730,16 +1951,18 @@ namespace SakuraEDL.Qualcomm.Services
                 _logDetail(string.Format("[高通] 写入: {0} -> LUN{1} @ NUM_DISK_SECTORS{2}", label, lun, startSector));
                 
                 // 使用官方 NUM_DISK_SECTORS-N 格式，让设备计算绝对地址
+                // ConfigureAwait(false) 避免回到 UI 线程
                 return await _firehose.FlashPartitionWithNegativeSectorAsync(
-                    label, filePath, lun, startSector, progress, ct);
+                    label, filePath, lun, startSector, progress, ct).ConfigureAwait(false);
             }
             else
             {
                 _logDetail(string.Format("[高通] 写入: {0} -> LUN{1} @ sector {2}", label, lun, startSector));
 
                 // 正数扇区正常写入
+                // ConfigureAwait(false) 避免回到 UI 线程
                 return await _firehose.FlashPartitionFromFileAsync(
-                    label, filePath, lun, startSector, progress, ct, IsVipDevice);
+                    label, filePath, lun, startSector, progress, ct, IsVipDevice).ConfigureAwait(false);
             }
         }
 
@@ -1759,7 +1982,8 @@ namespace SakuraEDL.Qualcomm.Services
             }
 
             // VIP 设备使用伪装模式擦除
-            return await _firehose.ErasePartitionAsync(partition, ct, IsVipDevice);
+            // ConfigureAwait(false) 避免回到 UI 线程
+            return await _firehose.ErasePartitionAsync(partition, ct, IsVipDevice).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -1980,6 +2204,333 @@ namespace SakuraEDL.Qualcomm.Services
 
         #endregion
 
+        #region Diag 诊断功能
+        
+        /// <summary>
+        /// 连接到 Diag 诊断端口
+        /// </summary>
+        public async Task<bool> ConnectDiagAsync(string portName, int baudRate = 115200)
+        {
+            try
+            {
+                if (_diagClient == null)
+                    _diagClient = new DiagClient();
+                
+                _log($"[高通] 正在连接诊断端口 {portName}...");
+                var result = await _diagClient.ConnectAsync(portName, baudRate);
+                
+                if (result)
+                    _log("[高通] 诊断端口连接成功");
+                else
+                    _log("[高通] 诊断端口连接失败");
+                
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _log($"[高通] 诊断端口连接异常: {ex.Message}");
+                return false;
+            }
+        }
+        
+        /// <summary>
+        /// 断开 Diag 诊断连接
+        /// </summary>
+        public void DisconnectDiag()
+        {
+            _diagClient?.Disconnect();
+            _diagClient?.Dispose();
+            _diagClient = null;
+        }
+        
+        /// <summary>
+        /// 发送 SPC 解锁
+        /// </summary>
+        public async Task<bool> SendSpcAsync(string spc = "000000")
+        {
+            if (_diagClient == null || !_diagClient.IsConnected)
+            {
+                _log("[高通] 诊断端口未连接");
+                return false;
+            }
+            
+            _log("[高通] 正在发送 SPC 解锁...");
+            var result = await _diagClient.SendSpcAsync(spc);
+            _log(result ? "[高通] SPC 解锁成功" : "[高通] SPC 解锁失败");
+            return result;
+        }
+        
+        /// <summary>
+        /// 读取 IMEI
+        /// </summary>
+        public async Task<string> ReadDiagImeiAsync(int slot = 1)
+        {
+            if (_diagClient == null || !_diagClient.IsConnected)
+            {
+                _log("[高通] 诊断端口未连接");
+                return null;
+            }
+            
+            _log($"[高通] 正在读取 IMEI (Slot {slot})...");
+            var imei = await _diagClient.ReadImeiAsync(slot);
+            
+            if (!string.IsNullOrEmpty(imei))
+                _log($"[高通] IMEI{slot}: {imei}");
+            else
+                _log($"[高通] 读取 IMEI{slot} 失败");
+            
+            return imei;
+        }
+        
+        /// <summary>
+        /// 写入 IMEI
+        /// </summary>
+        public async Task<bool> WriteDiagImeiAsync(string imei, int slot = 1)
+        {
+            if (_diagClient == null || !_diagClient.IsConnected)
+            {
+                _log("[高通] 诊断端口未连接");
+                return false;
+            }
+            
+            if (string.IsNullOrEmpty(imei) || imei.Length != 15)
+            {
+                _log("[高通] IMEI 格式错误，必须为 15 位数字");
+                return false;
+            }
+            
+            _log($"[高通] 正在写入 IMEI (Slot {slot}): {imei}...");
+            var result = await _diagClient.WriteImeiAsync(imei, slot);
+            _log(result ? "[高通] IMEI 写入成功" : "[高通] IMEI 写入失败");
+            return result;
+        }
+        
+        /// <summary>
+        /// 读取所有 IMEI
+        /// </summary>
+        public async Task<ImeiInfo> ReadAllDiagImeiAsync()
+        {
+            if (_diagClient == null || !_diagClient.IsConnected)
+            {
+                _log("[高通] 诊断端口未连接");
+                return null;
+            }
+            
+            _log("[高通] 正在读取所有 IMEI...");
+            var info = await _diagClient.ReadAllImeiAsync();
+            
+            if (!string.IsNullOrEmpty(info?.Imei1))
+                _log($"[高通] IMEI1: {info.Imei1}");
+            if (!string.IsNullOrEmpty(info?.Imei2))
+                _log($"[高通] IMEI2: {info.Imei2}");
+            
+            return info;
+        }
+        
+        /// <summary>
+        /// 读取 MEID
+        /// </summary>
+        public async Task<string> ReadDiagMeidAsync()
+        {
+            if (_diagClient == null || !_diagClient.IsConnected)
+            {
+                _log("[高通] 诊断端口未连接");
+                return null;
+            }
+            
+            _log("[高通] 正在读取 MEID...");
+            var meid = await _diagClient.ReadMeidAsync();
+            
+            if (!string.IsNullOrEmpty(meid))
+                _log($"[高通] MEID: {meid}");
+            else
+                _log("[高通] 读取 MEID 失败");
+            
+            return meid;
+        }
+        
+        /// <summary>
+        /// 读取 QCN 文件
+        /// </summary>
+        public async Task<bool> ReadQcnAsync(string filePath, IProgress<int> progress = null)
+        {
+            if (_diagClient == null || !_diagClient.IsConnected)
+            {
+                _log("[高通] 诊断端口未连接");
+                return false;
+            }
+            
+            _log($"[高通] 正在读取 QCN 到 {filePath}...");
+            var result = await _diagClient.ReadQcnAsync(filePath, progress);
+            _log(result ? "[高通] QCN 读取成功" : "[高通] QCN 读取失败");
+            return result;
+        }
+        
+        /// <summary>
+        /// 写入 QCN 文件
+        /// </summary>
+        public async Task<bool> WriteQcnAsync(string filePath, IProgress<int> progress = null)
+        {
+            if (_diagClient == null || !_diagClient.IsConnected)
+            {
+                _log("[高通] 诊断端口未连接");
+                return false;
+            }
+            
+            if (!File.Exists(filePath))
+            {
+                _log($"[高通] QCN 文件不存在: {filePath}");
+                return false;
+            }
+            
+            _log($"[高通] 正在写入 QCN: {filePath}...");
+            var result = await _diagClient.WriteQcnAsync(filePath, progress);
+            _log(result ? "[高通] QCN 写入成功" : "[高通] QCN 写入失败");
+            return result;
+        }
+        
+        /// <summary>
+        /// 通过 Diag 切换到下载模式 (EDL)
+        /// </summary>
+        public async Task<bool> SwitchToEdlModeAsync()
+        {
+            if (_diagClient == null || !_diagClient.IsConnected)
+            {
+                _log("[高通] 诊断端口未连接");
+                return false;
+            }
+            
+            _log("[高通] 正在切换到下载模式 (EDL)...");
+            var result = await _diagClient.SwitchToDownloadModeAsync();
+            _log(result ? "[高通] 切换成功，设备即将进入 EDL" : "[高通] 切换失败");
+            return result;
+        }
+        
+        /// <summary>
+        /// 通过 Diag 重启设备
+        /// </summary>
+        public async Task<bool> RebootDeviceAsync()
+        {
+            if (_diagClient == null || !_diagClient.IsConnected)
+            {
+                _log("[高通] 诊断端口未连接");
+                return false;
+            }
+            
+            _log("[高通] 正在重启设备...");
+            var result = await _diagClient.RebootAsync();
+            return result;
+        }
+        
+        #endregion
+
+        #region Loader 功能检测
+        
+        /// <summary>
+        /// 获取 Loader 功能特性
+        /// </summary>
+        public LoaderFeatures LoaderFeatures => _loaderFeatures;
+        
+        /// <summary>
+        /// 检测 Loader 功能
+        /// </summary>
+        public LoaderFeatures DetectLoaderFeatures(byte[] loaderData)
+        {
+            if (_loaderDetector == null)
+                _loaderDetector = new LoaderFeatureDetector();
+            
+            _loaderFeatures = _loaderDetector.DetectFeatures(loaderData);
+            
+            if (_loaderFeatures != null)
+            {
+                _log("[高通] Loader 功能检测完成:");
+                _log($"  芯片: {_loaderFeatures.ChipName ?? "未知"}");
+                _log($"  存储: {_loaderFeatures.RecommendedMemoryType}");
+                _log($"  受限: {_loaderFeatures.IsRestricted}");
+                _log($"  功能: {string.Join(", ", _loaderFeatures.GetSupportedFeatures())}");
+                
+                if (_loaderFeatures.IsXiaomi)
+                {
+                    _log($"  [小米] EDL 验证: {_loaderFeatures.XiaomiEdlVerification}");
+                    _log($"  [小米] 可利用漏洞: {_loaderFeatures.ExploitPossible}");
+                }
+            }
+            
+            return _loaderFeatures;
+        }
+        
+        /// <summary>
+        /// 从文件检测 Loader 功能
+        /// </summary>
+        public LoaderFeatures DetectLoaderFeaturesFromFile(string loaderPath)
+        {
+            if (!File.Exists(loaderPath))
+            {
+                _log($"[高通] Loader 文件不存在: {loaderPath}");
+                return null;
+            }
+            
+            var loaderData = File.ReadAllBytes(loaderPath);
+            return DetectLoaderFeatures(loaderData);
+        }
+        
+        /// <summary>
+        /// 验证 Loader 是否有效
+        /// </summary>
+        public bool IsValidLoader(byte[] loaderData)
+        {
+            return LoaderFeatureDetector.IsValidLoader(loaderData);
+        }
+        
+        #endregion
+
+        #region Motorola 支持
+        
+        /// <summary>
+        /// 检查是否为 Motorola 固件包
+        /// </summary>
+        public bool IsMotorolaPackage(string filePath)
+        {
+            return MotorolaSupport.IsMotorolaPackage(filePath);
+        }
+        
+        /// <summary>
+        /// 解析 Motorola 固件包
+        /// </summary>
+        public async Task<MotorolaPackageInfo> ParseMotorolaPackageAsync(string filePath)
+        {
+            if (_motorolaSupport == null)
+            {
+                _motorolaSupport = new MotorolaSupport();
+                _motorolaSupport.OnLog += msg => _log($"[Motorola] {msg}");
+            }
+            
+            _log($"[高通] 正在解析 Motorola 固件包: {Path.GetFileName(filePath)}...");
+            return await _motorolaSupport.ParsePackageAsync(filePath);
+        }
+        
+        /// <summary>
+        /// 提取 Motorola 固件包
+        /// </summary>
+        public async Task<string> ExtractMotorolaPackageAsync(string filePath, string outputDir = null, IProgress<int> progress = null)
+        {
+            if (_motorolaSupport == null)
+            {
+                _motorolaSupport = new MotorolaSupport();
+                _motorolaSupport.OnLog += msg => _log($"[Motorola] {msg}");
+            }
+            
+            if (progress != null)
+                _motorolaSupport.OnProgress += percent => progress.Report(percent);
+            
+            _log($"[高通] 正在提取 Motorola 固件包: {Path.GetFileName(filePath)}...");
+            var result = await _motorolaSupport.ExtractPackageAsync(filePath, outputDir);
+            _log($"[高通] 提取完成: {result}");
+            return result;
+        }
+        
+        #endregion
+
         #region IDisposable
 
         public void Dispose()
@@ -1995,6 +2546,7 @@ namespace SakuraEDL.Qualcomm.Services
                 if (disposing)
                 {
                     Disconnect();
+                    DisconnectDiag();
                 }
                 _disposed = true;
             }
@@ -2027,19 +2579,43 @@ namespace SakuraEDL.Qualcomm.Services
             if (activeSlot == "nonexistent" || string.IsNullOrEmpty(activeSlot))
                 activeSlot = "a";
 
-            var tasks = await _oplusSuperManager.PrepareSuperTasksAsync(firmwareRoot, superPart.StartSector, (int)superPart.SectorSize, activeSlot, nvId);
+            // 计算 super 分区总大小 (用于校验)
+            long superPartitionSize = superPart.Size;
+            _log(string.Format("[高通] Super 分区: 起始扇区={0}, 大小={1} MB", superPart.StartSector, superPartitionSize / 1024 / 1024));
+
+            var tasks = await _oplusSuperManager.PrepareSuperTasksAsync(
+                firmwareRoot, superPart.StartSector, (int)superPart.SectorSize, 
+                activeSlot, nvId, superPartitionSize);
             
             if (tasks.Count == 0)
             {
                 _log("[高通] 未找到可用的 Super 逻辑分区镜像");
                 return false;
             }
+            
+            // 3. 校验任务
+            var validation = _oplusSuperManager.ValidateTasks(tasks, superPartitionSize, (int)superPart.SectorSize);
+            if (!validation.IsValid)
+            {
+                foreach (var err in validation.Errors)
+                {
+                    _log(string.Format("[MetaSuper] 错误: {0}", err));
+                }
+                _log("[高通] Super 刷写校验失败，已中止");
+                return false;
+            }
+            
+            // 显示警告但继续
+            foreach (var warn in validation.Warnings)
+            {
+                _log(string.Format("[MetaSuper] 警告: {0}", warn));
+            }
 
-            // 3. 执行任务
+            // 4. 执行任务
             long totalBytes = tasks.Sum(t => t.SizeInBytes);
             long totalWritten = 0;
 
-            _log(string.Format("[高通] 开始拆解写入 {0} 个逻辑镜像 (总计展开大小: {1} MB)...", tasks.Count, totalBytes / 1024 / 1024));
+            _log(string.Format("[高通] 开始拆解写入 {0} 个逻辑镜像 (总计: {1} MB)...", tasks.Count, totalBytes / 1024 / 1024));
 
             foreach (var task in tasks)
             {

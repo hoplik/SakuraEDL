@@ -5,6 +5,7 @@
 
 using System;
 using System.Configuration;
+using System.Management;
 
 namespace SakuraEDL.Common
 {
@@ -18,9 +19,11 @@ namespace SakuraEDL.Common
         private static int? _uiRefreshInterval;
         private static bool? _enableDoubleBuffering;
         private static bool? _enableLazyLoading;
+        private static bool _autoDetectDone = false;
 
         /// <summary>
         /// 低配模式 - 减少动画效果和刷新频率
+        /// 自动检测: 内存 < 8GB 或 CPU 核心数 < 4 时自动启用
         /// </summary>
         public static bool LowPerformanceMode
         {
@@ -28,9 +31,70 @@ namespace SakuraEDL.Common
             {
                 if (!_lowPerformanceMode.HasValue)
                 {
-                    _lowPerformanceMode = GetBoolSetting("LowPerformanceMode", false);
+                    // 先读取配置
+                    var configValue = GetBoolSettingNullable("LowPerformanceMode");
+                    
+                    if (configValue.HasValue)
+                    {
+                        // 用户显式配置
+                        _lowPerformanceMode = configValue.Value;
+                    }
+                    else
+                    {
+                        // 自动检测硬件
+                        _lowPerformanceMode = AutoDetectLowPerformance();
+                    }
                 }
                 return _lowPerformanceMode.Value;
+            }
+        }
+        
+        /// <summary>
+        /// 自动检测是否为低配机器
+        /// </summary>
+        private static bool AutoDetectLowPerformance()
+        {
+            if (_autoDetectDone) return _lowPerformanceMode ?? false;
+            _autoDetectDone = true;
+            
+            try
+            {
+                // 检测物理内存 (低于 8GB 视为低配)
+                ulong totalMemory = 0;
+                try
+                {
+                    using (var searcher = new ManagementObjectSearcher("SELECT TotalPhysicalMemory FROM Win32_ComputerSystem"))
+                    {
+                        foreach (var obj in searcher.Get())
+                        {
+                            totalMemory = (ulong)obj["TotalPhysicalMemory"];
+                            break;
+                        }
+                    }
+                }
+                catch { }
+                
+                ulong memoryGB = totalMemory / (1024 * 1024 * 1024);
+                if (memoryGB < 8)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[PerformanceConfig] 自动启用低配模式: 内存 {memoryGB}GB < 8GB");
+                    return true;
+                }
+                
+                // 检测 CPU 核心数 (低于 4 核视为低配)
+                int cpuCores = Environment.ProcessorCount;
+                if (cpuCores < 4)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[PerformanceConfig] 自动启用低配模式: CPU 核心 {cpuCores} < 4");
+                    return true;
+                }
+                
+                return false;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[PerformanceConfig] 自动检测失败: {ex.Message}");
+                return false;
             }
         }
 
@@ -118,22 +182,40 @@ namespace SakuraEDL.Common
         /// 日志批量刷新阈值
         /// </summary>
         public static int LogBatchSize => LowPerformanceMode ? 20 : 10;
+        
+        /// <summary>
+        /// 端口刷新间隔 (毫秒) - 低配模式下减少刷新频率
+        /// </summary>
+        public static int PortRefreshInterval => LowPerformanceMode ? 3000 : 1500;
+        
+        /// <summary>
+        /// 进度更新间隔 (毫秒) - 避免过于频繁的 UI 更新
+        /// </summary>
+        public static int ProgressUpdateInterval => LowPerformanceMode ? 200 : 100;
 
         /// <summary>
         /// 获取布尔配置值
         /// </summary>
         private static bool GetBoolSetting(string key, bool defaultValue)
         {
+            return GetBoolSettingNullable(key) ?? defaultValue;
+        }
+        
+        /// <summary>
+        /// 获取可空布尔配置值 (用于区分未配置和显式配置)
+        /// </summary>
+        private static bool? GetBoolSettingNullable(string key)
+        {
             try
             {
                 var value = ConfigurationManager.AppSettings[key];
                 if (string.IsNullOrEmpty(value))
-                    return defaultValue;
+                    return null;
                 return value.ToLower() == "true" || value == "1";
             }
             catch
             {
-                return defaultValue;
+                return null;
             }
         }
 

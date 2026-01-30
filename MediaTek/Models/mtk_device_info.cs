@@ -66,6 +66,9 @@ namespace SakuraEDL.MediaTek.Models
         /// <summary>Loader 文件名</summary>
         public string LoaderName { get; set; }
         
+        /// <summary>是否启用 Phone Info 发送 (MT6592+)</summary>
+        public bool PhoneInfoEnabled { get; set; }
+        
         /// <summary>芯片代号</summary>
         public string Codename { get; set; }
         
@@ -469,5 +472,130 @@ namespace SakuraEDL.MediaTek.Models
         
         /// <summary>描述</summary>
         public string Description { get; set; }
+    }
+
+    /// <summary>
+    /// 设备固件信息 (来自 CMD:SECURITY-GET-DEV-FW-INFO)
+    /// </summary>
+    public class DeviceFwInfo
+    {
+        /// <summary>随机数</summary>
+        public string Rnd { get; set; }
+        
+        /// <summary>硬件 ID (HRID)</summary>
+        public string HrId { get; set; }
+        
+        /// <summary>SOC ID</summary>
+        public string SocId { get; set; }
+    }
+
+    /// <summary>
+    /// 硬件信息 (来自 CMD:GET-HW-INFO)
+    /// </summary>
+    public class HardwareInfo
+    {
+        /// <summary>RAM 大小</summary>
+        public ulong RamSize { get; set; }
+        
+        /// <summary>电池电压 (mV)</summary>
+        public int BatteryVoltage { get; set; }
+        
+        /// <summary>随机 ID</summary>
+        public string RandomId { get; set; }
+        
+        /// <summary>存储类型 (UFS/EMMC/NAND)</summary>
+        public string StorageType { get; set; }
+        
+        /// <summary>产品 ID</summary>
+        public string ProductId { get; set; }
+        
+        /// <summary>块大小</summary>
+        public uint BlockSize { get; set; }
+        
+        // UFS 特有属性
+        /// <summary>LUA0 大小</summary>
+        public ulong Lua0Size { get; set; }
+        
+        /// <summary>LUA1 大小</summary>
+        public ulong Lua1Size { get; set; }
+        
+        /// <summary>LUA2 大小</summary>
+        public ulong Lua2Size { get; set; }
+        
+        /// <summary>UFS 厂商 ID</summary>
+        public string UfsVendorId { get; set; }
+        
+        /// <summary>UFS CID</summary>
+        public string UfsCid { get; set; }
+        
+        /// <summary>UFS 固件版本</summary>
+        public string UfsFwVer { get; set; }
+        
+        // EMMC 特有属性
+        /// <summary>Boot1 大小</summary>
+        public ulong Boot1Size { get; set; }
+        
+        /// <summary>Boot2 大小</summary>
+        public ulong Boot2Size { get; set; }
+        
+        /// <summary>RPMB 大小</summary>
+        public ulong RpmbSize { get; set; }
+        
+        /// <summary>User 分区大小</summary>
+        public ulong UserSize { get; set; }
+        
+        /// <summary>GP1 大小</summary>
+        public ulong Gp1Size { get; set; }
+        
+        /// <summary>GP2 大小</summary>
+        public ulong Gp2Size { get; set; }
+        
+        /// <summary>GP3 大小</summary>
+        public ulong Gp3Size { get; set; }
+        
+        /// <summary>GP4 大小</summary>
+        public ulong Gp4Size { get; set; }
+        
+        // NAND 特有属性
+        /// <summary>页大小</summary>
+        public uint PageSize { get; set; }
+        
+        /// <summary>备用区大小</summary>
+        public uint SpareSize { get; set; }
+        
+        /// <summary>总容量</summary>
+        public ulong TotalSize { get; set; }
+        
+        /// <summary>获取 RAM 大小显示</summary>
+        public string RamSizeDisplay => RamSize >= 1024 * 1024 * 1024 
+            ? $"{RamSize / (1024.0 * 1024 * 1024):F1} GB" 
+            : $"{RamSize / (1024.0 * 1024):F0} MB";
+    }
+
+    /// <summary>
+    /// 启动模式
+    /// </summary>
+    public static class BootModes
+    {
+        /// <summary>Fastboot 模式</summary>
+        public const string Fastboot = "FASTBOOT";
+        
+        /// <summary>META 模式</summary>
+        public const string Meta = "META";
+        
+        /// <summary>Android 测试模式</summary>
+        public const string AndroidTestMode = "ANDROID-TEST-MODE";
+    }
+
+    /// <summary>
+    /// DA 信息 (来自 CMD:GET-DA-INFO)
+    /// </summary>
+    public class DaInfo
+    {
+        /// <summary>DA 版本</summary>
+        public string Version { get; set; }
+        
+        /// <summary>构建时间</summary>
+        public string Build { get; set; }
     }
 }

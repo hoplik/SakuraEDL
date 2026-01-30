@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using SakuraEDL.MediaTek.Common;
@@ -701,9 +702,19 @@ namespace SakuraEDL.MediaTek.Services
 
             // 1. 上传 DA1 (两种模式都需要!)
             Log("[MTK] 上传 Stage1 DA...", Color.Cyan);
-            if (!await _daLoader.UploadDa1Async(da1, ct))
+            try
             {
-                Log("[MTK] DA1 上传失败", Color.Red);
+                if (!await _daLoader.UploadDa1Async(da1, ct))
+                {
+                    Log("[MTK] DA1 上传失败", Color.Red);
+                    return false;
+                }
+            }
+            catch (Protocol.DaaSecurityException daaEx)
+            {
+                // DAA 安全验证失败 - 需要签名的 DA 或漏洞利用
+                Log($"[MTK] ✗ {daaEx.Message}", Color.Red);
+                Log("[MTK] 提示: 1) 启用 '漏洞利用' 选项  2) 使用官方签名的 DA 文件", Color.Yellow);
                 return false;
             }
 
@@ -1209,6 +1220,230 @@ namespace SakuraEDL.MediaTek.Services
         }
 
         /// <summary>
+        /// 发送认证数据 (CMD:SEND-AUTH)
+        /// </summary>
+        /// <param name="authData">认证数据</param>
+        /// <param name="authType">认证类型</param>
+        /// <param name="ct">取消令牌</param>
+        /// <returns>是否成功</returns>
+        public async Task<bool> SendAuthAsync(byte[] authData, string authType = "AUTH_FILE", CancellationToken ct = default)
+        {
+            if (_xmlClient == null || !_xmlClient.IsConnected)
+            {
+                Log("[MTK] XML DA 未连接", Color.Red);
+                return false;
+            }
+
+            Log($"[MTK] 发送认证数据: {authData?.Length ?? 0} 字节", Color.Cyan);
+            return await _xmlClient.SendAuthAsync(authData, authType, ct);
+        }
+
+        /// <summary>
+        /// 从文件发送认证数据
+        /// </summary>
+        /// <param name="authFilePath">认证文件路径</param>
+        /// <param name="ct">取消令牌</param>
+        /// <returns>是否成功</returns>
+        public async Task<bool> SendAuthFromFileAsync(string authFilePath, CancellationToken ct = default)
+        {
+            if (_xmlClient == null || !_xmlClient.IsConnected)
+            {
+                Log("[MTK] XML DA 未连接", Color.Red);
+                return false;
+            }
+
+            Log($"[MTK] 从文件发送认证: {authFilePath}", Color.Cyan);
+            return await _xmlClient.SendAuthFromFileAsync(authFilePath, ct);
+        }
+
+        /// <summary>
+        /// 获取随机数 (CMD:GET-RANDOM) - 默认禁用
+        /// </summary>
+        /// <param name="length">请求长度</param>
+        /// <param name="ct">取消令牌</param>
+        /// <returns>随机数数据</returns>
+        public async Task<byte[]> GetRandomAsync(int length = 16, CancellationToken ct = default)
+        {
+            if (_xmlClient == null || !_xmlClient.IsConnected)
+            {
+                Log("[MTK] XML DA 未连接", Color.Red);
+                return null;
+            }
+
+            Log($"[MTK] 获取随机数: {length} 字节", Color.Gray);
+            return await _xmlClient.GetRandomAsync(length, ct);
+        }
+
+        /// <summary>
+        /// 设置启动模式
+        /// </summary>
+        public async Task<bool> SetBootModeAsync(string mode = "ANDROID-TEST-MODE", bool adb = true, 
+            bool mobileLog = true, CancellationToken ct = default)
+        {
+            if (_xmlClient == null || !_xmlClient.IsConnected)
+            {
+                Log("[MTK] XML DA 未连接", Color.Red);
+                return false;
+            }
+
+            Log($"[MTK] 设置启动模式: {mode}", Color.Cyan);
+            return await _xmlClient.SetBootModeAsync(mode, adb, mobileLog, "USB", ct);
+        }
+
+        /// <summary>
+        /// 获取设备固件信息
+        /// </summary>
+        public async Task<DeviceFwInfo> GetDeviceFwInfoAsync(CancellationToken ct = default)
+        {
+            if (_xmlClient == null || !_xmlClient.IsConnected)
+            {
+                Log("[MTK] XML DA 未连接", Color.Red);
+                return null;
+            }
+
+            return await _xmlClient.GetDeviceFwInfoAsync(ct);
+        }
+
+        /// <summary>
+        /// 获取硬件信息 (详细)
+        /// </summary>
+        public async Task<HardwareInfo> GetHardwareInfoAsync(CancellationToken ct = default)
+        {
+            if (_xmlClient == null || !_xmlClient.IsConnected)
+            {
+                Log("[MTK] XML DA 未连接", Color.Red);
+                return null;
+            }
+
+            return await _xmlClient.GetHardwareInfoAsync(ct);
+        }
+
+        /// <summary>
+        /// 读取 eFuse
+        /// </summary>
+        public async Task<string> ReadEfuseAsync(CancellationToken ct = default)
+        {
+            if (_xmlClient == null || !_xmlClient.IsConnected)
+            {
+                Log("[MTK] XML DA 未连接", Color.Red);
+                return null;
+            }
+
+            Log("[MTK] 读取 eFuse...", Color.Cyan);
+            return await _xmlClient.ReadEfuseAsync(ct);
+        }
+
+        /// <summary>
+        /// eMMC 控制
+        /// </summary>
+        public async Task<string> EmmcControlAsync(string function = "GET-RPMB-STATUS", CancellationToken ct = default)
+        {
+            if (_xmlClient == null || !_xmlClient.IsConnected)
+            {
+                Log("[MTK] XML DA 未连接", Color.Red);
+                return null;
+            }
+
+            Log($"[MTK] eMMC 控制: {function}", Color.Gray);
+            return await _xmlClient.EmmcControlAsync(function, ct);
+        }
+
+        /// <summary>
+        /// RAM 测试
+        /// </summary>
+        public async Task<bool> RamTestAsync(string function = "FLIP", CancellationToken ct = default)
+        {
+            if (_xmlClient == null || !_xmlClient.IsConnected)
+            {
+                Log("[MTK] XML DA 未连接", Color.Red);
+                return false;
+            }
+
+            Log($"[MTK] RAM 测试: {function}", Color.Cyan);
+            return await _xmlClient.RamTestAsync(function, ct: ct);
+        }
+
+        /// <summary>
+        /// DRAM 修复
+        /// </summary>
+        public async Task<string> DramRepairAsync(CancellationToken ct = default)
+        {
+            if (_xmlClient == null || !_xmlClient.IsConnected)
+            {
+                Log("[MTK] XML DA 未连接", Color.Red);
+                return "NOT_CONNECTED";
+            }
+
+            Log("[MTK] DRAM 修复...", Color.Cyan);
+            return await _xmlClient.DramRepairAsync(ct);
+        }
+
+        /// <summary>
+        /// 擦除 Flash
+        /// </summary>
+        public async Task<bool> EraseFlashAsync(string partition = "EMMC-USER", ulong offset = 0, 
+            ulong length = 0x100000, CancellationToken ct = default)
+        {
+            if (_xmlClient == null || !_xmlClient.IsConnected)
+            {
+                Log("[MTK] XML DA 未连接", Color.Red);
+                return false;
+            }
+
+            Log($"[MTK] 擦除 Flash: {partition}", Color.Cyan);
+            return await _xmlClient.EraseFlashAsync(partition, offset, length, ct);
+        }
+
+        /// <summary>
+        /// 读取 Flash
+        /// </summary>
+        public async Task<byte[]> ReadFlashAsync(string partition = "EMMC-USER", ulong offset = 0, 
+            ulong length = 0x100000, CancellationToken ct = default)
+        {
+            if (_xmlClient == null || !_xmlClient.IsConnected)
+            {
+                Log("[MTK] XML DA 未连接", Color.Red);
+                return null;
+            }
+
+            Log($"[MTK] 读取 Flash: {partition}", Color.Cyan);
+            return await _xmlClient.ReadFlashAsync(partition, offset, length, ct);
+        }
+
+        /// <summary>
+        /// 读取寄存器
+        /// </summary>
+        public async Task<uint?> ReadRegisterAsync(long address, int bitWidth = 32, CancellationToken ct = default)
+        {
+            if (_xmlClient == null || !_xmlClient.IsConnected)
+            {
+                Log("[MTK] XML DA 未连接", Color.Red);
+                return null;
+            }
+
+            return await _xmlClient.ReadRegisterAsync(address, bitWidth, ct);
+        }
+
+        /// <summary>
+        /// 写入寄存器
+        /// </summary>
+        public async Task<bool> WriteRegisterAsync(long address, uint value, int bitWidth = 32, 
+            CancellationToken ct = default)
+        {
+            if (_xmlClient == null || !_xmlClient.IsConnected)
+            {
+                Log("[MTK] XML DA 未连接", Color.Red);
+                return false;
+            }
+
+            return await _xmlClient.WriteRegisterAsync(address, value, bitWidth, ct);
+        }
+
+        #endregion
+
+        #region 漏洞利用
+
+        /// <summary>
         /// 执行 MT6989 ALLINONE-SIGNATURE 漏洞利用
         /// 适用于 DA2 已加载后禁用安全检查
         /// </summary>
@@ -1379,55 +1614,112 @@ namespace SakuraEDL.MediaTek.Services
 
         /// <summary>
         /// 等待新的 MTK 端口出现 (USB 重新枚举后)
+        /// 修复: 支持端口号重用（Windows 常见情况）
         /// </summary>
         private async Task<string> WaitForNewMtkPortAsync(CancellationToken ct, int timeoutMs = 15000)
         {
             var startTime = DateTime.Now;
             string oldPort = _bromClient.PortName;
+            bool oldPortDisappeared = false;
             
-            // 首先等待旧端口消失
-            await Task.Delay(500, ct);
+            Log($"[MTK] 等待 USB 重新枚举 (原端口: {oldPort})...", Color.Gray);
+            
+            // 阶段 1: 等待旧端口消失（USB 断开）
+            int disappearWaitMs = Math.Min(5000, timeoutMs / 2);
+            while ((DateTime.Now - startTime).TotalMilliseconds < disappearWaitMs)
+            {
+                if (ct.IsCancellationRequested)
+                    return null;
+                
+                string[] currentPorts = System.IO.Ports.SerialPort.GetPortNames();
+                if (!currentPorts.Contains(oldPort))
+                {
+                    oldPortDisappeared = true;
+                    Log("[MTK] 检测到端口断开，等待重新连接...", Color.Gray);
+                    break;
+                }
+                
+                await Task.Delay(100, ct);
+            }
+            
+            // 阶段 2: 等待端口出现（包括旧端口号重用的情况）
+            await Task.Delay(500, ct);  // 给设备一点时间完成 USB 枚举
             
             while ((DateTime.Now - startTime).TotalMilliseconds < timeoutMs)
             {
                 if (ct.IsCancellationRequested)
                     return null;
                 
-                // 获取当前所有 COM 端口
                 string[] ports = System.IO.Ports.SerialPort.GetPortNames();
                 
-                foreach (string port in ports)
+                // 优先检查新端口，但也检查旧端口（可能重用）
+                var portsToCheck = oldPortDisappeared 
+                    ? ports.OrderByDescending(p => p != oldPort).ToArray()  // 新端口优先
+                    : ports.Where(p => p != oldPort).Concat(new[] { oldPort }).ToArray();  // 仍优先新端口，但也包含旧端口
+                
+                foreach (string port in portsToCheck)
                 {
-                    // 跳过旧端口
-                    if (port == oldPort)
-                        continue;
-                    
                     try
                     {
-                        // 尝试打开端口并检测是否是 MTK 设备
                         using (var testPort = new System.IO.Ports.SerialPort(port, 115200))
                         {
                             testPort.ReadTimeout = 500;
                             testPort.WriteTimeout = 500;
                             testPort.Open();
                             
-                            // 等待一小段时间让设备稳定
                             await Task.Delay(100, ct);
                             
-                            // 尝试发送简单的探测命令或直接返回端口
-                            // DA 运行后会在特定端口上响应
-                            // 这里简化处理，假设新出现的端口就是 DA 端口
+                            // 尝试简单探测 - 发送空字节看设备是否响应
+                            try
+                            {
+                                testPort.DiscardInBuffer();
+                                testPort.Write(new byte[] { 0x00 }, 0, 1);
+                                await Task.Delay(50, ct);
+                                
+                                // 如果有任何响应，可能是 DA 模式
+                                if (testPort.BytesToRead > 0)
+                                {
+                                    testPort.Close();
+                                    Log($"[MTK] 检测到活动端口: {port}", Color.Cyan);
+                                    return port;
+                                }
+                            }
+                            catch { }
+                            
                             testPort.Close();
-                            return port;
+                            
+                            // 如果旧端口消失后又出现，很可能是重用
+                            if (port == oldPort && oldPortDisappeared)
+                            {
+                                Log($"[MTK] 旧端口重新出现: {port} (端口号重用)", Color.Cyan);
+                                return port;
+                            }
+                            
+                            // 新端口直接返回
+                            if (port != oldPort)
+                            {
+                                return port;
+                            }
                         }
                     }
                     catch
                     {
-                        // 端口不可用，继续尝试下一个
+                        // 端口不可用，继续
                     }
                 }
                 
-                await Task.Delay(500, ct);
+                await Task.Delay(300, ct);
+            }
+            
+            // 超时后，如果旧端口还存在，尝试返回它
+            if (!string.IsNullOrEmpty(oldPort))
+            {
+                string[] finalPorts = System.IO.Ports.SerialPort.GetPortNames();
+                if (finalPorts.Contains(oldPort))
+                {
+                    Log($"[MTK] 超时，尝试使用原端口: {oldPort}", Color.Yellow);
+                    return oldPort;
+                }
             }
             
             return null;

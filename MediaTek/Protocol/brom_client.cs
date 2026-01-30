@@ -365,6 +365,13 @@ namespace SakuraEDL.MediaTek.Protocol
                         _log($"\tWDT:\t\t0x{ChipInfo.WatchdogAddr:X}");
                         _log($"\tDA Payload 地址:\t0x{ChipInfo.DaPayloadAddr:X}");
                     }
+                    
+                    // 根据 HW Code 设置 PhoneInfoEnabled (MT6592+)
+                    ChipInfo.PhoneInfoEnabled = DaProtocol.NeedsPhoneInfoEnabled(HwCode);
+                    if (ChipInfo.PhoneInfoEnabled)
+                    {
+                        _logDetail($"[MTK] PhoneInfo 发送已启用 (HW Code >= MT6592)");
+                    }
                 }
 
                 // 2. 发送心跳/同步 (ChimeraTool 发送 a0 * 20)
@@ -744,27 +751,47 @@ namespace SakuraEDL.MediaTek.Protocol
         }
 
         /// <summary>
-        /// 禁用看门狗
+        /// 禁用看门狗 (使用数据库中的动态地址)
         /// </summary>
         private async Task<bool> DisableWatchdogAsync(CancellationToken ct = default)
         {
-            // 默认看门狗地址和值 (MT6765 等常见芯片)
-            uint wdtAddr = 0x10007000;
+            // 从 ChipInfo 获取看门狗地址，如果未知则使用默认值
+            uint wdtAddr = ChipInfo?.WatchdogAddr ?? 0x10007000;
             uint wdtValue = 0x22000000;
 
-            // 根据 HW Code 调整
+            // 根据 HW Code 或地址范围调整写入方式
             switch (HwCode)
             {
                 case 0x6261:  // MT6261
                 case 0x2523:  // MT2523
                 case 0x7682:  // MT7682
                 case 0x7686:  // MT7686
-                    // 16 位写入
+                    // 这些芯片需要 16 位写入到特定地址
                     return await Write16Async(0xA2050000, new ushort[] { 0x2200 }, ct);
                     
                 default:
-                    // 32 位写入
-                    return await Write32Async(wdtAddr, new uint[] { wdtValue }, ct);
+                    // 天玑系列和其他新芯片可能有不同的看门狗地址
+                    // 0x10007000 - 老款芯片 (MT6xxx 系列)
+                    // 0x1C007000 - 部分天玑芯片 (如 MT6893, MT6895, MT6983)
+                    _log($"[MTK] 禁用看门狗 (地址: 0x{wdtAddr:X8})");
+                    
+                    bool result = await Write32Async(wdtAddr, new uint[] { wdtValue }, ct);
+                    
+                    // 如果写入失败且地址不是默认地址，尝试使用默认地址
+                    if (!result && wdtAddr != 0x10007000)
+                    {
+                        _log("[MTK] 看门狗禁用失败，尝试备用地址 0x10007000");
+                        result = await Write32Async(0x10007000, new uint[] { wdtValue }, ct);
+                    }
+                    
+                    // 如果仍然失败，尝试天玑常用地址
+                    if (!result && wdtAddr != 0x1C007000)
+                    {
+                        _log("[MTK] 尝试天玑芯片地址 0x1C007000");
+                        result = await Write32Async(0x1C007000, new uint[] { wdtValue }, ct);
+                    }
+                    
+                    return result;
             }
         }
 
@@ -1318,8 +1345,10 @@ namespace SakuraEDL.MediaTek.Protocol
                     return false;
                 }
 
-                // 5. 等待 DA 启动 (mtkclient: time.sleep(0.1))
-                await Task.Delay(100, ct);
+                // 5. 等待 DA 启动
+                // 根据 IDA 分析，DA 配置后需要延时 1000ms
+                _logDetail($"[MTK] 等待 DA 初始化 ({DaProtocol.DA_CONFIG_DELAY_MS}ms)...");
+                await Task.Delay(DaProtocol.DA_CONFIG_DELAY_MS, ct);
 
                 _log("[MTK] ✓ JUMP_DA 成功");
                 State = MtkDeviceState.Da1Loaded;
@@ -1334,6 +1363,7 @@ namespace SakuraEDL.MediaTek.Protocol
 
         /// <summary>
         /// 尝试检测 DA 是否已就绪 (通过读取 sync 信号)
+        /// 根据 IDA 分析: DA 启动后发送 SYNC_CHAR (0xC0)，超时应为 5000ms
         /// </summary>
         public async Task<bool> TryDetectDaReadyAsync(CancellationToken ct = default)
         {
@@ -1346,12 +1376,12 @@ namespace SakuraEDL.MediaTek.Protocol
                     _port.DiscardInBuffer();
                     
                     // 尝试读取 DA sync 信号
-                    // DA 启动后通常会发送 "SYNC" (0x434E5953) 或特定字节序列
+                    // DA 启动后通常会发送 SYNC_CHAR (0xC0) 或 "SYNC" (0x434E5953)
                     byte[] buffer = new byte[64];
                     int totalRead = 0;
                     
-                    // 等待最多 2 秒
-                    var timeout = DateTime.Now.AddMilliseconds(2000);
+                    // 等待 SYNC_CHAR 超时: 5000ms (根据 IDA 分析)
+                    var timeout = DateTime.Now.AddMilliseconds(DaProtocol.SYNC_CHAR_TIMEOUT_MS);
                     while (DateTime.Now < timeout && totalRead < buffer.Length)
                     {
                         if (ct.IsCancellationRequested)
@@ -1419,7 +1449,7 @@ namespace SakuraEDL.MediaTek.Protocol
 
         /// <summary>
         /// 尝试发送 DA 同步命令
-        /// DA 协议使用 0xEFEEEEFE 魔数
+        /// DA 协议使用 0xFEEEEEEF 魔数 (注意字节序)
         /// </summary>
         public async Task<bool> TrySendDaSyncAsync(CancellationToken ct = default)
         {
@@ -1430,11 +1460,11 @@ namespace SakuraEDL.MediaTek.Protocol
                 {
                     _log("[MTK] 发送 DA 同步命令...");
                     
-                    // DA 命令格式: EFEEEEFE + cmd(4B) + length(4B) + payload
+                    // DA 命令格式: FEEEEEEF + cmd(4B) + length(4B) + payload (小端序)
                     // SYNC 命令: cmd=0x01, length=4, payload="SYNC"
                     byte[] syncCmd = new byte[]
                     {
-                        0xEF, 0xEE, 0xEE, 0xFE,  // Magic
+                        0xEF, 0xEE, 0xEE, 0xFE,  // Magic (LE: 0xFEEEEEEF)
                         0x01, 0x00, 0x00, 0x00,  // CMD = 1 (SYNC)
                         0x04, 0x00, 0x00, 0x00   // Length = 4
                     };
@@ -1453,7 +1483,8 @@ namespace SakuraEDL.MediaTek.Protocol
                     byte[] buffer = new byte[32];
                     int totalRead = 0;
                     
-                    var timeout = DateTime.Now.AddMilliseconds(2000);
+                    // 使用 DA 协议超时
+                    var timeout = DateTime.Now.AddMilliseconds(DaProtocol.SYNC_CHAR_TIMEOUT_MS);
                     while (DateTime.Now < timeout && totalRead < buffer.Length)
                     {
                         if (_port.BytesToRead > 0)
@@ -1545,10 +1576,10 @@ namespace SakuraEDL.MediaTek.Protocol
                 _log($"[MTK] 数据发送完成: {bytesWritten} 字节");
                 
                 // mtkclient: 发送完成后发送空字节并等待
-                // 注意: Mtk 参考实现使用 10ms，mtkclient 使用 120ms
-                // 这里使用 10ms 以提高速度，如果有问题可以调高
+                // ★ 重要: mtkclient 使用 time.sleep(0.12) = 120ms
+                // 如果使用太短的延时，设备可能还没准备好返回校验和
                 _port.Write(new byte[0], 0, 0);
-                await Task.Delay(10, ct);
+                await Task.Delay(120, ct);  // 120ms (与 mtkclient 一致)
 
                 // 读取校验和 (2字节, Big-Endian)
                 var checksumResp = await ReadBytesInternalAsync(2, DEFAULT_TIMEOUT_MS * 2, ct);
@@ -1923,6 +1954,107 @@ namespace SakuraEDL.MediaTek.Protocol
         {
             // TODO: 实际的DA响应接收逻辑
             throw new NotImplementedException("DA响应接收需要在DA模式下实现");
+        }
+
+        #endregion
+
+        #region DA 同步等待
+
+        /// <summary>
+        /// 等待 DA SYNC_CHAR (0xC0)
+        /// 根据 IDA 分析: DA 启动后发送 0xC0 通知主机就绪，超时 5000ms
+        /// 如果收到非 SYNC_CHAR 的字节，记录警告并继续等待
+        /// </summary>
+        /// <param name="ct">取消令牌</param>
+        /// <returns>是否成功收到 SYNC_CHAR</returns>
+        public async Task<bool> WaitForDaSyncCharAsync(CancellationToken ct = default)
+        {
+            _log("[MTK] 等待 DA SYNC_CHAR (0xC0)...");
+            
+            await _portLock.WaitAsync(ct);
+            try
+            {
+                var timeout = DateTime.Now.AddMilliseconds(DaProtocol.SYNC_CHAR_TIMEOUT_MS);
+                
+                while (DateTime.Now < timeout)
+                {
+                    if (ct.IsCancellationRequested)
+                        return false;
+                    
+                    if (_port.BytesToRead > 0)
+                    {
+                        byte[] buffer = new byte[1];
+                        _port.Read(buffer, 0, 1);
+                        
+                        if (buffer[0] == DaProtocol.SYNC_CHAR)
+                        {
+                            _log("[MTK] ✓ 收到 DA SYNC_CHAR (0xC0)");
+                            State = MtkDeviceState.Da1Loaded;
+                            return true;
+                        }
+                        else
+                        {
+                            // 非 SYNC_CHAR，记录警告并继续等待
+                            _logDetail($"[MTK] 收到非 SYNC_CHAR: 0x{buffer[0]:X2}，继续等待...");
+                        }
+                    }
+                    else
+                    {
+                        await Task.Delay(10, ct);
+                    }
+                }
+                
+                _log("[MTK] ❌ 等待 DA SYNC_CHAR 超时");
+                return false;
+            }
+            finally
+            {
+                _portLock.Release();
+            }
+        }
+
+        /// <summary>
+        /// 发送 DA FINISH 命令 (0xD9)
+        /// 根据 IDA 分析: 发送后需要等待 ACK (0x5A) 并延时 10ms
+        /// </summary>
+        /// <param name="ct">取消令牌</param>
+        /// <returns>是否成功</returns>
+        public async Task<bool> SendDaFinishCmdAsync(CancellationToken ct = default)
+        {
+            _log("[MTK] 发送 DA FINISH 命令 (0xD9)...");
+            
+            await _portLock.WaitAsync(ct);
+            try
+            {
+                // 发送 DA_FINISH_CMD
+                _port.Write(new byte[] { DaProtocol.DA_FINISH_CMD }, 0, 1);
+                
+                // 等待 ACK (0x5A)
+                var response = await ReadBytesInternalAsync(1, DaProtocol.READ_TIMEOUT_MS, ct);
+                if (response == null || response.Length == 0)
+                {
+                    _log("[MTK] DA FINISH: 无响应");
+                    return false;
+                }
+                
+                if (response[0] == BromResponse.ACK)
+                {
+                    _log("[MTK] ✓ DA FINISH ACK 确认");
+                    
+                    // CMD_Finish 后延时 10ms
+                    await Task.Delay(DaProtocol.CMD_FINISH_DELAY_MS, ct);
+                    return true;
+                }
+                else
+                {
+                    _log($"[MTK] DA FINISH: 期望 ACK (0x5A)，收到 0x{response[0]:X2}");
+                    return false;
+                }
+            }
+            finally
+            {
+                _portLock.Release();
+            }
         }
 
         #endregion
