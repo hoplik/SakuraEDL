@@ -135,7 +135,12 @@ namespace SakuraEDL.MediaTek.Database
             { 0x1236, 0x0950 },   // MT6989 Preloader => MT6989 BROM
             { 0x0951, 0x0950 },   // MT6989 Alt => MT6989 BROM
             { 0x1172, 0x0996 },   // MT6895 Dimensity 8200 => MT6895 (需确认)
-            { 0x0959, 0x0766 },   // MT6877 Preloader => MT6877 BROM
+            // MT6833 别名 (来自 MTK META UTILITY V48 分析)
+            { 0x0989, 0x0813 },   // MT6833 Alt (Dimensity 700)
+            // MT6877 别名
+            { 0x0959, 0x0959 },   // MT6877 (保持)
+            // MT6781 别名
+            { 0x0781, 0x1066 },   // MT6781 旧 HWCODE => 新 HWCODE
         };
 
         static MtkChipDatabase()
@@ -750,8 +755,7 @@ namespace SakuraEDL.MediaTek.Database
                 Is64Bit = true,
                 HasExploit = true,
                 ExploitType = "Carbonara",
-                SupportsCarbonara = true,
-                SupportsAllinoneSignature = true
+                SupportsCarbonara = true
             });
             
             // 0x1129 = MT6855 (Dimensity 7020/930) - XML 协议
@@ -769,8 +773,7 @@ namespace SakuraEDL.MediaTek.Database
                 Is64Bit = true,
                 HasExploit = true,
                 ExploitType = "Carbonara",
-                SupportsCarbonara = true,
-                SupportsAllinoneSignature = true
+                SupportsCarbonara = true
             });
 
             // 0x1172 = MT6895 (Dimensity 8200) - XML 协议
@@ -789,8 +792,7 @@ namespace SakuraEDL.MediaTek.Database
                 Is64Bit = true,
                 HasExploit = true,
                 ExploitType = "Carbonara",
-                SupportsCarbonara = true,
-                SupportsAllinoneSignature = true
+                SupportsCarbonara = true
             });
             
             // 0x1203 = MT6897 (Dimensity 8300 Ultra) - XML 协议
@@ -808,8 +810,7 @@ namespace SakuraEDL.MediaTek.Database
                 Is64Bit = true,
                 HasExploit = true,
                 ExploitType = "Carbonara",
-                SupportsCarbonara = true,
-                SupportsAllinoneSignature = true
+                SupportsCarbonara = true
             });
             
             // 0x1208 = MT6789 (Helio G99) - XML 协议
@@ -827,8 +828,7 @@ namespace SakuraEDL.MediaTek.Database
                 Is64Bit = true,
                 HasExploit = true,
                 ExploitType = "Carbonara",
-                SupportsCarbonara = true,
-                SupportsAllinoneSignature = true
+                SupportsCarbonara = true
             });
             
             // 0x1209 = MT6835 (Dimensity 6100+) - XML 协议
@@ -846,8 +846,7 @@ namespace SakuraEDL.MediaTek.Database
                 Is64Bit = true,
                 HasExploit = true,
                 ExploitType = "Carbonara",
-                SupportsCarbonara = true,
-                SupportsAllinoneSignature = true
+                SupportsCarbonara = true
             });
             
             // 0x1229 = MT6886 (Dimensity 7200 Ultra) - XML 协议
@@ -865,8 +864,7 @@ namespace SakuraEDL.MediaTek.Database
                 Is64Bit = true,
                 HasExploit = true,
                 ExploitType = "Carbonara",
-                SupportsCarbonara = true,
-                SupportsAllinoneSignature = true
+                SupportsCarbonara = true
             });
 
             // 0x1296 = MT6985 (Dimensity 9200/9200+) - Carbonara 最后支持的芯片
@@ -885,11 +883,11 @@ namespace SakuraEDL.MediaTek.Database
                 HasExploit = true,
                 ExploitType = "Carbonara",
                 SupportsCarbonara = true,  // ★ Carbonara 最后支持的芯片
-                SupportsAllinoneSignature = true,
                 Codename = "rubens"
             });
             
-            // 0x1375 = MT6878 (Dimensity 7300) - XML 协议, Carbonara 可能已修补
+            // 0x1375 = MT6878 (Dimensity 7300) - XML 协议, Carbonara 已修补
+            // AllinoneSignature 未测试，暂时禁用
             AddChip(new MtkChipRecord
             {
                 HwCode = 0x1375,
@@ -902,10 +900,10 @@ namespace SakuraEDL.MediaTek.Database
                 CqDmaBase = 0x10212000,
                 DaMode = (int)DaMode.Xml,
                 Is64Bit = true,
-                HasExploit = true,
-                ExploitType = "AllinoneSignature",
-                CarbonaraPatched = true,  // 可能已修补
-                SupportsAllinoneSignature = true
+                HasExploit = false,  // 暂时禁用，AllinoneSignature 未测试
+                ExploitType = "None",
+                CarbonaraPatched = true,
+                SupportsAllinoneSignature = false  // 未测试
             });
 
             // ═══════════════════════════════════════════════════════════════════════
@@ -949,8 +947,7 @@ namespace SakuraEDL.MediaTek.Database
                 Is64Bit = true,
                 HasExploit = true,
                 ExploitType = "Carbonara",
-                SupportsCarbonara = true,
-                SupportsAllinoneSignature = true
+                SupportsCarbonara = true
             });
             
             // MT6897 (Dimensity 8300 Ultra) - XML 协议
@@ -968,8 +965,7 @@ namespace SakuraEDL.MediaTek.Database
                 Is64Bit = true,
                 HasExploit = true,
                 ExploitType = "Carbonara",
-                SupportsCarbonara = true,
-                SupportsAllinoneSignature = true
+                SupportsCarbonara = true
             });
             
             // MT6789 (Helio G99) - XML 协议
@@ -987,28 +983,10 @@ namespace SakuraEDL.MediaTek.Database
                 Is64Bit = true,
                 HasExploit = true,
                 ExploitType = "Carbonara",
-                SupportsCarbonara = true,
-                SupportsAllinoneSignature = true
+                SupportsCarbonara = true
             });
             
-            // MT6878 (Dimensity 7300) - XML 协议, 可能已修补
-            AddChip(new MtkChipRecord
-            {
-                HwCode = 0x1375,
-                ChipName = "MT6878",
-                Description = "Dimensity 7300",
-                WatchdogAddr = 0x1C00A000,
-                UartAddr = 0x11001000,
-                BromPayloadAddr = 0x100A00,
-                DaPayloadAddr = 0x2010000,
-                CqDmaBase = 0x10212000,
-                DaMode = (int)DaMode.Xml,
-                Is64Bit = true,
-                HasExploit = true,
-                ExploitType = "AllinoneSignature",
-                CarbonaraPatched = true,  // 可能已修补
-                SupportsAllinoneSignature = true
-            });
+            // MT6878 (Dimensity 7300) - 重复定义已移除，见上方
 
             // ═══════════════════════════════════════════════════════════════
             // V6 新芯片 (BROM 已修补, 需要 V6 Loader)

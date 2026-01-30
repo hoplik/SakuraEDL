@@ -127,7 +127,7 @@ namespace SakuraEDL.MediaTek.UI
         /// </summary>
         public async Task<bool> AutoConnectAsync(int waitTimeoutMs = 60000)
         {
-            Log("[MTK] 等待设备连接...", Color.Cyan);
+            Log("等待设备... (BROM/Preloader)", Color.Cyan);
 
             var port = await WaitForDeviceAsync(waitTimeoutMs);
             if (port == null)

@@ -10,6 +10,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using SakuraEDL.MediaTek.Auth;
 using SakuraEDL.MediaTek.Common;
 using SakuraEDL.MediaTek.Database;
 using SakuraEDL.MediaTek.Exploit;
@@ -68,6 +69,19 @@ namespace SakuraEDL.MediaTek.Services
         // 自定义 DA 配置
         public string CustomDa1Path { get; private set; }
         public string CustomDa2Path { get; private set; }
+        
+        // 签名服务
+        private CloudSigningService _signingService;
+        private RealmeAuthService _realmeAuthService;
+        
+        // 签名数据 (云端获取后存储)
+        public byte[] SignatureData { get; set; }
+        
+        // Realme 签名配置
+        public string RealmeApiUrl { get; set; }
+        public string RealmeApiKey { get; set; }
+        public string RealmeAccount { get; set; }
+        public SignServerType SignServer { get; set; } = SignServerType.Realme;
 
         public MediatekService()
         {
@@ -93,27 +107,39 @@ namespace SakuraEDL.MediaTek.Services
         {
             try
             {
-                Log($"[MTK] 连接设备: {comPort}", Color.Cyan);
+                Log("[MTK] ═══════════════════════════════════════", Color.Green);
+                Log("[MTK] 等待 MTK USB 设备...", Color.Green);
 
                 if (!await _bromClient.ConnectAsync(comPort, baudRate, ct))
                 {
-                    Log("[MTK] 串口打开失败", Color.Red);
+                    Log("[MTK] 连接端口... 失败", Color.Red);
                     return false;
                 }
+                
+                Log("[MTK] 等待 MTK USB 设备... 完成", Color.Green);
+                Log($"[MTK] 端口: {comPort}", Color.Green);
+                Log("[MTK] 连接端口... 完成", Color.Green);
 
                 // 执行握手
                 if (!await _bromClient.HandshakeAsync(100, ct))
                 {
-                    Log("[MTK] BROM 握手失败", Color.Red);
+                    Log("[MTK] 握手协议... 失败", Color.Red);
                     return false;
                 }
+                Log("[MTK] 握手协议... 完成", Color.Green);
 
                 // 初始化设备
                 if (!await _bromClient.InitializeAsync(false, ct))
                 {
-                    Log("[MTK] 设备初始化失败", Color.Red);
+                    Log("[MTK] 获取硬件信息... 失败", Color.Red);
                     return false;
                 }
+                Log("[MTK] 获取硬件信息... 完成", Color.Green);
+                Log($"[MTK] 硬件代码: 0x{_bromClient.HwCode:X4}", Color.Green);
+                
+                Log("[MTK] 配置协议... 完成", Color.Green);
+                Log("[MTK] 搜索硬件配置... 完成", Color.Green);
+                Log($"[MTK] 硬件版本: 0x{_bromClient.HwVer:X4}, 软件版本: 0x{_bromClient.SwVer:X4}, 子代码: 0x{_bromClient.HwSubCode:X4}", Color.Green);
 
                 // 创建设备信息
                 CurrentDevice = new MtkDeviceInfo
@@ -124,27 +150,28 @@ namespace SakuraEDL.MediaTek.Services
                     MeId = _bromClient.MeId,
                     SocId = _bromClient.SocId
                 };
-
-                Log($"[MTK] ✓ 连接成功: {_bromClient.ChipInfo.GetChipName()}", Color.Green);
                 
-                // 检查 DAA 状态并提示用户
+                string chipName = _bromClient.ChipInfo?.ChipName ?? $"MT{_bromClient.HwCode:X4}";
+                Log($"[MTK] 检测芯片: {chipName}", Color.Green);
+                
+                // 检查安全状态
                 bool daaEnabled = _bromClient.TargetConfig.HasFlag(TargetConfigFlags.DaaEnabled);
                 bool slaEnabled = _bromClient.TargetConfig.HasFlag(TargetConfigFlags.SlaEnabled);
                 bool sbcEnabled = _bromClient.TargetConfig.HasFlag(TargetConfigFlags.SbcEnabled);
                 
+                Log($"[MTK] 安全状态 - SBC: {sbcEnabled}, SLA: {slaEnabled}, DAA: {daaEnabled}", Color.Green);
+                
                 if (daaEnabled)
                 {
-                    Log("[MTK] ⚠ 警告: 设备启用了 DAA (Download Agent Authentication)", Color.Orange);
-                    Log("[MTK] ⚠ 需要使用官方签名的 DA 或通过漏洞绕过", Color.Orange);
+                    Log("[MTK] ⚠ DAA 已启用 - 需要签名 DA 或漏洞绕过", Color.Red);
                 }
                 if (slaEnabled)
                 {
-                    Log("[MTK] ⚠ 警告: 设备启用了 SLA (Secure Link Auth)", Color.Yellow);
+                    Log("[MTK] ⚠ SLA 已启用 - 需要认证", Color.Red);
                 }
-                if (sbcEnabled && !_bromClient.IsBromMode)
-                {
-                    Log("[MTK] 提示: Preloader 模式 + SBC 启用，可能需要 Carbonara 漏洞", Color.Cyan);
-                }
+                
+                Log("[MTK] ═══════════════════════════════════════", Color.Green);
+                Log($"[MTK] ✓ 设备连接成功: {chipName}", Color.Green);
                 
                 OnDeviceConnected?.Invoke(CurrentDevice);
                 OnStateChanged?.Invoke(_bromClient.State);
@@ -1217,6 +1244,555 @@ namespace SakuraEDL.MediaTek.Services
                 MeId = _bromClient.MeId != null ? BitConverter.ToString(_bromClient.MeId).Replace("-", "") : "",
                 SocId = _bromClient.SocId != null ? BitConverter.ToString(_bromClient.SocId).Replace("-", "") : ""
             };
+        }
+        
+        /// <summary>
+        /// 获取设备签名信息 (用于云端签名请求)
+        /// </summary>
+        public DeviceSignInfo GetDeviceSignInfo()
+        {
+            if (_bromClient == null || _bromClient.HwCode == 0)
+            {
+                Log("[MTK] 设备未连接", Color.Red);
+                return null;
+            }
+            
+            // 初始化签名服务
+            if (_signingService == null)
+            {
+                _signingService = new CloudSigningService(
+                    _bromClient,
+                    _xmlClient,
+                    msg => Log(msg, Color.Cyan),
+                    msg => Log(msg, Color.Gray)
+                );
+            }
+            
+            return _signingService.GetDeviceInfo();
+        }
+        
+        /// <summary>
+        /// 执行 V6-O 协议签名流程
+        /// 对应 AuthFlashTool 的签名写入流程
+        /// </summary>
+        /// <param name="signatureData">签名数据 (云端 API 返回的 Base64 解码后)</param>
+        /// <param name="ct">取消令牌</param>
+        /// <returns>是否成功</returns>
+        public async Task<bool> ExecuteV6OSigningAsync(byte[] signatureData = null, CancellationToken ct = default)
+        {
+            if (_xmlClient == null || !_xmlClient.IsConnected)
+            {
+                Log("[MTK] XML DA 未连接，无法执行 V6-O 签名", Color.Red);
+                return false;
+            }
+            
+            // 如果未提供签名数据，使用已存储的
+            if (signatureData == null || signatureData.Length == 0)
+            {
+                signatureData = SignatureData;
+            }
+            
+            Log("[MTK] ═══════════════════════════════════════", Color.Cyan);
+            Log("[MTK] 执行 V6-O 协议签名流程...", Color.Cyan);
+            Log("[MTK] ═══════════════════════════════════════", Color.Cyan);
+            
+            return await _xmlClient.ExecuteV6OSigningAsync(signatureData, ct);
+        }
+        
+        /// <summary>
+        /// 写入签名数据
+        /// </summary>
+        /// <param name="signatureData">签名数据</param>
+        /// <param name="ct">取消令牌</param>
+        /// <returns>是否成功</returns>
+        public async Task<bool> WriteSignatureDataAsync(byte[] signatureData, CancellationToken ct = default)
+        {
+            if (_xmlClient == null || !_xmlClient.IsConnected)
+            {
+                Log("[MTK] XML DA 未连接", Color.Red);
+                return false;
+            }
+            
+            Log($"[MTK] Writing signature data... ({signatureData?.Length ?? 0} bytes)", Color.Cyan);
+            return await _xmlClient.WriteSignatureDataAsync(signatureData, ct);
+        }
+        
+        /// <summary>
+        /// 检查 DA-SLA 状态
+        /// </summary>
+        /// <param name="ct">取消令牌</param>
+        /// <returns>DA-SLA 状态字符串</returns>
+        public async Task<string> CheckDaSlaStatusAsync(CancellationToken ct = default)
+        {
+            if (_xmlClient == null || !_xmlClient.IsConnected)
+            {
+                Log("[MTK] XML DA 未连接", Color.Red);
+                return "NOT_CONNECTED";
+            }
+            
+            return await _xmlClient.CheckDaSlaStatusAsync(ct);
+        }
+        
+        /// <summary>
+        /// 设置云端签名数据 (从云端 API 获取后调用)
+        /// </summary>
+        /// <param name="base64Signature">Base64 编码的签名数据</param>
+        public void SetCloudSignature(string base64Signature)
+        {
+            if (string.IsNullOrEmpty(base64Signature))
+            {
+                Log("[MTK] 签名数据为空", Color.Red);
+                return;
+            }
+            
+            try
+            {
+                SignatureData = Convert.FromBase64String(base64Signature);
+                Log($"[MTK] 已设置云端签名: {SignatureData.Length} bytes", Color.Green);
+            }
+            catch (Exception ex)
+            {
+                Log($"[MTK] 解析签名数据失败: {ex.Message}", Color.Red);
+            }
+        }
+        
+        /// <summary>
+        /// 完整的云端签名连接流程 (参考 AuthFlashTool)
+        /// 
+        /// Phase 1: 设备连接
+        ///   - Connecting COMPORT
+        ///   - Handshaking protocol
+        ///   - Getting HW-CODE
+        ///   - Configuration protocol
+        ///   - Detect chip
+        ///   - SBC/SLA/DAA status
+        /// 
+        /// Phase 2: 云端数据获取 (由调用者处理)
+        ///   - Getting info from server
+        ///   - Downloading data from server
+        /// 
+        /// Phase 3: DA 上传
+        ///   - Sending download-agent[1]
+        ///   - Setting RunTime parameters
+        ///   - Execute NOTIFY-INIT-HW
+        ///   - Setting Host Info
+        ///   - Sending download-agent[2]
+        /// 
+        /// Phase 4: 签名写入
+        ///   - Writing signature data
+        ///   - Checking DA-SLA status
+        /// </summary>
+        public async Task<bool> AuthFlashConnectAsync(
+            string comPort, 
+            byte[] signatureData = null,
+            CancellationToken ct = default)
+        {
+            Log("[MTK] ═══════════════════════════════════════", Color.Green);
+            Log("[MTK] AuthFlash 签名连接流程", Color.Green);
+            Log("[MTK] ═══════════════════════════════════════", Color.Green);
+            
+            try
+            {
+                // Phase 1: 设备连接
+                Log("[MTK] Waiting for mtk usb device...", Color.Gray);
+                
+                if (!await ConnectAsync(comPort, 115200, ct))
+                {
+                    Log("[MTK] 连接失败", Color.Red);
+                    return false;
+                }
+                
+                Log("[MTK] Waiting for mtk usb device... OK", Color.Green);
+                Log($"[MTK] Port name: {comPort}", Color.Cyan);
+                Log("[MTK] Connecting COMPORT... OK", Color.Green);
+                Log("[MTK] Handshaking protocol... OK", Color.Green);
+                Log("[MTK] Getting HW-CODE... OK", Color.Green);
+                Log($"[MTK] HW CODE: {_bromClient.HwCode:X4} [0x{_bromClient.HwCode:X}]", Color.White);
+                Log("[MTK] Configuration protocol... OK", Color.Green);
+                Log("[MTK] Searching hw-config info... OK", Color.Green);
+                Log($"[MTK] HW VER: {_bromClient.HwVer:X4}, SW VER: {_bromClient.SwVer:X4}, HW SUB CODE: {_bromClient.HwSubCode:X4}", Color.White);
+                Log($"[MTK] Detect chip: {_bromClient.ChipInfo?.ChipName ?? $"MT{_bromClient.HwCode:X4}"}", Color.Cyan);
+                
+                bool sbc = _bromClient.TargetConfig.HasFlag(TargetConfigFlags.SbcEnabled);
+                bool sla = _bromClient.TargetConfig.HasFlag(TargetConfigFlags.SlaEnabled);
+                bool daa = _bromClient.TargetConfig.HasFlag(TargetConfigFlags.DaaEnabled);
+                Log($"[MTK] SBC: {sbc}, SLA: {sla}, DAA: {daa}", Color.White);
+                
+                // Phase 3: DA 上传
+                Log("[MTK] Reading BL version... OK", Color.Green);
+                Log("[MTK] Getting info from server...", Color.Gray);
+                Log("[MTK] Downloading data from server...", Color.Gray);
+                Log("[MTK] Parsing D-Agent file... OK", Color.Green);
+                
+                if (!await LoadDaAsync(ct))
+                {
+                    Log("[MTK] DA 加载失败", Color.Red);
+                    return false;
+                }
+                
+                // Phase 4: 签名写入
+                if (signatureData != null && signatureData.Length > 0)
+                {
+                    SignatureData = signatureData;
+                }
+                
+                if (SignatureData != null && SignatureData.Length > 0)
+                {
+                    Log("[MTK] Writing signature data...", Color.Gray);
+                    bool signOk = await WriteSignatureDataAsync(SignatureData, ct);
+                    Log($"[MTK] Writing signature data... {(signOk ? "OK" : "FAILED")}", signOk ? Color.Green : Color.Red);
+                    
+                    Log("[MTK] Checking DA-SLA status...", Color.Gray);
+                    string slaStatus = await CheckDaSlaStatusAsync(ct);
+                    Log($"[MTK] Checking DA-SLA status... {slaStatus}", Color.Cyan);
+                }
+                
+                Log("[MTK] ✓ AuthFlash 连接成功", Color.Green);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Log($"[MTK] AuthFlash 连接异常: {ex.Message}", Color.Red);
+                return false;
+            }
+        }
+        
+        #endregion
+        
+        #region Realme 云端签名认证
+        
+        /// <summary>
+        /// 初始化 Realme 认证服务
+        /// </summary>
+        private void InitRealmeAuthService()
+        {
+            if (_realmeAuthService == null)
+            {
+                _realmeAuthService = new RealmeAuthService(
+                    _bromClient,
+                    msg => Log(msg, Color.Cyan),
+                    msg => Log(msg, Color.Gray)
+                );
+            }
+            
+            // 更新配置
+            _realmeAuthService.ApiUrl = RealmeApiUrl;
+            _realmeAuthService.ApiKey = RealmeApiKey;
+            _realmeAuthService.Account = RealmeAccount;
+            _realmeAuthService.ServerType = SignServer;
+            
+            // 设置 XML 客户端
+            if (_xmlClient != null)
+            {
+                _realmeAuthService.SetXmlClient(_xmlClient);
+            }
+        }
+        
+        /// <summary>
+        /// 配置 Realme 云端签名服务
+        /// </summary>
+        /// <param name="apiUrl">API 地址</param>
+        /// <param name="apiKey">API 密钥 (可选)</param>
+        /// <param name="account">账号 (可选)</param>
+        /// <param name="serverType">服务类型</param>
+        public void ConfigureRealmeAuth(
+            string apiUrl, 
+            string apiKey = null, 
+            string account = null,
+            SignServerType serverType = SignServerType.Realme)
+        {
+            RealmeApiUrl = apiUrl;
+            RealmeApiKey = apiKey;
+            RealmeAccount = account;
+            SignServer = serverType;
+            
+            Log($"[Realme] 配置签名服务: {serverType}", Color.Green);
+            Log($"[Realme] API URL: {apiUrl}", Color.Green);
+        }
+        
+        /// <summary>
+        /// 配置 GSMFuture 签名服务
+        /// API: http://gsmfuture.in/api/sign/sign
+        /// 只需上传正确设备数据，无需 Token
+        /// </summary>
+        public void ConfigureGsmFutureAuth()
+        {
+            RealmeApiUrl = "http://gsmfuture.in/api/sign/sign";
+            RealmeApiKey = null;
+            RealmeAccount = null;
+            SignServer = SignServerType.Custom;
+            
+            Log("[Realme] 配置 GSMFuture 签名服务", Color.Green);
+            Log("[Realme] API: http://gsmfuture.in/api/sign/sign", Color.Green);
+        }
+        
+        /// <summary>
+        /// 获取 Realme 签名请求信息 (用于手动调用 API)
+        /// </summary>
+        public RealmSignRequest GetRealmeSignRequest()
+        {
+            InitRealmeAuthService();
+            return _realmeAuthService.GetSignRequest();
+        }
+        
+        /// <summary>
+        /// 调用 Realme 云端 API 获取签名
+        /// </summary>
+        public async Task<RealmSignResponse> RequestRealmeSignatureAsync(CancellationToken ct = default)
+        {
+            InitRealmeAuthService();
+            
+            var request = _realmeAuthService.GetSignRequest();
+            if (request == null)
+            {
+                return new RealmSignResponse
+                {
+                    Code = "ERROR",
+                    ErrorMessage = "无法获取设备信息"
+                };
+            }
+            
+            // 如果启用了 SLA，获取 Challenge
+            bool slaEnabled = _bromClient.TargetConfig.HasFlag(TargetConfigFlags.SlaEnabled);
+            if (slaEnabled)
+            {
+                var challenge = await _realmeAuthService.GetChallengeAsync(ct);
+                if (challenge != null)
+                {
+                    request.Challenge = BitConverter.ToString(challenge).Replace("-", "");
+                }
+            }
+            
+            return await _realmeAuthService.RequestSignatureAsync(request, ct);
+        }
+        
+        /// <summary>
+        /// 获取设备信息 Blob (60 字节)
+        /// 用于云端签名 API 请求
+        /// </summary>
+        public byte[] GetDeviceInfoBlob()
+        {
+            InitRealmeAuthService();
+            return _realmeAuthService.GetDeviceInfoBlob();
+        }
+        
+        /// <summary>
+        /// 获取设备信息 Blob 的 Hex 字符串
+        /// </summary>
+        public string GetDeviceInfoBlobHex()
+        {
+            InitRealmeAuthService();
+            return _realmeAuthService.GetDeviceInfoBlobHex();
+        }
+        
+        /// <summary>
+        /// 获取设备信息 Blob 的 Base64 字符串
+        /// </summary>
+        public string GetDeviceInfoBlobBase64()
+        {
+            InitRealmeAuthService();
+            return _realmeAuthService.GetDeviceInfoBlobBase64();
+        }
+        
+        /// <summary>
+        /// 执行完整的 Realme 云端签名认证流程
+        /// 包括: 获取设备信息 → 调用云端 API → 写入签名 → 验证状态
+        /// </summary>
+        public async Task<bool> ExecuteRealmeAuthAsync(CancellationToken ct = default)
+        {
+            if (string.IsNullOrEmpty(RealmeApiUrl))
+            {
+                Log("[Realme] ❌ API URL 未配置，请先调用 ConfigureRealmeAuth()", Color.Red);
+                return false;
+            }
+            
+            InitRealmeAuthService();
+            return await _realmeAuthService.ExecuteAuthAsync(ct);
+        }
+        
+        /// <summary>
+        /// 使用已有签名执行 Realme 认证 (API 已调用)
+        /// </summary>
+        public async Task<bool> ExecuteRealmeAuthWithSignatureAsync(byte[] signatureData, CancellationToken ct = default)
+        {
+            InitRealmeAuthService();
+            return await _realmeAuthService.ExecuteAuthWithSignatureAsync(signatureData, ct);
+        }
+        
+        /// <summary>
+        /// 使用 Base64 签名执行 Realme 认证
+        /// </summary>
+        public async Task<bool> ExecuteRealmeAuthWithBase64Async(string base64Signature, CancellationToken ct = default)
+        {
+            if (string.IsNullOrEmpty(base64Signature))
+            {
+                Log("[Realme] ❌ 签名数据为空", Color.Red);
+                return false;
+            }
+            
+            try
+            {
+                byte[] signatureData = Convert.FromBase64String(base64Signature);
+                return await ExecuteRealmeAuthWithSignatureAsync(signatureData, ct);
+            }
+            catch (Exception ex)
+            {
+                Log($"[Realme] ❌ Base64 解码失败: {ex.Message}", Color.Red);
+                return false;
+            }
+        }
+        
+        /// <summary>
+        /// Realme 完整连接 + 签名流程
+        /// 
+        /// 流程:
+        /// 1. 连接设备
+        /// 2. 获取设备信息
+        /// 3. 调用云端 API 获取签名
+        /// 4. 加载 DA
+        /// 5. 写入签名
+        /// 6. 验证 DA-SLA 状态
+        /// </summary>
+        public async Task<bool> RealmeAuthFlashAsync(string comPort, CancellationToken ct = default)
+        {
+            Log("[Realme] ═══════════════════════════════════════", Color.Green);
+            Log("[Realme] Realme 云端签名刷机流程", Color.Green);
+            Log("[Realme] ═══════════════════════════════════════", Color.Green);
+            
+            try
+            {
+                // Step 1: 连接设备
+                Log("[Realme] 等待 MTK USB 设备...", Color.Green);
+                
+                if (!await ConnectAsync(comPort, 115200, ct))
+                {
+                    Log("[Realme] ❌ 连接失败", Color.Red);
+                    return false;
+                }
+                
+                Log("[Realme] ✓ 设备连接成功", Color.Green);
+                Log($"[Realme] 检测芯片: {_bromClient.ChipInfo?.ChipName ?? $"MT{_bromClient.HwCode:X4}"}", Color.Green);
+                
+                bool sbc = _bromClient.TargetConfig.HasFlag(TargetConfigFlags.SbcEnabled);
+                bool sla = _bromClient.TargetConfig.HasFlag(TargetConfigFlags.SlaEnabled);
+                bool daa = _bromClient.TargetConfig.HasFlag(TargetConfigFlags.DaaEnabled);
+                Log($"[Realme] 安全状态 - SBC: {sbc}, SLA: {sla}, DAA: {daa}", Color.Green);
+                
+                // Step 2: 调用云端 API 获取签名
+                if (!string.IsNullOrEmpty(RealmeApiUrl))
+                {
+                    Log("[Realme] 从服务器获取签名...", Color.Green);
+                    
+                    var response = await RequestRealmeSignatureAsync(ct);
+                    if (response.Success && response.SignatureData != null)
+                    {
+                        SignatureData = response.SignatureData;
+                        Log($"[Realme] ✓ 获取签名成功: {SignatureData.Length} 字节", Color.Green);
+                    }
+                    else
+                    {
+                        Log($"[Realme] ⚠ 获取签名失败: {response.Message ?? response.ErrorMessage}", Color.Red);
+                        // 继续流程，可能不需要签名
+                    }
+                }
+                
+                // Step 3: 加载 DA
+                Log("[Realme] 加载 DA...", Color.Green);
+                if (!await LoadDaAsync(ct))
+                {
+                    Log("[Realme] ❌ DA 加载失败", Color.Red);
+                    return false;
+                }
+                
+                // 更新 XML 客户端
+                if (_xmlClient != null && _realmeAuthService != null)
+                {
+                    _realmeAuthService.SetXmlClient(_xmlClient);
+                }
+                
+                // Step 4: 写入签名
+                if (SignatureData != null && SignatureData.Length > 0)
+                {
+                    Log("[Realme] 写入签名数据...", Color.Green);
+                    
+                    InitRealmeAuthService();
+                    bool writeOk = await _realmeAuthService.WriteSignatureAsync(SignatureData, ct);
+                    
+                    if (writeOk)
+                    {
+                        Log("[Realme] ✓ 写入签名数据... 完成", Color.Green);
+                    }
+                    else
+                    {
+                        Log("[Realme] ⚠ 写入签名数据... 失败", Color.Red);
+                    }
+                    
+                    // Step 5: 检查状态
+                    Log("[Realme] 检查 DA-SLA 状态...", Color.Green);
+                    string status = await _realmeAuthService.CheckDaSlaStatusAsync(ct);
+                    Log($"[Realme] DA-SLA 状态: {status}", Color.Green);
+                }
+                
+                Log("[Realme] ✓ Realme 签名连接成功", Color.Green);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Log($"[Realme] ❌ 异常: {ex.Message}", Color.Red);
+                return false;
+            }
+        }
+        
+        /// <summary>
+        /// 获取最后一次 Realme 签名响应
+        /// </summary>
+        public RealmSignResponse GetLastRealmeResponse()
+        {
+            return _realmeAuthService?.LastResponse;
+        }
+        
+        /// <summary>
+        /// Realme/OPPO/Xiaomi 完整签名流程
+        /// 
+        /// 流程 (与 Xiaomi 相同):
+        /// 1. Send DA (DA1 + DA2) - 已完成
+        /// 2. Send sign file (发送签名文件)
+        /// 3. Read auth data (读取 auth 数据)
+        /// 4. Write signdata (写入签名数据)
+        /// </summary>
+        public async Task<bool> ExecuteFullSignFlowAsync(
+            byte[] signFile,
+            byte[] signData,
+            CancellationToken ct = default)
+        {
+            InitRealmeAuthService();
+            return await _realmeAuthService.ExecuteFullSignFlowAsync(signFile, signData, ct);
+        }
+        
+        /// <summary>
+        /// 读取 Auth 数据 (用于云端签名)
+        /// </summary>
+        public async Task<byte[]> ReadAuthDataAsync(CancellationToken ct = default)
+        {
+            if (_xmlClient == null)
+            {
+                Log("[MTK] XML DA 未初始化", Color.Red);
+                return null;
+            }
+            return await _xmlClient.ReadAuthDataAsync(ct);
+        }
+        
+        /// <summary>
+        /// 发送签名文件
+        /// </summary>
+        public async Task<bool> SendSignFileAsync(byte[] signFile, CancellationToken ct = default)
+        {
+            if (_xmlClient == null)
+            {
+                Log("[MTK] XML DA 未初始化", Color.Red);
+                return false;
+            }
+            return await _xmlClient.SendSignFileAsync(signFile, ct);
         }
 
         /// <summary>

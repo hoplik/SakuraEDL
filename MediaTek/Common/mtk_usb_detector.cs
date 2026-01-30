@@ -97,7 +97,7 @@ namespace SakuraEDL.MediaTek.Common
         public const int VID_MEDIATEK_ALT = 0x0B05;  // ASUS OEM 变体
 
         /// <summary>
-        /// MTK USB PID 定义 (基于 MTK META UTILITY 逆向分析)
+        /// MTK USB PID 定义 (基于 MTK META UTILITY V48 逆向分析)
         /// </summary>
         public static class MtkPids
         {
@@ -120,13 +120,23 @@ namespace SakuraEDL.MediaTek.Common
             public const int PID_DA = 0x2001;             // DA 模式
             public const int PID_DA_CDC = 0x2003;         // DA CDC 模式
             public const int PID_DA_V2 = 0x2004;          // DA V2 模式
+            public const int PID_DA_V3 = 0x2005;          // DA V3 模式 (V48 新增)
             
             // ═══════════════════════════════════════════════════════════════
-            // META 模式 (工程测试)
+            // META 模式 (工程测试) - V48 增强
             // ═══════════════════════════════════════════════════════════════
             public const int PID_META = 0x0001;           // META 模式
             public const int PID_META_UART = 0x2007;      // META UART 模式
             public const int PID_META_COM = 0x20FF;       // META COM 端口
+            public const int PID_META_USB = 0x1010;       // META USB 模式 (V48 新增)
+            public const int PID_META_SP = 0x1011;        // META SP 模式 (V48 新增)
+            
+            // ═══════════════════════════════════════════════════════════════
+            // FACTORY 模式 (工厂测试) - V48 新增
+            // ═══════════════════════════════════════════════════════════════
+            public const int PID_FACTORY = 0x0002;        // FACTORY 模式
+            public const int PID_FACTORY_UART = 0x2010;   // FACTORY UART 模式
+            public const int PID_FACTORY_CDC = 0x2011;    // FACTORY CDC 模式
             
             // ═══════════════════════════════════════════════════════════════
             // 特殊模式
@@ -136,6 +146,7 @@ namespace SakuraEDL.MediaTek.Common
             public const int PID_ADB_RNDIS = 0x200C;      // ADB + RNDIS
             public const int PID_FASTBOOT = 0x200D;       // Fastboot 模式
             public const int PID_MTP = 0x200E;            // MTP 模式
+            public const int PID_PTP = 0x200F;            // PTP 模式 (V48 新增)
             
             // ═══════════════════════════════════════════════════════════════
             // 扩展模式 (来自 MTK META UTILITY)
@@ -143,10 +154,18 @@ namespace SakuraEDL.MediaTek.Common
             public const int PID_EXTENDED_1 = 0x2008;     // 扩展模式 1
             public const int PID_EXTENDED_2 = 0x2009;     // 扩展模式 2
             public const int PID_EXTENDED_3 = 0x200B;     // 扩展模式 3
+            
+            // ═══════════════════════════════════════════════════════════════
+            // 厂商定制 PID (V48 分析)
+            // ═══════════════════════════════════════════════════════════════
+            public const int PID_OPPO_MTK = 0x2012;       // OPPO MTK 设备
+            public const int PID_XIAOMI_MTK = 0x2013;     // 小米 MTK 设备
+            public const int PID_VIVO_MTK = 0x2014;       // VIVO MTK 设备
+            public const int PID_REALME_MTK = 0x2015;     // REALME MTK 设备
         }
 
         /// <summary>
-        /// PID 到模式的映射
+        /// PID 到模式的映射 (V48 增强)
         /// </summary>
         private static readonly Dictionary<int, MtkUsbMode> PidToMode = new Dictionary<int, MtkUsbMode>
         {
@@ -163,11 +182,19 @@ namespace SakuraEDL.MediaTek.Common
             { MtkPids.PID_DA, MtkUsbMode.Da },
             { MtkPids.PID_DA_CDC, MtkUsbMode.Da },
             { MtkPids.PID_DA_V2, MtkUsbMode.Da },
+            { MtkPids.PID_DA_V3, MtkUsbMode.Da },
             
             // META
             { MtkPids.PID_META, MtkUsbMode.Meta },
             { MtkPids.PID_META_UART, MtkUsbMode.Meta },
             { MtkPids.PID_META_COM, MtkUsbMode.Meta },
+            { MtkPids.PID_META_USB, MtkUsbMode.Meta },
+            { MtkPids.PID_META_SP, MtkUsbMode.Meta },
+            
+            // FACTORY (V48 新增)
+            { MtkPids.PID_FACTORY, MtkUsbMode.Factory },
+            { MtkPids.PID_FACTORY_UART, MtkUsbMode.Factory },
+            { MtkPids.PID_FACTORY_CDC, MtkUsbMode.Factory },
             
             // ADB/Fastboot
             { MtkPids.PID_ADB, MtkUsbMode.Adb },
@@ -179,6 +206,13 @@ namespace SakuraEDL.MediaTek.Common
             { MtkPids.PID_EXTENDED_1, MtkUsbMode.Special },
             { MtkPids.PID_EXTENDED_2, MtkUsbMode.Special },
             { MtkPids.PID_EXTENDED_3, MtkUsbMode.Special },
+            { MtkPids.PID_PTP, MtkUsbMode.Special },
+            
+            // 厂商定制 (V48 新增)
+            { MtkPids.PID_OPPO_MTK, MtkUsbMode.Special },
+            { MtkPids.PID_XIAOMI_MTK, MtkUsbMode.Special },
+            { MtkPids.PID_VIVO_MTK, MtkUsbMode.Special },
+            { MtkPids.PID_REALME_MTK, MtkUsbMode.Special },
         };
 
         /// <summary>
@@ -379,7 +413,58 @@ namespace SakuraEDL.MediaTek.Common
             return vid == VID_MEDIATEK && 
                    (pid == MtkPids.PID_META || 
                     pid == MtkPids.PID_META_UART ||
-                    pid == MtkPids.PID_META_COM);
+                    pid == MtkPids.PID_META_COM ||
+                    pid == MtkPids.PID_META_USB ||
+                    pid == MtkPids.PID_META_SP);
+        }
+        
+        /// <summary>
+        /// 检查是否为 FACTORY 模式 (V48 新增)
+        /// </summary>
+        public static bool IsFactoryMode(int vid, int pid)
+        {
+            return vid == VID_MEDIATEK && 
+                   (pid == MtkPids.PID_FACTORY || 
+                    pid == MtkPids.PID_FACTORY_UART ||
+                    pid == MtkPids.PID_FACTORY_CDC);
+        }
+        
+        /// <summary>
+        /// 检查是否为 DA 模式 (V48 增强)
+        /// </summary>
+        public static bool IsDaMode(int vid, int pid)
+        {
+            return vid == VID_MEDIATEK && 
+                   (pid == MtkPids.PID_DA || 
+                    pid == MtkPids.PID_DA_CDC ||
+                    pid == MtkPids.PID_DA_V2 ||
+                    pid == MtkPids.PID_DA_V3);
+        }
+        
+        /// <summary>
+        /// 检查是否为可用于 Exploit 的模式 (BROM 或 Preloader)
+        /// </summary>
+        public static bool IsExploitableMode(int vid, int pid)
+        {
+            return IsBromMode(vid, pid) || IsPreloaderMode(vid, pid);
+        }
+        
+        /// <summary>
+        /// 获取推荐的操作
+        /// </summary>
+        public static string GetRecommendedAction(MtkUsbMode mode)
+        {
+            return mode switch
+            {
+                MtkUsbMode.Brom => "可以使用 Kamakiri2 BROM 漏洞或加载 Preloader",
+                MtkUsbMode.Preloader => "可以使用 Carbonara DA 漏洞或上传 DA",
+                MtkUsbMode.Da => "DA 已加载，可以执行读写操作",
+                MtkUsbMode.Meta => "META 模式，可以执行工程命令",
+                MtkUsbMode.Factory => "FACTORY 模式，可以执行工厂命令",
+                MtkUsbMode.Adb => "ADB 模式，请重启到 Preloader/BROM",
+                MtkUsbMode.Fastboot => "Fastboot 模式，请重启到 Preloader/BROM",
+                _ => "请按住音量下键并连接设备进入 BROM 模式"
+            };
         }
 
         /// <summary>

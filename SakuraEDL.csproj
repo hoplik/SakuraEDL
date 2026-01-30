@@ -90,6 +90,7 @@
     </Compile>
     <Compile Include="Form1.Spreadtrum.cs">
       <DependentUpon>Form1.cs</DependentUpon>
+      <SubType>Form</SubType>
     </Compile>
     <Compile Include="SplashForm.cs">
       <SubType>Form</SubType>
@@ -208,6 +209,11 @@
     <!-- MediaTek 模块 -->
     <Compile Include="Form1.MediaTek.cs">
       <DependentUpon>Form1.cs</DependentUpon>
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Form1.MediaTek.UI.cs">
+      <DependentUpon>Form1.cs</DependentUpon>
+      <SubType>Form</SubType>
     </Compile>
     <Compile Include="MediaTek\Protocol\brom_commands.cs" />
     <Compile Include="MediaTek\Protocol\brom_client.cs" />
@@ -226,7 +232,11 @@
     <Compile Include="MediaTek\Common\mtk_port_detector.cs" />
     <Compile Include="MediaTek\Common\mtk_sla_auth.cs" />
     <Compile Include="MediaTek\Common\mtk_emi_config.cs" />
+    <Compile Include="MediaTek\Common\mtk_storage_info.cs" />
+    <Compile Include="MediaTek\Common\mtk_comm_logger.cs" />
     <Compile Include="MediaTek\Auth\mtk_sla_keys.cs" />
+    <Compile Include="MediaTek\Auth\cloud_signing_service.cs" />
+    <Compile Include="MediaTek\Auth\realme_auth_service.cs" />
     <Compile Include="MediaTek\Database\mtk_chip_database.cs" />
     <Compile Include="MediaTek\Database\mtk_da_database.cs" />
     <Compile Include="MediaTek\Models\mtk_device_info.cs" />
@@ -244,6 +254,7 @@
     <Compile Include="MediaTek\Common\mtk_usb_detector.cs" />
     <Compile Include="MediaTek\Protocol\meta_client.cs" />
     <Compile Include="MediaTek\Services\preloader_dump_service.cs" />
+    <Compile Include="MediaTek\Common\serial_port_config.cs" />
     <Compile Include="MediaTek\UI\mediatek_ui_controller.cs" />
     <EmbeddedResource Include="Form1.resx">
       <DependentUpon>Form1.cs</DependentUpon>

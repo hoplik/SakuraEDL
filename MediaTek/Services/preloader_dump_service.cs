@@ -1,12 +1,26 @@
 // ============================================================================
 // SakuraEDL - MediaTek Preloader Dump 服务
-// 基于 MTK META UTILITY 逆向分析
+// 基于 MTK META UTILITY V48 逆向分析
 // ============================================================================
+// 
+// *** Preloader Dump 是必须优先执行的关键操作 ***
+// 
 // 功能:
-// - 从设备内存转储 Preloader
+// - 从设备内存转储 Preloader (优先级最高)
 // - 解析 Preloader 信息 (MTK_BLOADER_INFO)
-// - 提取 EMI 配置
-// - 设备识别和修复
+// - 提取 EMI 配置 (内存类型、厂商、型号)
+// - 设备识别和修复依据
+//
+// 为什么 Preloader Dump 必须优先？
+// 1. Preloader 包含 EMI 配置，是刷机时选择正确固件的关键
+// 2. EMI 配置错误会导致设备无法启动（变砖）
+// 3. Preloader 信息可用于识别设备硬件版本
+// 4. 修复变砖设备时，Preloader 是重要参考
+// 5. Preloader 转储后可以进行安全分析
+//
+// 响应码:
+// - 0xC1C2C3C4: Dump ACK，开始接收 Preloader 数据
+// - 0xA1A2A3A4: Bypass ACK，安全绕过成功（无 Dump）
 // ============================================================================
 
 using System;
@@ -184,21 +198,36 @@ namespace SakuraEDL.MediaTek.Services
         }
 
         /// <summary>
-        /// 通过 BROM Exploit 转储
+        /// 通过 BROM Exploit 转储 (优先使用 Dump Payload)
         /// </summary>
         private async Task<byte[]> DumpViaBromExploitAsync(ushort hwCode, CancellationToken ct)
         {
             try
             {
-                Log("[Preloader Dump] 执行 BROM Exploit...", Color.Yellow);
+                Log("[Preloader Dump] *** 执行 BROM Exploit (优先 Dump) ***", Color.Yellow);
 
-                // 获取 exploit payload
-                byte[] payload = ExploitPayloadManager.GetPayload(hwCode);
+                // 优先获取 Dump Payload
+                byte[] payload;
+                if (ExploitPayloadManager.SupportsDump(hwCode))
+                {
+                    payload = ExploitPayloadManager.GetDumpPayload(hwCode);
+                    Log($"[Preloader Dump] 使用专用 Dump Payload (HW: 0x{hwCode:X4})", Color.Cyan);
+                    Log("[Preloader Dump] 期望响应: 0xC1C2C3C4 (Dump ACK)", Color.Gray);
+                }
+                else
+                {
+                    payload = ExploitPayloadManager.GetPayload(hwCode);
+                    Log("[Preloader Dump] 无专用 Dump Payload，使用通用 Payload", Color.Orange);
+                    Log("[Preloader Dump] 可能返回 0xA1A2A3A4 (Bypass) 或 0xC1C2C3C4 (Dump)", Color.Gray);
+                }
+
                 if (payload == null || payload.Length == 0)
                 {
                     Log("[Preloader Dump] 未找到 Exploit Payload", Color.Orange);
                     return null;
                 }
+
+                Log($"[Preloader Dump] Payload 大小: {payload.Length} 字节", Color.Gray);
 
                 // 创建 exploit 框架
                 var exploit = new BromExploitFramework(
@@ -208,12 +237,25 @@ namespace SakuraEDL.MediaTek.Services
                     _bromClient.GetPortLock()
                 );
 
-                // 执行 exploit
+                // 执行 exploit (dumpPreloader = true 确保优先 Dump)
                 var result = await exploit.ExecuteExploitAsync(hwCode, payload, dumpPreloader: true, ct);
                 
-                if (result.Success && result.PreloaderData != null)
+                if (result.Success)
                 {
-                    return result.PreloaderData;
+                    if (result.PreloaderData != null && result.PreloaderData.Length > 0)
+                    {
+                        Log($"[Preloader Dump] ✓ Dump 成功! 数据大小: {result.PreloaderData.Length} 字节", Color.Green);
+                        return result.PreloaderData;
+                    }
+                    else if (result.ExploitType == "Bypass")
+                    {
+                        Log("[Preloader Dump] ⚠ 收到 Bypass ACK，无 Dump 数据", Color.Orange);
+                        Log("[Preloader Dump] 提示: 此芯片可能需要专用 Dump Payload", Color.Gray);
+                    }
+                }
+                else
+                {
+                    Log($"[Preloader Dump] Exploit 失败: {result.ErrorMessage}", Color.Red);
                 }
 
                 return null;

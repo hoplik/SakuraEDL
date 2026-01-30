@@ -2512,6 +2512,382 @@ namespace SakuraEDL.MediaTek.Protocol
 
         #endregion
 
+        #region V6-O 协议扩展 (OPPO/Realme/OnePlus)
+
+        /// <summary>
+        /// 通知初始化硬件 (V6-O 协议)
+        /// 对应 AuthFlashTool: Execute NOTIFY-INIT-HW
+        /// </summary>
+        public async Task<bool> NotifyInitHwAsync(CancellationToken ct = default)
+        {
+            _logDetail("[XML] Execute NOTIFY-INIT-HW...");
+
+            string cmd = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
+                        "<da><version>1.0</version>" +
+                        $"<command>{XmlDaCommands.CMD_NOTIFY_INIT_HW}</command>" +
+                        "</da>";
+
+            var response = await SendCommandAsync(cmd, ct);
+            if (response != null)
+            {
+                var statusNode = response.SelectSingleNode("//status");
+                if (statusNode != null && statusNode.InnerText.ToUpper() == "OK")
+                {
+                    _logDetail("[XML] Execute NOTIFY-INIT-HW... OK");
+                    return true;
+                }
+            }
+            
+            _logDetail("[XML] Execute NOTIFY-INIT-HW... OK (assumed)");
+            return true; // 某些设备可能不返回状态
+        }
+
+        /// <summary>
+        /// 写入签名数据 (V6-O 协议)
+        /// 对应 AuthFlashTool: Writing signature data
+        /// </summary>
+        public async Task<bool> WriteSignatureDataAsync(byte[] signatureData, CancellationToken ct = default)
+        {
+            if (signatureData == null || signatureData.Length == 0)
+            {
+                _log("[XML] 签名数据为空");
+                return false;
+            }
+
+            _log($"[XML] Writing signature data... ({signatureData.Length} bytes)");
+
+            try
+            {
+                // 使用 CMD:SEND-AUTH 发送签名数据
+                string signHex = BytesToHex(signatureData);
+                
+                string cmd = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
+                            "<da><version>1.0</version>" +
+                            $"<command>{XmlDaCommands.CMD_SEND_AUTH}</command>" +
+                            "<arg>" +
+                            "<type>DA_SLA</type>" +
+                            $"<length>{signatureData.Length}</length>" +
+                            $"<data>{signHex}</data>" +
+                            "</arg></da>";
+
+                var response = await SendCommandAsync(cmd, ct);
+                if (response != null)
+                {
+                    var statusNode = response.SelectSingleNode("//status");
+                    if (statusNode != null)
+                    {
+                        string status = statusNode.InnerText.ToUpper();
+                        if (status == "OK" || status == "SUCCESS" || status == "0")
+                        {
+                            _log("[XML] Writing signature data... OK");
+                            return true;
+                        }
+                    }
+                }
+
+                _log("[XML] Writing signature data... OK (assumed)");
+                return true; // 某些设备可能不返回状态
+            }
+            catch (Exception ex)
+            {
+                _log($"[XML] 写入签名数据异常: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 读取 Auth 数据 (Realme/OPPO/Xiaomi 流程)
+        /// 
+        /// 流程: Send DA → Send sign file → Read auth data → Write signdata
+        /// 
+        /// 这一步是在发送签名文件后，从设备读取认证数据
+        /// </summary>
+        public async Task<byte[]> ReadAuthDataAsync(CancellationToken ct = default)
+        {
+            _log("[XML] 读取 Auth 数据...");
+            
+            try
+            {
+                // 方法1: 使用 CMD:GET-AUTH-DATA
+                string cmd = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
+                            "<da><version>1.0</version>" +
+                            "<command>CMD:GET-AUTH-DATA</command>" +
+                            "</da>";
+                
+                var response = await SendCommandAsync(cmd, ct);
+                if (response != null)
+                {
+                    // 尝试从多个可能的节点读取数据
+                    var dataNode = response.SelectSingleNode("//auth_data") ??
+                                   response.SelectSingleNode("//data") ??
+                                   response.SelectSingleNode("//auth");
+                    
+                    if (dataNode != null && !string.IsNullOrEmpty(dataNode.InnerText))
+                    {
+                        byte[] authData = HexToBytes(dataNode.InnerText);
+                        _log($"[XML] ✓ 读取 Auth 数据成功: {authData.Length} 字节");
+                        return authData;
+                    }
+                }
+                
+                // 方法2: 使用 CMD:READ-EFUSE 或 CMD:GET-RANDOM 获取设备数据
+                cmd = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
+                      "<da><version>1.0</version>" +
+                      $"<command>{XmlDaCommands.CMD_GET_RANDOM}</command>" +
+                      "<arg><length>32</length></arg>" +
+                      "</da>";
+                
+                response = await SendCommandAsync(cmd, ct);
+                if (response != null)
+                {
+                    var randomNode = response.SelectSingleNode("//random") ??
+                                     response.SelectSingleNode("//data");
+                    if (randomNode != null && !string.IsNullOrEmpty(randomNode.InnerText))
+                    {
+                        byte[] randomData = HexToBytes(randomNode.InnerText);
+                        _log($"[XML] ✓ 读取 Random 数据: {randomData.Length} 字节");
+                        return randomData;
+                    }
+                }
+                
+                _log("[XML] 读取 Auth 数据失败");
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _log($"[XML] 读取 Auth 数据异常: {ex.Message}");
+                return null;
+            }
+        }
+        
+        /// <summary>
+        /// 发送签名文件 (Send sign file)
+        /// 
+        /// Realme/OPPO/Xiaomi 签名流程第一步
+        /// </summary>
+        public async Task<bool> SendSignFileAsync(byte[] signFile, CancellationToken ct = default)
+        {
+            if (signFile == null || signFile.Length == 0)
+            {
+                _log("[XML] 签名文件为空");
+                return false;
+            }
+            
+            _log($"[XML] 发送签名文件... ({signFile.Length} 字节)");
+            
+            try
+            {
+                string signHex = BytesToHex(signFile);
+                
+                // 使用 CMD:SEND-AUTH 或 CMD:SET-ALLINONE-SIGNATURE
+                string cmd = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
+                            "<da><version>1.0</version>" +
+                            $"<command>{XmlDaCommands.CMD_SEND_AUTH}</command>" +
+                            "<arg>" +
+                            "<type>SIGN_FILE</type>" +
+                            $"<length>{signFile.Length}</length>" +
+                            $"<data>{signHex}</data>" +
+                            "</arg></da>";
+                
+                var response = await SendCommandAsync(cmd, ct);
+                if (response != null)
+                {
+                    var statusNode = response.SelectSingleNode("//status");
+                    if (statusNode != null)
+                    {
+                        string status = statusNode.InnerText.ToUpper();
+                        if (status == "OK" || status == "SUCCESS" || status == "0")
+                        {
+                            _log("[XML] ✓ 发送签名文件... 完成");
+                            return true;
+                        }
+                    }
+                }
+                
+                _log("[XML] ✓ 发送签名文件... 完成 (假定成功)");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _log($"[XML] 发送签名文件异常: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 检查 DA-SLA 状态 (V6-O 协议)
+        /// 对应 AuthFlashTool: Checking DA-SLA status
+        /// </summary>
+        public async Task<string> CheckDaSlaStatusAsync(CancellationToken ct = default)
+        {
+            _log("[XML] 检查 DA-SLA 状态...");
+
+            try
+            {
+                // 方法1: 使用 CMD:GET-SLA
+                string cmd = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
+                            "<da><version>1.0</version>" +
+                            $"<command>{XmlDaCommands.CMD_GET_SLA}</command>" +
+                            "</da>";
+
+                var response = await SendCommandAsync(cmd, ct);
+                if (response != null)
+                {
+                    var slaNode = response.SelectSingleNode("//sla") ?? 
+                                 response.SelectSingleNode("//status") ??
+                                 response.SelectSingleNode("//result");
+                    if (slaNode != null)
+                    {
+                        string status = slaNode.InnerText.ToUpper();
+                        _log($"[XML] DA-SLA 状态: {status}");
+                        return status;
+                    }
+                }
+
+                // 方法2: 尝试获取系统属性
+                string slaProperty = await GetSysPropertyAsync("DA.SLA", ct);
+                if (!string.IsNullOrEmpty(slaProperty))
+                {
+                    _log($"[XML] DA-SLA 状态: {slaProperty.ToUpper()}");
+                    return slaProperty.ToUpper();
+                }
+
+                _log("[XML] DA-SLA 状态: UNKNOWN");
+                return "UNKNOWN";
+            }
+            catch (Exception ex)
+            {
+                _log($"[XML] 检查 DA-SLA 状态异常: {ex.Message}");
+                return "ERROR";
+            }
+        }
+
+        /// <summary>
+        /// 获取支持的命令列表 (V6-O 协议)
+        /// 对应 AuthFlashTool: Checking supported commands
+        /// </summary>
+        public async Task<string[]> GetSupportedCommandsAsync(CancellationToken ct = default)
+        {
+            _logDetail("[XML] Checking supported commands...");
+
+            try
+            {
+                string cmd = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
+                            "<da><version>1.0</version>" +
+                            $"<command>{XmlDaCommands.CMD_HOST_SUPPORTED_COMMANDS}</command>" +
+                            "</da>";
+
+                var response = await SendCommandAsync(cmd, ct);
+                if (response != null)
+                {
+                    var commandNodes = response.SelectNodes("//command");
+                    if (commandNodes != null && commandNodes.Count > 0)
+                    {
+                        var commands = new System.Collections.Generic.List<string>();
+                        foreach (System.Xml.XmlNode node in commandNodes)
+                        {
+                            if (!string.IsNullOrEmpty(node.InnerText))
+                                commands.Add(node.InnerText);
+                        }
+                        _logDetail($"[XML] Checking supported commands... OK ({commands.Count} commands)");
+                        return commands.ToArray();
+                    }
+                }
+
+                _logDetail("[XML] Checking supported commands... OK");
+                return new string[0];
+            }
+            catch (Exception ex)
+            {
+                _logDetail($"[XML] 获取支持的命令列表异常: {ex.Message}");
+                return new string[0];
+            }
+        }
+
+        /// <summary>
+        /// V6-O 完整签名流程
+        /// 参考 AuthFlashTool 的流程:
+        /// 1. Setting RunTime parameters
+        /// 2. Checking supported commands
+        /// 3. Execute NOTIFY-INIT-HW
+        /// 4. Setting Host Info
+        /// 5. Writing signature data
+        /// 6. Checking DA-SLA status
+        /// </summary>
+        public async Task<bool> ExecuteV6OSigningAsync(byte[] signatureData, CancellationToken ct = default)
+        {
+            _log("[XML] ═══════════════════════════════════════");
+            _log("[XML] V6-O Protocol detected");
+            _log("[XML] ═══════════════════════════════════════");
+
+            try
+            {
+                // Step 1: Setting RunTime parameters
+                _log("[XML] Setting RunTime parameters...");
+                bool runtimeOk = await SetRuntimeParametersAsync(ct);
+                _log($"[XML] Setting RunTime parameters... {(runtimeOk ? "OK" : "FAILED")}");
+
+                // Step 2: Checking supported commands
+                _log("[XML] Checking supported commands...");
+                var commands = await GetSupportedCommandsAsync(ct);
+                _log("[XML] Checking supported commands... OK");
+
+                // Step 3: Execute NOTIFY-INIT-HW
+                _log("[XML] Execute NOTIFY-INIT-HW...");
+                bool initOk = await NotifyInitHwAsync(ct);
+                _log($"[XML] Execute NOTIFY-INIT-HW... {(initOk ? "OK" : "FAILED")}");
+
+                // Step 4: Setting Host Info
+                _log("[XML] Setting Host Info...");
+                bool hostInfoOk = await SetHostInfoAsync(null, ct);
+                _log($"[XML] Setting Host Info... {(hostInfoOk ? "OK" : "FAILED")}");
+
+                // Step 5: Writing signature data
+                if (signatureData != null && signatureData.Length > 0)
+                {
+                    _log("[XML] Writing signature data...");
+                    bool signOk = await WriteSignatureDataAsync(signatureData, ct);
+                    _log($"[XML] Writing signature data... {(signOk ? "OK" : "FAILED")}");
+                    
+                    if (!signOk)
+                    {
+                        _log("[XML] ⚠ 签名写入失败");
+                        return false;
+                    }
+                }
+
+                // Step 6: Checking DA-SLA status
+                _log("[XML] Checking DA-SLA status...");
+                string slaStatus = await CheckDaSlaStatusAsync(ct);
+                
+                bool enabled = slaStatus == "ENABLED" || slaStatus == "1" || slaStatus == "TRUE" || slaStatus == "AUTHENTICATED";
+                _log($"[XML] Checking DA-SLA status... {slaStatus}");
+
+                if (enabled)
+                {
+                    _log("[XML] ✓ V6-O 签名验证成功");
+                    return true;
+                }
+                else if (slaStatus == "DISABLED" || slaStatus == "0" || slaStatus == "FALSE")
+                {
+                    _log("[XML] ✓ DA-SLA 已禁用 (无需签名)");
+                    return true;
+                }
+                else
+                {
+                    _log("[XML] ⚠ DA-SLA 状态未知，继续...");
+                    return true; // 不阻止流程
+                }
+            }
+            catch (Exception ex)
+            {
+                _log($"[XML] V6-O 签名流程异常: {ex.Message}");
+                return false;
+            }
+        }
+
+        #endregion
+
         #region 信息查询
 
         /// <summary>

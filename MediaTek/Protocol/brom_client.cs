@@ -8,6 +8,7 @@
 using System;
 using System.IO;
 using System.IO.Ports;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using SakuraEDL.MediaTek.Common;
@@ -26,15 +27,18 @@ namespace SakuraEDL.MediaTek.Protocol
         private readonly Action<string> _logDetail;
         private readonly Action<double> _progressCallback;
         private readonly MtkLogger _logger;
+        private readonly MtkCommLogger _commLogger;
         private bool _disposed;
         
         // 线程安全: 端口锁
         private readonly SemaphoreSlim _portLock = new SemaphoreSlim(1, 1);
 
-        // 配置
-        private const int DEFAULT_TIMEOUT_MS = 5000;
-        private const int HANDSHAKE_TIMEOUT_MS = 30000;
+        // 配置 (基于 MTK META UTILITY V48 优化)
+        private const int DEFAULT_TIMEOUT_MS = 5000;           // 默认超时
+        private const int HANDSHAKE_TIMEOUT_MS = 30000;        // 握手超时
+        private const int EXPLOIT_TIMEOUT_MS = 30000;          // Exploit 操作超时 (V48)
         private const int MAX_PACKET_SIZE = 4096;
+        private const int SERIAL_BUFFER_SIZE = 0x14000;        // 81920 bytes (V48)
 
         // 协议状态
         public bool IsConnected { get; private set; }
@@ -67,6 +71,7 @@ namespace SakuraEDL.MediaTek.Protocol
             _logDetail = logDetail ?? _log;
             _progressCallback = progressCallback;
             _logger = null;  // 使用传统回调
+            _commLogger = new MtkCommLogger(_log, _logDetail);
             State = MtkDeviceState.Disconnected;
             ChipInfo = new MtkChipInfo();
         }
@@ -80,16 +85,77 @@ namespace SakuraEDL.MediaTek.Protocol
             _log = msg => _logger.Info(msg, LogCategory.Brom);
             _logDetail = msg => _logger.Verbose(msg, LogCategory.Brom);
             _progressCallback = progressCallback;
+            _commLogger = new MtkCommLogger(_log, _logDetail);
             State = MtkDeviceState.Disconnected;
             ChipInfo = new MtkChipInfo();
         }
 
+        /// <summary>
+        /// 获取通讯日志管理器
+        /// </summary>
+        public MtkCommLogger CommLogger => _commLogger;
+
         #region 连接管理
 
         /// <summary>
-        /// 连接到串口
+        /// 连接到串口 (自动检测设备模式)
         /// </summary>
         public async Task<bool> ConnectAsync(string portName, int baudRate = 921600, CancellationToken ct = default)
+        {
+            // 自动检测设备模式
+            var detectedMode = MtkDeviceMode.Unknown;
+            int detectedVid = 0x0E8D;
+            int detectedPid = 0x2000;
+
+            try
+            {
+                // 使用 MtkUsbDetector 检测设备
+                var devices = MtkUsbDetector.DetectDevices();
+                var device = devices.FirstOrDefault(d => 
+                    d.ComPort != null && 
+                    d.ComPort.Equals(portName, StringComparison.OrdinalIgnoreCase));
+
+                if (device != null)
+                {
+                    detectedVid = device.Vid;
+                    detectedPid = device.Pid;
+                    detectedMode = ConvertUsbModeToDeviceMode(device.Mode);
+                }
+                else
+                {
+                    // 未检测到，尝试从串口名推测
+                    var comDevices = MtkUsbDetector.DetectComPorts();
+                    var comDevice = comDevices.FirstOrDefault(d =>
+                        d.ComPort != null &&
+                        d.ComPort.Equals(portName, StringComparison.OrdinalIgnoreCase));
+                    
+                    if (comDevice != null)
+                    {
+                        detectedVid = comDevice.Vid;
+                        detectedPid = comDevice.Pid;
+                        detectedMode = ConvertUsbModeToDeviceMode(comDevice.Mode);
+                    }
+                }
+            }
+            catch
+            {
+                // 检测失败，使用默认值
+            }
+
+            // 如果未检测到模式，默认使用 Preloader
+            if (detectedMode == MtkDeviceMode.Unknown)
+            {
+                detectedMode = MtkDeviceMode.Preloader;
+                detectedPid = 0x2000;
+            }
+
+            return await ConnectAsync(portName, detectedMode, detectedVid, detectedPid, baudRate, ct);
+        }
+
+        /// <summary>
+        /// 连接到串口 (指定模式和 VID/PID)
+        /// </summary>
+        public async Task<bool> ConnectAsync(string portName, MtkDeviceMode mode, int vid, int pid, int baudRate = 921600, CancellationToken ct = default)
         {
             try
             {
@@ -117,14 +183,39 @@ namespace SakuraEDL.MediaTek.Protocol
 
                 IsConnected = true;
                 State = MtkDeviceState.Handshaking;
-                _log($"[MTK] 串口已打开: {portName}");
+                
+                // UnlockTool 风格日志: 等待设备... COM3 [BROM:0E8D:0003]
+                _commLogger.WaitingForDevice(portName, mode, vid, pid);
+                _commLogger.SetDeviceMode(mode);
 
                 return true;
             }
             catch (Exception ex)
             {
-                _log($"[MTK] 连接失败: {ex.Message}");
+                _commLogger.Log("连接", CommOperationStatus.Failed, ex.Message);
                 return false;
+            }
+        }
+
+        /// <summary>
+        /// 将 MtkUsbMode 转换为 MtkDeviceMode
+        /// </summary>
+        private static MtkDeviceMode ConvertUsbModeToDeviceMode(MtkUsbMode usbMode)
+        {
+            switch (usbMode)
+            {
+                case MtkUsbMode.Brom:
+                    return MtkDeviceMode.Brom;
+                case MtkUsbMode.Preloader:
+                    return MtkDeviceMode.Preloader;
+                case MtkUsbMode.Da:
+                    return MtkDeviceMode.Da;
+                case MtkUsbMode.Meta:
+                    return MtkDeviceMode.Meta;
+                case MtkUsbMode.Factory:
+                    return MtkDeviceMode.Factory;
+                default:
+                    return MtkDeviceMode.Unknown;
             }
         }
 
@@ -166,20 +257,26 @@ namespace SakuraEDL.MediaTek.Protocol
 
         #endregion
 
-        #region 握手 (BROM/Preloader 通用)
+        #region 握手 (BROM/Preloader 通用) - 参考 UnlockTool 逻辑优化
+
+        // 握手序列常量 (基于 UnlockTool/MTK META UTILITY 逆向分析)
+        // 握手原理: 发送字节 X，期望收到 ~X (按位取反)
+        private static readonly byte[] HANDSHAKE_SEQUENCE = new byte[] { 0xA0, 0x0A, 0x50, 0x05 };
+        private static readonly byte[] HANDSHAKE_RESPONSE = new byte[] { 0x5F, 0xF5, 0xAF, 0xFA };
 
         /// <summary>
         /// 执行握手 (BROM 和 Preloader 模式使用相同的握手序列)
+        /// 参考 UnlockTool: boot_rom::connect_brom / BRom_StartCmd
         /// </summary>
         public async Task<bool> HandshakeAsync(int maxTries = 100, CancellationToken ct = default)
         {
             if (!IsConnected || _port == null)
                 return false;
 
-            _log("[MTK] 开始握手...");
+            _commLogger.Log(CommOperationType.Handshake, CommOperationStatus.InProgress);
             State = MtkDeviceState.Handshaking;
             
-            // 握手前清空缓冲区，防止残留数据干扰
+            // 握手前清空缓冲区，防止残留数据干扰 (UnlockTool: PurgeComm)
             _port.DiscardInBuffer();
             _port.DiscardOutBuffer();
 
@@ -190,10 +287,11 @@ namespace SakuraEDL.MediaTek.Protocol
 
                 try
                 {
-                    // 发送握手字节 0xA0
-                    _port.Write(new byte[] { BromHandshake.HANDSHAKE_SEND }, 0, 1);
+                    // Step 1: 发送第一个握手字节 0xA0
+                    _port.Write(new byte[] { HANDSHAKE_SEQUENCE[0] }, 0, 1);
                     
-                    await Task.Delay(10, ct);
+                    // UnlockTool 使用 50ms 等待
+                    await Task.Delay(50, ct);
 
                     // 检查响应
                     if (_port.BytesToRead > 0)
@@ -201,41 +299,41 @@ namespace SakuraEDL.MediaTek.Protocol
                         byte[] response = new byte[_port.BytesToRead];
                         _port.Read(response, 0, response.Length);
 
-                        // 检查是否收到 0x5F
+                        // 检查是否收到 0x5F (~0xA0)
                         foreach (byte b in response)
                         {
-                            if (b == BromHandshake.HANDSHAKE_RESPONSE)
+                            if (b == HANDSHAKE_RESPONSE[0])
                             {
-                                // 继续发送剩余握手序列
-                                bool success = await CompleteHandshakeAsync(ct);
+                                // 继续完成握手序列
+                                bool success = await CompleteHandshakeSequenceAsync(ct);
                                 if (success)
                                 {
-                                    _log("[MTK] ✓ 握手成功");
-                                    // 握手成功后清空缓冲区，准备接收后续命令
+                                    _commLogger.Log(CommOperationType.Handshake, CommOperationStatus.OK);
+                                    _commLogger.LogBromConnected();
+                                    // 握手成功后清空缓冲区
                                     _port.DiscardInBuffer();
                                     _port.DiscardOutBuffer();
-                                    // 注意: 实际模式 (BROM/Preloader) 在 InitializeAsync 中根据 BL Ver 设置
                                     return true;
                                 }
                             }
                         }
                     }
 
+                    // UnlockTool 风格: 每 20 次记录一次日志
                     if (tries % 20 == 0 && tries > 0)
                     {
                         _logDetail($"[MTK] 握手重试中... ({tries}/{maxTries})");
-                        // 每20次重试清空一次缓冲区，避免数据堆积
                         _port.DiscardInBuffer();
                         _port.DiscardOutBuffer();
                     }
 
-                    // 动态调整重试间隔: 初期快速重试，后期延长间隔
-                    int delayMs = tries < 20 ? 50 : (tries < 50 ? 100 : 200);
+                    // 动态调整重试间隔 (UnlockTool: 5ms Sleep + 重试)
+                    int delayMs = tries < 20 ? 5 : (tries < 50 ? 50 : 100);
                     await Task.Delay(delayMs, ct);
                 }
                 catch (TimeoutException)
                 {
-                    // 超时，继续重试
+                    // 超时继续重试
                 }
                 catch (Exception ex)
                 {
@@ -243,70 +341,127 @@ namespace SakuraEDL.MediaTek.Protocol
                 }
             }
 
-            _log("[MTK] ❌ 握手超时");
+            _commLogger.Log(CommOperationType.Handshake, CommOperationStatus.Timeout);
             State = MtkDeviceState.Error;
             
-            // 失败后清空缓冲区
             try
             {
                 _port.DiscardInBuffer();
                 _port.DiscardOutBuffer();
             }
-            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[BROM] 清空缓冲区异常: {ex.Message}"); }
+            catch { }
             
             return false;
         }
 
         /// <summary>
-        /// 完成握手序列
+        /// 完成握手序列 (UnlockTool 风格: 逐字节发送并验证)
+        /// 发送: 0xA0 → 0x0A → 0x50 → 0x05
+        /// 接收: 0x5F ← 0xF5 ← 0xAF ← 0xFA
         /// </summary>
-        private async Task<bool> CompleteHandshakeAsync(CancellationToken ct)
+        private async Task<bool> CompleteHandshakeSequenceAsync(CancellationToken ct)
         {
             try
             {
-                // 已收到 0x5F，继续发送 0x0A
-                _port.Write(new byte[] { 0x0A }, 0, 1);
-                await Task.Delay(10, ct);
+                // UnlockTool 风格日志
+                _commLogger.LogBromHandshake(HANDSHAKE_SEQUENCE[0], HANDSHAKE_RESPONSE[0], HANDSHAKE_RESPONSE[0], 0);
 
-                // 期望收到 0xF5
-                byte[] resp1 = await ReadBytesAsync(1, 1000, ct);
-                if (resp1 == null || resp1[0] != 0xF5)
+                // 已收到 0x5F，继续发送剩余序列 (index 1-3)
+                for (int i = 1; i < HANDSHAKE_SEQUENCE.Length; i++)
                 {
-                    _logDetail($"[MTK] 握手序列错误: 期望 0xF5, 收到 0x{resp1?[0]:X2}");
-                    return false;
+                    // 发送下一个握手字节
+                    _port.Write(new byte[] { HANDSHAKE_SEQUENCE[i] }, 0, 1);
+                    await Task.Delay(10, ct);
+
+                    // 读取响应
+                    byte[] resp = await ReadBytesAsync(1, 1000, ct);
+                    
+                    // 验证响应是否是发送字节的按位取反
+                    byte expected = HANDSHAKE_RESPONSE[i];
+                    if (resp == null || resp[0] != expected)
+                    {
+                        _commLogger.LogBromProtocolError(expected, resp?[0] ?? 0x00);
+                        return false;
+                    }
+                    
+                    _commLogger.LogBromHandshake(HANDSHAKE_SEQUENCE[i], resp[0], expected, i);
                 }
 
-                // 发送 0x50
-                _port.Write(new byte[] { 0x50 }, 0, 1);
-                await Task.Delay(10, ct);
-
-                // 期望收到 0xAF
-                byte[] resp2 = await ReadBytesAsync(1, 1000, ct);
-                if (resp2 == null || resp2[0] != 0xAF)
-                {
-                    _logDetail($"[MTK] 握手序列错误: 期望 0xAF, 收到 0x{resp2?[0]:X2}");
-                    return false;
-                }
-
-                // 发送 0x05
-                _port.Write(new byte[] { 0x05 }, 0, 1);
-                await Task.Delay(10, ct);
-
-                // 期望收到 0xFA
-                byte[] resp3 = await ReadBytesAsync(1, 1000, ct);
-                if (resp3 == null || resp3[0] != 0xFA)
-                {
-                    _logDetail($"[MTK] 握手序列错误: 期望 0xFA, 收到 0x{resp3?[0]:X2}");
-                    return false;
-                }
-
+                _commLogger.LogDetail("boot_rom::BRom_StartCmd ok!");
                 return true;
             }
             catch (Exception ex)
             {
-                _logDetail($"[MTK] 握手序列异常: {ex.Message}");
+                _commLogger.LogDetail($"brom connect exception: {ex.Message}");
                 return false;
             }
+        }
+
+        /// <summary>
+        /// 快速握手 (UnlockTool 优化版 - 减少等待时间)
+        /// </summary>
+        public async Task<bool> FastHandshakeAsync(CancellationToken ct = default)
+        {
+            if (!IsConnected || _port == null)
+                return false;
+
+            _commLogger.Log("快速握手", CommOperationStatus.InProgress);
+            State = MtkDeviceState.Handshaking;
+            _port.DiscardInBuffer();
+            _port.DiscardOutBuffer();
+
+            // UnlockTool 使用 20 次重试
+            for (int tries = 0; tries < 20; tries++)
+            {
+                if (ct.IsCancellationRequested)
+                    return false;
+
+                try
+                {
+                    // 一次性发送整个握手序列
+                    _port.Write(new byte[] { 0xA0 }, 0, 1);
+                    await Task.Delay(5, ct);
+
+                    if (_port.BytesToRead > 0)
+                    {
+                        int b = _port.ReadByte();
+                        if (b == 0x5F)
+                        {
+                            // 快速发送剩余序列
+                            _port.Write(new byte[] { 0x0A }, 0, 1);
+                            await Task.Delay(5, ct);
+                            if (_port.BytesToRead > 0 && _port.ReadByte() == 0xF5)
+                            {
+                                _port.Write(new byte[] { 0x50 }, 0, 1);
+                                await Task.Delay(5, ct);
+                                if (_port.BytesToRead > 0 && _port.ReadByte() == 0xAF)
+                                {
+                                    _port.Write(new byte[] { 0x05 }, 0, 1);
+                                    await Task.Delay(5, ct);
+                                    if (_port.BytesToRead > 0 && _port.ReadByte() == 0xFA)
+                                    {
+                                        _commLogger.Log("快速握手", CommOperationStatus.OK);
+                                        _commLogger.LogBromConnected();
+                                        _port.DiscardInBuffer();
+                                        _port.DiscardOutBuffer();
+                                        return true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    await Task.Delay(5, ct);
+                }
+                catch
+                {
+                    // 继续重试
+                }
+            }
+
+            // 快速握手失败，回退到标准握手
+            _commLogger.LogDetail("快速握手失败，使用标准握手...");
+            return await HandshakeAsync(100, ct);
         }
 
         #endregion
@@ -330,26 +485,31 @@ namespace SakuraEDL.MediaTek.Protocol
                 {
                     HwCode = hwInfo.Value.hwCode;
                     HwVer = hwInfo.Value.hwVer;
-                    _log($"[MTK] HW Code: 0x{HwCode:X4}");
-                    _log($"[MTK] HW Ver: 0x{HwVer:X4}");
                     
                     // 从数据库加载完整芯片信息
                     var chipRecord = Database.MtkChipDatabase.GetChip(HwCode);
+                    string chipName = chipRecord?.ChipName ?? $"MT{HwCode:X4}";
+                    string[] aliases = MtkChipAliases.GetAliases(HwCode);
+                    
+                    // UnlockTool 风格输出: 读取硬件信息... OK
+                    _commLogger.Log(CommOperationType.ReadHardwareInfo, CommOperationStatus.OK);
+                    
+                    // 硬件信息 (UnlockTool 风格)
+                    _commLogger.LogHardwareInfo(HwCode, HwVer, chipName, aliases);
+                    
                     if (chipRecord != null)
                     {
                         ChipInfo = Database.MtkChipDatabase.ToChipInfo(chipRecord);
                         ChipInfo.HwVer = HwVer;  // 保留设备报告的版本
                         
-                        // 输出格式参考 mtkclient
-                        _log($"\tCPU:\t{ChipInfo.ChipName}({ChipInfo.Description})");
-                        _log($"\tHW version:\t0x{HwVer:X}");
-                        _log($"\tWDT:\t\t0x{ChipInfo.WatchdogAddr:X}");
-                        _log($"\tUART:\t\t0x{ChipInfo.UartAddr:X}");
-                        _log($"\tBrom Payload 地址:\t0x{ChipInfo.BromPayloadAddr:X}");
-                        _log($"\tDA Payload 地址:\t0x{ChipInfo.DaPayloadAddr:X}");
+                        // 详细信息作为扩展输出
+                        _commLogger.LogDetail($"CPU: {ChipInfo.ChipName} ({ChipInfo.Description})");
+                        _commLogger.LogDetail($"WDT: 0x{ChipInfo.WatchdogAddr:X}");
+                        _commLogger.LogDetail($"UART: 0x{ChipInfo.UartAddr:X}");
+                        _commLogger.LogDetail($"Brom Payload: 0x{ChipInfo.BromPayloadAddr:X}");
+                        _commLogger.LogDetail($"DA Payload: 0x{ChipInfo.DaPayloadAddr:X}");
                         if (ChipInfo.CqDmaBase.HasValue)
-                            _log($"\tCQ_DMA 地址:\t0x{ChipInfo.CqDmaBase.Value:X}");
-                        _log($"\tVar1:\t\t0xA");  // 默认值
+                            _commLogger.LogDetail($"CQ_DMA: 0x{ChipInfo.CqDmaBase.Value:X}");
                     }
                     else
                     {
@@ -361,21 +521,15 @@ namespace SakuraEDL.MediaTek.Protocol
                         ChipInfo.BromPayloadAddr = 0x100A00;
                         ChipInfo.DaPayloadAddr = 0x200000;  // 默认地址
                         
-                        _log($"[MTK] 未知芯片: 0x{HwCode:X4} (使用默认配置)");
-                        _log($"\tWDT:\t\t0x{ChipInfo.WatchdogAddr:X}");
-                        _log($"\tDA Payload 地址:\t0x{ChipInfo.DaPayloadAddr:X}");
+                        _commLogger.LogDetail($"未知芯片: 0x{HwCode:X4} (使用默认配置)");
                     }
                     
                     // 根据 HW Code 设置 PhoneInfoEnabled (MT6592+)
                     ChipInfo.PhoneInfoEnabled = DaProtocol.NeedsPhoneInfoEnabled(HwCode);
-                    if (ChipInfo.PhoneInfoEnabled)
-                    {
-                        _logDetail($"[MTK] PhoneInfo 发送已启用 (HW Code >= MT6592)");
-                    }
                 }
 
-                // 2. 发送心跳/同步 (ChimeraTool 发送 a0 * 20)
-                _log("[MTK] 发送同步心跳...");
+                // 2. 同步目标
+                _commLogger.Log(CommOperationType.SyncTarget, CommOperationStatus.InProgress);
                 for (int i = 0; i < 20; i++)
                 {
                     try
@@ -390,39 +544,46 @@ namespace SakuraEDL.MediaTek.Protocol
                     }
                     catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[BROM] 清空状态异常: {ex.Message}"); }
                 }
+                _commLogger.Log(CommOperationType.SyncTarget, CommOperationStatus.OK);
                 
-                // 3. 获取目标配置 (ChimeraTool 执行)
+                // 3. 获取目标配置 (安全信息)
                 var config = await GetTargetConfigAsync(ct);
                 if (config != null)
                 {
                     TargetConfig = config.Value;
-                    _log($"[MTK] Target Config: 0x{(uint)TargetConfig:X8}");
-                    LogTargetConfig(TargetConfig);
+                    
+                    // UnlockTool 风格: 显示安全配置
+                    bool sbc = TargetConfig.HasFlag(TargetConfigFlags.SbcEnabled);
+                    bool sla = TargetConfig.HasFlag(TargetConfigFlags.SlaEnabled);
+                    bool daa = TargetConfig.HasFlag(TargetConfigFlags.DaaEnabled);
+                    _commLogger.LogSecurityConfig(sbc, sla, daa);
                 }
 
-                // 4. 获取 BL 版本 (判断模式)
+                // 4. 获取 BL 版本 (判断实际模式)
                 BlVer = await GetBlVerAsync(ct);
                 IsBromMode = (BlVer == BromCommands.CMD_GET_BL_VER);
                 
                 if (IsBromMode)
                 {
-                    _log("[MTK] 模式: BROM (Boot ROM)");
+                    _commLogger.SetDeviceMode(MtkDeviceMode.Brom);
+                    _commLogger.LogMode(MtkDeviceMode.Brom);
                     State = MtkDeviceState.Brom;
                 }
                 else
                 {
-                    _log($"[MTK] 模式: Preloader (BL Ver: {BlVer})");
+                    _commLogger.SetDeviceMode(MtkDeviceMode.Preloader);
+                    _commLogger.LogDetail($"模式: Preloader (BL Ver: {BlVer})");
                     State = MtkDeviceState.Preloader;
                 }
 
-                // 5. 获取 ME ID (ChimeraTool 执行)
+                // 5. 获取 ME ID
                 MeId = await GetMeIdAsync(ct);
                 if (MeId != null && MeId.Length > 0)
                 {
-                    _logDetail($"[MTK] ME ID: {BitConverter.ToString(MeId).Replace("-", "")}");
+                    _commLogger.LogMeid(MeId);
                 }
                 
-                // 6. 其他信息 (可选，用于显示)
+                // 6. 其他信息 (可选)
                 BromVer = await GetBromVerAsync(ct);
                 var hwSwVer = await GetHwSwVerAsync(ct);
                 if (hwSwVer != null)
@@ -437,7 +598,7 @@ namespace SakuraEDL.MediaTek.Protocol
             }
             catch (Exception ex)
             {
-                _log($"[MTK] 初始化失败: {ex.Message}");
+                _commLogger.Log("初始化", CommOperationStatus.Failed, ex.Message);
                 return false;
             }
         }
@@ -759,6 +920,8 @@ namespace SakuraEDL.MediaTek.Protocol
             uint wdtAddr = ChipInfo?.WatchdogAddr ?? 0x10007000;
             uint wdtValue = 0x22000000;
 
+            _commLogger.Log(CommOperationType.DisableWatchdog, CommOperationStatus.InProgress);
+
             // 根据 HW Code 或地址范围调整写入方式
             switch (HwCode)
             {
@@ -767,30 +930,31 @@ namespace SakuraEDL.MediaTek.Protocol
                 case 0x7682:  // MT7682
                 case 0x7686:  // MT7686
                     // 这些芯片需要 16 位写入到特定地址
-                    return await Write16Async(0xA2050000, new ushort[] { 0x2200 }, ct);
+                    bool result16 = await Write16Async(0xA2050000, new ushort[] { 0x2200 }, ct);
+                    _commLogger.Log(CommOperationType.DisableWatchdog, result16 ? CommOperationStatus.OK : CommOperationStatus.Failed, "0xA2050000");
+                    return result16;
                     
                 default:
                     // 天玑系列和其他新芯片可能有不同的看门狗地址
-                    // 0x10007000 - 老款芯片 (MT6xxx 系列)
-                    // 0x1C007000 - 部分天玑芯片 (如 MT6893, MT6895, MT6983)
-                    _log($"[MTK] 禁用看门狗 (地址: 0x{wdtAddr:X8})");
+                    _commLogger.LogDetail($"WDT 地址: 0x{wdtAddr:X8}");
                     
                     bool result = await Write32Async(wdtAddr, new uint[] { wdtValue }, ct);
                     
                     // 如果写入失败且地址不是默认地址，尝试使用默认地址
                     if (!result && wdtAddr != 0x10007000)
                     {
-                        _log("[MTK] 看门狗禁用失败，尝试备用地址 0x10007000");
+                        _commLogger.LogDetail("尝试备用地址 0x10007000");
                         result = await Write32Async(0x10007000, new uint[] { wdtValue }, ct);
                     }
                     
                     // 如果仍然失败，尝试天玑常用地址
                     if (!result && wdtAddr != 0x1C007000)
                     {
-                        _log("[MTK] 尝试天玑芯片地址 0x1C007000");
+                        _commLogger.LogDetail("尝试天玑地址 0x1C007000");
                         result = await Write32Async(0x1C007000, new uint[] { wdtValue }, ct);
                     }
                     
+                    _commLogger.Log(CommOperationType.DisableWatchdog, result ? CommOperationStatus.OK : CommOperationStatus.Failed);
                     return result;
             }
         }
@@ -846,19 +1010,20 @@ namespace SakuraEDL.MediaTek.Protocol
         {
             try
             {
-                _log($"[MTK] 发送 Exploit Payload, 大小: {payload.Length} 字节 (0x{payload.Length:X})");
+                _commLogger.Log(CommOperationType.SendExploit, CommOperationStatus.InProgress);
+                _commLogger.LogDataSent("Exploit Payload", payload.Length);
 
                 // 1. 发送 SEND_CERT 命令 (0xE0)
                 if (!await EchoAsync(BromCommands.CMD_SEND_CERT, ct))
                 {
-                    _log("[MTK] SEND_CERT 命令回显失败");
+                    _commLogger.Log(CommOperationType.SendExploit, CommOperationStatus.Failed, "SEND_CERT 命令回显失败");
                     return false;
                 }
 
                 // 2. 发送 payload 长度 (大端序)
                 if (!await EchoAsync(MtkDataPacker.PackUInt32BE((uint)payload.Length), ct))
                 {
-                    _log("[MTK] Payload 长度回显失败");
+                    _commLogger.Log(CommOperationType.SendExploit, CommOperationStatus.Failed, "Payload 长度回显失败");
                     return false;
                 }
 
@@ -866,16 +1031,16 @@ namespace SakuraEDL.MediaTek.Protocol
                 var statusResp = await ReadBytesAsync(2, DEFAULT_TIMEOUT_MS, ct);
                 if (statusResp == null)
                 {
-                    _log("[MTK] 未能读取 SEND_CERT 状态");
+                    _commLogger.Log(CommOperationType.SendExploit, CommOperationStatus.Failed, "无状态响应");
                     return false;
                 }
 
                 ushort status = MtkDataPacker.UnpackUInt16BE(statusResp, 0);
-                _log($"[MTK] SEND_CERT 状态: 0x{status:X4}");
+                _commLogger.LogDetail($"SEND_CERT 状态: 0x{status:X4}");
 
                 if (status > 0xFF)
                 {
-                    _log($"[MTK] SEND_CERT 被拒绝: {BromErrorHelper.GetErrorMessage(status)}");
+                    _commLogger.Log(CommOperationType.SendExploit, CommOperationStatus.Failed, BromErrorHelper.GetErrorMessage(status));
                     return false;
                 }
 
@@ -927,7 +1092,7 @@ namespace SakuraEDL.MediaTek.Protocol
                 if (checksumResp != null)
                 {
                     ushort receivedChecksum = MtkDataPacker.UnpackUInt16BE(checksumResp, 0);
-                    _log($"[MTK] Payload 校验和: 收到 0x{receivedChecksum:X4}, 期望 0x{checksum:X4}");
+                    _commLogger.LogDetail($"Payload 校验和: 收到 0x{receivedChecksum:X4}, 期望 0x{checksum:X4}");
                 }
 
                 // 9. 读取最终状态
@@ -935,24 +1100,26 @@ namespace SakuraEDL.MediaTek.Protocol
                 if (finalStatusResp != null)
                 {
                     ushort finalStatus = MtkDataPacker.UnpackUInt16BE(finalStatusResp, 0);
-                    _log($"[MTK] Payload 上传状态: 0x{finalStatus:X4}");
+                    _commLogger.LogDetail($"Payload 上传状态: 0x{finalStatus:X4}");
 
                     if (finalStatus <= 0xFF)
                     {
-                        _log("[MTK] ✓ Exploit Payload 上传成功");
+                        _commLogger.Log(CommOperationType.SendExploit, CommOperationStatus.OK);
+                        _commLogger.LogExploitExecution("SEND_CERT", true);
                         return true;
                     }
                     else
                     {
-                        _log($"[MTK] Payload 上传失败: {BromErrorHelper.GetErrorMessage(finalStatus)}");
+                        _commLogger.Log(CommOperationType.SendExploit, CommOperationStatus.Failed, BromErrorHelper.GetErrorMessage(finalStatus));
                     }
                 }
 
+                _commLogger.Log(CommOperationType.SendExploit, CommOperationStatus.OK);
                 return true;  // 有些设备可能不返回状态但仍然执行了 payload
             }
             catch (Exception ex)
             {
-                _log($"[MTK] SendExploitPayloadAsync 异常: {ex.Message}");
+                _commLogger.Log(CommOperationType.SendExploit, CommOperationStatus.Failed, ex.Message);
                 return false;
             }
         }
@@ -995,7 +1162,8 @@ namespace SakuraEDL.MediaTek.Protocol
         {
             try
             {
-                _log($"[MTK] 发送 DA 到地址 0x{address:X8}, 大小 {data.Length} 字节, 签名长度: 0x{sigLen:X}");
+                _commLogger.Log(CommOperationType.SendingDA, CommOperationStatus.InProgress);
+                _commLogger.LogDetail($"地址: 0x{address:X8}, 大小: {data.Length} bytes, 签名: 0x{sigLen:X}");
 
                 // 准备数据和校验和
                 byte[] dataWithoutSig = data;
@@ -1004,31 +1172,31 @@ namespace SakuraEDL.MediaTek.Protocol
                 {
                     if (data.Length < sigLen)
                     {
-                        _log($"[MTK] 错误: 数据长度 {data.Length} 小于签名长度 {sigLen}");
+                        _commLogger.Log(CommOperationType.SendingDA, CommOperationStatus.Failed, "数据长度小于签名长度");
                         return false;
                     }
                     dataWithoutSig = new byte[data.Length - sigLen];
                     Array.Copy(data, 0, dataWithoutSig, 0, data.Length - sigLen);
                     signature = new byte[sigLen];
                     Array.Copy(data, data.Length - sigLen, signature, 0, sigLen);
-                    _log($"[MTK] 数据分割: 主体 {dataWithoutSig.Length} 字节, 签名 {signature.Length} 字节");
+                    _commLogger.LogDetail($"数据分割: 主体 {dataWithoutSig.Length} bytes, 签名 {signature.Length} bytes");
                 }
                 var (checksum, processedData) = MtkChecksum.PrepareData(
                     dataWithoutSig,
                     signature,
                     data.Length - sigLen
                 );
-                _log($"[MTK] 处理后数据: {processedData.Length} 字节, XOR校验和: 0x{checksum:X4}");
+                _commLogger.LogDetail($"XOR校验和: 0x{checksum:X4}");
 
-                // 发送 SEND_DA 命令 (参考 MtkPreloader.cs)
-                _log("[MTK] 发送 SEND_DA 命令 (0xD7)...");
+                // 发送 SEND_DA 命令 (0xD7)
+                _commLogger.LogDataSent("SEND_DA (0xD7)", 1);
                 
                 // 清空缓冲区中的残留数据
                 if (_port.BytesToRead > 0)
                 {
                     byte[] junk = new byte[_port.BytesToRead];
                     _port.Read(junk, 0, junk.Length);
-                    _log($"[MTK] 清空缓冲区: {junk.Length} 字节 ({BitConverter.ToString(junk)})");
+                    _commLogger.LogDetail($"清空缓冲区: {junk.Length} bytes");
                 }
                 
                 // 发送命令并检查响应
@@ -1036,7 +1204,7 @@ namespace SakuraEDL.MediaTek.Protocol
                 var cmdResp = await ReadBytesAsync(1, DEFAULT_TIMEOUT_MS, ct);
                 if (cmdResp == null || cmdResp.Length == 0)
                 {
-                    _log("[MTK] 无命令响应");
+                    _commLogger.Log(CommOperationType.SendingDA, CommOperationStatus.Failed, "无命令响应");
                     return false;
                 }
                 
@@ -1045,29 +1213,29 @@ namespace SakuraEDL.MediaTek.Protocol
                 if (cmdResp[0] == BromCommands.CMD_SEND_DA)
                 {
                     // 标准回显，继续正常流程
-                    _log("[MTK] ✓ SEND_DA 命令已确认 (标准回显)");
+                    _commLogger.LogDataReceived("SEND_DA ACK", 1);
                 }
                 else if (cmdResp[0] == 0xE7)
                 {
                     // 可能是状态响应 (0xE7 可能表示命令已接受)
-                    _log("[MTK] 收到响应 0xE7，检查后续状态...");
+                    _commLogger.LogDetail("收到响应 0xE7，检查后续状态...");
                     
                     // 读取状态码
                     var statusData1 = await ReadBytesAsync(2, 500, ct);
                     if (statusData1 != null && statusData1.Length >= 2)
                     {
                         ushort respStatus1 = MtkDataPacker.UnpackUInt16BE(statusData1, 0);
-                        _log($"[MTK] 状态码: 0x{respStatus1:X4}");
+                        _commLogger.LogDetail($"状态码: 0x{respStatus1:X4}");
                         
                         if (respStatus1 == 0x0000)
                         {
                             // 状态 0x0000 表示命令接受，尝试替代协议
-                            _log("[MTK] 状态 0x0000，尝试替代协议流程...");
+                            _commLogger.LogDetail("使用替代协议流程...");
                             useAlternativeProtocol = true;
                         }
                         else
                         {
-                            _log($"[MTK] 命令被拒绝，状态: 0x{respStatus1:X4}");
+                            _commLogger.Log(CommOperationType.SendingDA, CommOperationStatus.Failed, $"0x{respStatus1:X4}");
                             LastUploadStatus = respStatus1;
                             return false;
                         }
@@ -1080,17 +1248,17 @@ namespace SakuraEDL.MediaTek.Protocol
                     if (statusData2 != null && statusData2.Length >= 1)
                     {
                         ushort respStatus2 = (ushort)((cmdResp[0] << 8) | statusData2[0]);
-                        _log($"[MTK] 设备返回状态: 0x{respStatus2:X4}");
+                        _commLogger.LogDetail($"设备返回状态: 0x{respStatus2:X4}");
                         LastUploadStatus = respStatus2;
                         
                         if (respStatus2 == 0x0000)
                         {
-                            _log("[MTK] 状态 0x0000，尝试替代协议流程...");
+                            _commLogger.LogDetail("使用替代协议流程...");
                             useAlternativeProtocol = true;
                         }
                         else
                         {
-                            _log($"[MTK] 命令失败: 0x{respStatus2:X4}");
+                            _commLogger.Log(CommOperationType.SendingDA, CommOperationStatus.Failed, $"0x{respStatus2:X4}");
                             return false;
                         }
                     }
@@ -1098,21 +1266,21 @@ namespace SakuraEDL.MediaTek.Protocol
                 }
                 else
                 {
-                    _log($"[MTK] 未知响应: 0x{cmdResp[0]:X2}");
+                    _commLogger.LogDetail($"未知响应: 0x{cmdResp[0]:X2}");
                     // 尝试读取更多数据进行诊断
                     var moreData = await ReadBytesAsync(4, 200, ct);
                     if (moreData != null && moreData.Length > 0)
                     {
-                        _log($"[MTK] 额外数据: {BitConverter.ToString(moreData)}");
+                        _commLogger.LogDetail($"额外数据: {BitConverter.ToString(moreData)}");
                     }
+                    _commLogger.Log(CommOperationType.SendingDA, CommOperationStatus.Failed, "未知响应");
                     return false;
                 }
                 
                 if (useAlternativeProtocol)
                 {
                     // 替代协议: 设备可能已经在等待数据
-                    // 尝试直接发送参数 (不期待回显)
-                    _log("[MTK] 使用替代协议: 直接发送参数");
+                    _commLogger.LogDetail("使用替代协议: 直接发送参数");
                     
                     // 发送地址
                     await WriteBytesAsync(MtkDataPacker.PackUInt32BE(address), ct);

@@ -353,7 +353,7 @@ namespace SakuraEDL.MediaTek.Common
                 var portInfo = ParseMtkDevice(deviceId, name, caption);
                 if (portInfo != null)
                 {
-                    _log($"[MTK Port] 检测到设备: {portInfo.ComPort} ({portInfo.Description})");
+                    _log($"检测到设备: {portInfo.ComPort} [{portInfo.Description}]");
                     OnDeviceArrived?.Invoke(portInfo);
                 }
             }
@@ -374,7 +374,7 @@ namespace SakuraEDL.MediaTek.Common
                 if (comMatch.Success)
                 {
                     string comPort = $"COM{comMatch.Groups[1].Value}";
-                    _log($"[MTK Port] 设备已移除: {comPort}");
+                    _log($"设备已移除: {comPort}");
                     OnDeviceRemoved?.Invoke(comPort);
                 }
             }
@@ -390,7 +390,7 @@ namespace SakuraEDL.MediaTek.Common
         /// </summary>
         public async Task<MtkPortInfo> WaitForDeviceAsync(int timeoutMs = 60000, CancellationToken ct = default)
         {
-            _log("[MTK Port] 等待设备连接...");
+            _log("等待设备... (BROM/Preloader)");
             
             var tcs = new TaskCompletionSource<MtkPortInfo>();
             
@@ -408,7 +408,7 @@ namespace SakuraEDL.MediaTek.Common
                 var existingPorts = GetMtkPorts();
                 if (existingPorts.Count > 0)
                 {
-                    _log($"[MTK Port] 发现已连接设备: {existingPorts[0].ComPort}");
+                    _log($"发现已连接设备: {existingPorts[0].ComPort}");
                     return existingPorts[0];
                 }
 
@@ -432,7 +432,7 @@ namespace SakuraEDL.MediaTek.Common
                     catch (OperationCanceledException) { }
                 }
 
-                _log("[MTK Port] 等待设备超时");
+                _log("等待设备... 超时");
                 return null;
             }
             finally
@@ -458,7 +458,7 @@ namespace SakuraEDL.MediaTek.Common
                 
                 if (bromPort != null)
                 {
-                    _log($"[MTK Port] 发现 BROM 设备: {bromPort.ComPort}");
+                    _log($"发现 BROM 设备: {bromPort.ComPort}");
                     return bromPort;
                 }
 

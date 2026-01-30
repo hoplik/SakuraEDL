@@ -143,15 +143,7 @@ namespace SakuraEDL
             this.checkbox45 = new AntdUI.Checkbox();
             this.checkbox50 = new AntdUI.Checkbox();
             this.tabPage4 = new AntdUI.TabPage();
-            this.mtkLblDaMode = new Sunny.UI.UILabel();
-            this.mtkLblChipName = new Sunny.UI.UILabel();
-            this.mtkLblHwCode = new Sunny.UI.UILabel();
-            this.mtkLblStatus = new Sunny.UI.UILabel();
-            this.mtkChkRebootAfter = new AntdUI.Checkbox();
-            this.mtkChkSkipUserdata = new AntdUI.Checkbox();
-            this.mtkChkExploit = new AntdUI.Checkbox();
             this.mtkBtnExploit = new AntdUI.Button();
-            this.mtkSelectExploitType = new AntdUI.Select();
             this.mtkBtnUnlockBl = new AntdUI.Button();
             this.mtkBtnFormatData = new AntdUI.Button();
             this.mtkBtnRestoreNvram = new AntdUI.Button();
@@ -163,9 +155,26 @@ namespace SakuraEDL
             this.mtkBtnReadPartition = new AntdUI.Button();
             this.mtkBtnWritePartition = new AntdUI.Button();
             this.mtkBtnReadGpt = new AntdUI.Button();
-            this.mtkInputScatterFile = new AntdUI.Input();
+            this.mtkSelectBootMode = new AntdUI.Select();
+            this.mtkChkAutoStorage = new AntdUI.Checkbox();
+            this.mtkRadioUFS = new AntdUI.Radio();
+            // 老控件占位符初始化
             this.mtkInputDaFile = new AntdUI.Input();
+            this.mtkInputScatterFile = new AntdUI.Input();
             this.mtkSelectChip = new AntdUI.Select();
+            this.mtkSelectExploitType = new AntdUI.Select();
+            this.mtkLblChipName = new Sunny.UI.UILabel();
+            this.mtkLblHwCode = new Sunny.UI.UILabel();
+            this.mtkLblDaMode = new Sunny.UI.UILabel();
+            this.mtkLblStatus = new Sunny.UI.UILabel();
+            this.mtkChkExploit = new AntdUI.Checkbox();
+            this.mtkChkSkipUserdata = new AntdUI.Checkbox();
+            this.mtkChkRebootAfter = new AntdUI.Checkbox();
+            this.mtkRadioEMMC = new AntdUI.Radio();
+            this.mtkInputDA = new AntdUI.Input();
+            this.mtkInputScatter = new AntdUI.Input();
+            this.mtkInputAuth = new AntdUI.Input();
+            this.mtkSelectAuthMethod = new AntdUI.Select();
             this.mtkGrpPartitions = new Sunny.UI.UIGroupBox();
             this.mtkChkSelectAll = new AntdUI.Checkbox();
             this.mtkListPartitions = new System.Windows.Forms.ListView();
@@ -475,7 +484,7 @@ namespace SakuraEDL
             this.uiLabel6.Text = "时间：00:00";
             this.uiLabel6.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
-            // uiLabel7 (速度标签)
+            // uiLabel7
             // 
             this.uiLabel7.BackColor = System.Drawing.Color.Gainsboro;
             this.uiLabel7.Font = new System.Drawing.Font("微软雅黑", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
@@ -758,10 +767,10 @@ namespace SakuraEDL
             // tabs1
             // 
             this.tabs1.BackColor = System.Drawing.Color.Transparent;
+            this.tabs1.Controls.Add(this.tabPage4);
             this.tabs1.Controls.Add(this.tabPage2);
             this.tabs1.Controls.Add(this.tabPage1);
             this.tabs1.Controls.Add(this.tabPage3);
-            this.tabs1.Controls.Add(this.tabPage4);
             this.tabs1.Controls.Add(this.tabPage5);
             this.tabs1.Controls.Add(this.tabPage6);
             this.tabs1.Cursor = System.Windows.Forms.Cursors.Hand;
@@ -773,7 +782,7 @@ namespace SakuraEDL
             this.tabs1.Pages.Add(this.tabPage4);
             this.tabs1.Pages.Add(this.tabPage5);
             this.tabs1.Pages.Add(this.tabPage6);
-            this.tabs1.SelectedIndex = 1;
+            this.tabs1.SelectedIndex = 3;
             this.tabs1.Size = new System.Drawing.Size(829, 692);
             this.tabs1.Style = styleLine1;
             this.tabs1.TabIndex = 15;
@@ -1643,15 +1652,7 @@ namespace SakuraEDL
             // 
             // tabPage4
             // 
-            this.tabPage4.Controls.Add(this.mtkLblDaMode);
-            this.tabPage4.Controls.Add(this.mtkLblChipName);
-            this.tabPage4.Controls.Add(this.mtkLblHwCode);
-            this.tabPage4.Controls.Add(this.mtkLblStatus);
-            this.tabPage4.Controls.Add(this.mtkChkRebootAfter);
-            this.tabPage4.Controls.Add(this.mtkChkSkipUserdata);
-            this.tabPage4.Controls.Add(this.mtkChkExploit);
             this.tabPage4.Controls.Add(this.mtkBtnExploit);
-            this.tabPage4.Controls.Add(this.mtkSelectExploitType);
             this.tabPage4.Controls.Add(this.mtkBtnUnlockBl);
             this.tabPage4.Controls.Add(this.mtkBtnFormatData);
             this.tabPage4.Controls.Add(this.mtkBtnRestoreNvram);
@@ -1663,9 +1664,14 @@ namespace SakuraEDL
             this.tabPage4.Controls.Add(this.mtkBtnReadPartition);
             this.tabPage4.Controls.Add(this.mtkBtnWritePartition);
             this.tabPage4.Controls.Add(this.mtkBtnReadGpt);
-            this.tabPage4.Controls.Add(this.mtkInputScatterFile);
-            this.tabPage4.Controls.Add(this.mtkInputDaFile);
-            this.tabPage4.Controls.Add(this.mtkSelectChip);
+            this.tabPage4.Controls.Add(this.mtkSelectBootMode);
+            this.tabPage4.Controls.Add(this.mtkChkAutoStorage);
+            this.tabPage4.Controls.Add(this.mtkRadioUFS);
+            this.tabPage4.Controls.Add(this.mtkRadioEMMC);
+            this.tabPage4.Controls.Add(this.mtkInputDA);
+            this.tabPage4.Controls.Add(this.mtkInputScatter);
+            this.tabPage4.Controls.Add(this.mtkInputAuth);
+            this.tabPage4.Controls.Add(this.mtkSelectAuthMethod);
             this.tabPage4.Controls.Add(this.mtkGrpPartitions);
             this.tabPage4.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tabPage4.Location = new System.Drawing.Point(0, 33);
@@ -1673,79 +1679,6 @@ namespace SakuraEDL
             this.tabPage4.Size = new System.Drawing.Size(829, 659);
             this.tabPage4.TabIndex = 2;
             this.tabPage4.Text = "MTK平台";
-            // 
-            // mtkLblDaMode
-            // 
-            this.mtkLblDaMode.AutoSize = true;
-            this.mtkLblDaMode.Font = new System.Drawing.Font("微软雅黑", 9F);
-            this.mtkLblDaMode.ForeColor = System.Drawing.Color.Gray;
-            this.mtkLblDaMode.Location = new System.Drawing.Point(490, 52);
-            this.mtkLblDaMode.Name = "mtkLblDaMode";
-            this.mtkLblDaMode.Size = new System.Drawing.Size(49, 17);
-            this.mtkLblDaMode.TabIndex = 24;
-            this.mtkLblDaMode.Text = "模式: --";
-            // 
-            // mtkLblChipName
-            // 
-            this.mtkLblChipName.AutoSize = true;
-            this.mtkLblChipName.Font = new System.Drawing.Font("微软雅黑", 9F);
-            this.mtkLblChipName.ForeColor = System.Drawing.Color.Gray;
-            this.mtkLblChipName.Location = new System.Drawing.Point(400, 52);
-            this.mtkLblChipName.Name = "mtkLblChipName";
-            this.mtkLblChipName.Size = new System.Drawing.Size(49, 17);
-            this.mtkLblChipName.TabIndex = 23;
-            this.mtkLblChipName.Text = "芯片: --";
-            // 
-            // mtkLblHwCode
-            // 
-            this.mtkLblHwCode.AutoSize = true;
-            this.mtkLblHwCode.Font = new System.Drawing.Font("微软雅黑", 9F);
-            this.mtkLblHwCode.ForeColor = System.Drawing.Color.Gray;
-            this.mtkLblHwCode.Location = new System.Drawing.Point(320, 52);
-            this.mtkLblHwCode.Name = "mtkLblHwCode";
-            this.mtkLblHwCode.Size = new System.Drawing.Size(46, 17);
-            this.mtkLblHwCode.TabIndex = 22;
-            this.mtkLblHwCode.Text = "HW: --";
-            // 
-            // mtkLblStatus
-            // 
-            this.mtkLblStatus.AutoSize = true;
-            this.mtkLblStatus.Font = new System.Drawing.Font("微软雅黑", 9F);
-            this.mtkLblStatus.ForeColor = System.Drawing.Color.Gray;
-            this.mtkLblStatus.Location = new System.Drawing.Point(737, 16);
-            this.mtkLblStatus.Name = "mtkLblStatus";
-            this.mtkLblStatus.Size = new System.Drawing.Size(75, 17);
-            this.mtkLblStatus.TabIndex = 21;
-            this.mtkLblStatus.Text = "状态: 未连接";
-            // 
-            // mtkChkRebootAfter
-            // 
-            this.mtkChkRebootAfter.Font = new System.Drawing.Font("微软雅黑", 9F);
-            this.mtkChkRebootAfter.Location = new System.Drawing.Point(210, 45);
-            this.mtkChkRebootAfter.Name = "mtkChkRebootAfter";
-            this.mtkChkRebootAfter.Size = new System.Drawing.Size(100, 35);
-            this.mtkChkRebootAfter.TabIndex = 18;
-            this.mtkChkRebootAfter.Text = "完成后重启";
-            // 
-            // mtkChkSkipUserdata
-            // 
-            this.mtkChkSkipUserdata.Checked = true;
-            this.mtkChkSkipUserdata.Font = new System.Drawing.Font("微软雅黑", 9F);
-            this.mtkChkSkipUserdata.Location = new System.Drawing.Point(100, 45);
-            this.mtkChkSkipUserdata.Name = "mtkChkSkipUserdata";
-            this.mtkChkSkipUserdata.Size = new System.Drawing.Size(110, 35);
-            this.mtkChkSkipUserdata.TabIndex = 17;
-            this.mtkChkSkipUserdata.Text = "跳过Userdata";
-            // 
-            // mtkChkExploit
-            // 
-            this.mtkChkExploit.Checked = true;
-            this.mtkChkExploit.Font = new System.Drawing.Font("微软雅黑", 9F);
-            this.mtkChkExploit.Location = new System.Drawing.Point(4, 45);
-            this.mtkChkExploit.Name = "mtkChkExploit";
-            this.mtkChkExploit.Size = new System.Drawing.Size(100, 35);
-            this.mtkChkExploit.TabIndex = 16;
-            this.mtkChkExploit.Text = "使用漏洞";
             // 
             // mtkBtnExploit
             // 
@@ -1757,15 +1690,6 @@ namespace SakuraEDL
             this.mtkBtnExploit.Text = "执行漏洞";
             this.mtkBtnExploit.Type = AntdUI.TTypeMini.Warn;
             this.mtkBtnExploit.WaveSize = 0;
-            // 
-            // mtkSelectExploitType
-            // 
-            this.mtkSelectExploitType.Location = new System.Drawing.Point(210, 5);
-            this.mtkSelectExploitType.Name = "mtkSelectExploitType";
-            this.mtkSelectExploitType.PlaceholderText = "漏洞类型";
-            this.mtkSelectExploitType.Size = new System.Drawing.Size(150, 35);
-            this.mtkSelectExploitType.TabIndex = 21;
-            this.mtkSelectExploitType.WaveSize = 0;
             // 
             // mtkBtnUnlockBl
             // 
@@ -1877,40 +1801,93 @@ namespace SakuraEDL
             this.mtkBtnReadGpt.Text = "读分区表";
             this.mtkBtnReadGpt.WaveSize = 0;
             // 
-            // mtkInputScatterFile
+            // mtkSelectBootMode
             // 
-            this.mtkInputScatterFile.AllowClear = true;
-            this.mtkInputScatterFile.Location = new System.Drawing.Point(580, 43);
-            this.mtkInputScatterFile.Name = "mtkInputScatterFile";
-            this.mtkInputScatterFile.PlaceholderText = "Scatter配置文件 (可选)";
-            this.mtkInputScatterFile.PrefixSvg = "FileTextOutlined";
-            this.mtkInputScatterFile.Size = new System.Drawing.Size(230, 35);
-            this.mtkInputScatterFile.SuffixText = "浏览";
-            this.mtkInputScatterFile.TabIndex = 25;
-            this.mtkInputScatterFile.WaveSize = 0;
+            this.mtkSelectBootMode.Items.AddRange(new object[] {
+            "自动识别或自选引导",
+            "云端自动匹配 (推荐)",
+            "本地手动选择"});
+            this.mtkSelectBootMode.List = true;
+            this.mtkSelectBootMode.Location = new System.Drawing.Point(10, 1);
+            this.mtkSelectBootMode.Name = "mtkSelectBootMode";
+            this.mtkSelectBootMode.PrefixSvg = "HarmonyOSOutlined";
+            this.mtkSelectBootMode.Size = new System.Drawing.Size(561, 35);
+            this.mtkSelectBootMode.TabIndex = 116;
+            this.mtkSelectBootMode.Text = "自动识别或自选引导";
+            this.mtkSelectBootMode.SelectedIndexChanged += new AntdUI.IntEventHandler(this.MtkSelectBootMode_SelectedIndexChanged);
             // 
-            // mtkInputDaFile
+            // mtkChkAutoStorage
             // 
-            this.mtkInputDaFile.AllowClear = true;
-            this.mtkInputDaFile.Location = new System.Drawing.Point(375, 5);
-            this.mtkInputDaFile.Name = "mtkInputDaFile";
-            this.mtkInputDaFile.PlaceholderText = "DA文件 (可选,自动检测)";
-            this.mtkInputDaFile.PrefixSvg = "FolderOutlined";
-            this.mtkInputDaFile.Size = new System.Drawing.Size(300, 35);
-            this.mtkInputDaFile.SuffixText = "浏览";
-            this.mtkInputDaFile.TabIndex = 2;
-            this.mtkInputDaFile.WaveSize = 0;
+            this.mtkChkAutoStorage.Checked = true;
+            this.mtkChkAutoStorage.Location = new System.Drawing.Point(577, 3);
+            this.mtkChkAutoStorage.Name = "mtkChkAutoStorage";
+            this.mtkChkAutoStorage.Size = new System.Drawing.Size(93, 33);
+            this.mtkChkAutoStorage.TabIndex = 117;
+            this.mtkChkAutoStorage.Text = "自动";
+            this.mtkChkAutoStorage.CheckedChanged += new AntdUI.BoolEventHandler(this.MtkChkAutoStorage_CheckedChanged);
             // 
-            // mtkSelectChip
+            // mtkRadioUFS
             // 
-            this.mtkSelectChip.AllowClear = true;
-            this.mtkSelectChip.Location = new System.Drawing.Point(4, 5);
-            this.mtkSelectChip.Name = "mtkSelectChip";
-            this.mtkSelectChip.PlaceholderText = "选择芯片型号";
-            this.mtkSelectChip.PrefixSvg = "AppstoreOutlined";
-            this.mtkSelectChip.Size = new System.Drawing.Size(200, 35);
-            this.mtkSelectChip.TabIndex = 1;
-            this.mtkSelectChip.WaveSize = 0;
+            this.mtkRadioUFS.Enabled = false;
+            this.mtkRadioUFS.Location = new System.Drawing.Point(674, 3);
+            this.mtkRadioUFS.Name = "mtkRadioUFS";
+            this.mtkRadioUFS.Size = new System.Drawing.Size(60, 33);
+            this.mtkRadioUFS.TabIndex = 118;
+            this.mtkRadioUFS.Text = "UFS";
+            // 
+            // mtkRadioEMMC
+            // 
+            this.mtkRadioEMMC.Enabled = false;
+            this.mtkRadioEMMC.Location = new System.Drawing.Point(740, 6);
+            this.mtkRadioEMMC.Name = "mtkRadioEMMC";
+            this.mtkRadioEMMC.Size = new System.Drawing.Size(86, 33);
+            this.mtkRadioEMMC.TabIndex = 119;
+            this.mtkRadioEMMC.Text = "eMMC";
+            // 
+            // mtkInputDA
+            // 
+            this.mtkInputDA.Location = new System.Drawing.Point(24, 42);
+            this.mtkInputDA.Name = "mtkInputDA";
+            this.mtkInputDA.PlaceholderText = "双击选择DA";
+            this.mtkInputDA.PrefixSvg = "FolderOutlined";
+            this.mtkInputDA.Size = new System.Drawing.Size(180, 35);
+            this.mtkInputDA.TabIndex = 120;
+            this.mtkInputDA.DoubleClick += new System.EventHandler(this.MtkInputDA_DoubleClick);
+            // 
+            // mtkInputScatter
+            // 
+            this.mtkInputScatter.Location = new System.Drawing.Point(216, 42);
+            this.mtkInputScatter.Name = "mtkInputScatter";
+            this.mtkInputScatter.PlaceholderText = "双击选择配置文件";
+            this.mtkInputScatter.PrefixSvg = "FolderOutlined";
+            this.mtkInputScatter.Size = new System.Drawing.Size(212, 35);
+            this.mtkInputScatter.TabIndex = 121;
+            this.mtkInputScatter.DoubleClick += new System.EventHandler(this.MtkInputScatter_DoubleClick);
+            // 
+            // mtkInputAuth
+            // 
+            this.mtkInputAuth.Location = new System.Drawing.Point(456, 42);
+            this.mtkInputAuth.Name = "mtkInputAuth";
+            this.mtkInputAuth.PlaceholderText = "双击选择auth文件";
+            this.mtkInputAuth.PrefixSvg = "FolderOutlined";
+            this.mtkInputAuth.Size = new System.Drawing.Size(167, 35);
+            this.mtkInputAuth.TabIndex = 122;
+            this.mtkInputAuth.DoubleClick += new System.EventHandler(this.MtkInputAuth_DoubleClick);
+            // 
+            // mtkSelectAuthMethod
+            // 
+            this.mtkSelectAuthMethod.Items.AddRange(new object[] {
+            "验证方式",
+            "正常验证 (签名DA)",
+            "Realme云端签名",
+            "绕过验证 (漏洞利用)"});
+            this.mtkSelectAuthMethod.List = true;
+            this.mtkSelectAuthMethod.Location = new System.Drawing.Point(638, 42);
+            this.mtkSelectAuthMethod.Name = "mtkSelectAuthMethod";
+            this.mtkSelectAuthMethod.PrefixSvg = "SafetyOutlined";
+            this.mtkSelectAuthMethod.Size = new System.Drawing.Size(183, 35);
+            this.mtkSelectAuthMethod.TabIndex = 123;
+            this.mtkSelectAuthMethod.Text = "验证方式";
             // 
             // mtkGrpPartitions
             // 
@@ -3011,9 +2988,9 @@ namespace SakuraEDL
             // 
             this.tabPage7.Controls.Add(this.uiGroupBox2);
             this.tabPage7.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.tabPage7.Location = new System.Drawing.Point(0, 0);
+            this.tabPage7.Location = new System.Drawing.Point(0, 28);
             this.tabPage7.Name = "tabPage7";
-            this.tabPage7.Size = new System.Drawing.Size(827, 466);
+            this.tabPage7.Size = new System.Drawing.Size(827, 438);
             this.tabPage7.TabIndex = 0;
             this.tabPage7.Text = "分区管理";
             // 
@@ -3084,9 +3061,9 @@ namespace SakuraEDL
             // tabPage8
             // 
             this.tabPage8.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.tabPage8.Location = new System.Drawing.Point(0, 0);
+            this.tabPage8.Location = new System.Drawing.Point(0, 28);
             this.tabPage8.Name = "tabPage8";
-            this.tabPage8.Size = new System.Drawing.Size(827, 466);
+            this.tabPage8.Size = new System.Drawing.Size(827, 438);
             this.tabPage8.TabIndex = 1;
             this.tabPage8.Text = "文件管理";
             // 
@@ -3225,7 +3202,6 @@ namespace SakuraEDL
             this.tabPage3.ResumeLayout(false);
             this.uiGroupBox7.ResumeLayout(false);
             this.tabPage4.ResumeLayout(false);
-            this.tabPage4.PerformLayout();
             this.mtkGrpPartitions.ResumeLayout(false);
             this.tabPage5.ResumeLayout(false);
             this.sprdGroupPartitions.ResumeLayout(false);
@@ -3422,9 +3398,14 @@ namespace SakuraEDL
         private System.Windows.Forms.ColumnHeader mtkColSize;
         private System.Windows.Forms.ColumnHeader mtkColAddress;
         private System.Windows.Forms.ColumnHeader mtkColFileName;
-        private AntdUI.Select mtkSelectChip;
-        private AntdUI.Input mtkInputDaFile;
-        private AntdUI.Input mtkInputScatterFile;
+        private AntdUI.Select mtkSelectBootMode;
+        private AntdUI.Checkbox mtkChkAutoStorage;
+        private AntdUI.Radio mtkRadioUFS;
+        private AntdUI.Radio mtkRadioEMMC;
+        private AntdUI.Input mtkInputDA;
+        private AntdUI.Input mtkInputScatter;
+        private AntdUI.Input mtkInputAuth;
+        private AntdUI.Select mtkSelectAuthMethod;
         private AntdUI.Button mtkBtnConnect;
         private AntdUI.Button mtkBtnDisconnect;
         private AntdUI.Button mtkBtnReadGpt;
@@ -3439,14 +3420,18 @@ namespace SakuraEDL
         private AntdUI.Button mtkBtnFormatData;
         private AntdUI.Button mtkBtnUnlockBl;
         private AntdUI.Button mtkBtnExploit;
+        // 老控件占位符 (兼容旧代码)
+        private AntdUI.Input mtkInputDaFile;
+        private AntdUI.Input mtkInputScatterFile;
+        private AntdUI.Select mtkSelectChip;
         private AntdUI.Select mtkSelectExploitType;
+        private Sunny.UI.UILabel mtkLblChipName;
+        private Sunny.UI.UILabel mtkLblHwCode;
+        private Sunny.UI.UILabel mtkLblDaMode;
+        private Sunny.UI.UILabel mtkLblStatus;
         private AntdUI.Checkbox mtkChkExploit;
         private AntdUI.Checkbox mtkChkSkipUserdata;
         private AntdUI.Checkbox mtkChkRebootAfter;
-        private Sunny.UI.UILabel mtkLblStatus;
-        private Sunny.UI.UILabel mtkLblHwCode;
-        private Sunny.UI.UILabel mtkLblChipName;
-        private Sunny.UI.UILabel mtkLblDaMode;
         private AntdUI.Checkbox checkbox7;
         // 展讯控件
         private AntdUI.Input sprdInputPac;
