@@ -4,19 +4,19 @@
     <section class="hero">
       <div class="hero-content">
         <h1 class="hero-title">
-          <span class="gradient">SakuraEDL</span>
+          <span class="gradient">{{ t('home.hero.title') }}</span>
         </h1>
-        <p class="hero-tagline">多平台手机刷机工具</p>
-        <p class="hero-desc">支持高通 EDL / MTK 联发科 / 展锐 Spreadtrum / Fastboot 模式</p>
+        <p class="hero-tagline">{{ t('home.hero.subtitle') }}</p>
+        <p class="hero-desc">{{ t('home.hero.description') }}</p>
         
         <div class="hero-actions">
           <router-link to="/guide/getting-started" class="vp-button primary large">
-            快速开始
+            {{ t('home.hero.getStarted') }}
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
               <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/>
             </svg>
           </router-link>
-          <router-link to="/download" class="vp-button secondary large">下载软件</router-link>
+          <router-link to="/download" class="vp-button secondary large">{{ t('home.hero.download') }}</router-link>
         </div>
         
         <!-- 实时统计 -->
@@ -46,53 +46,53 @@
       <div class="features-grid">
         <div class="feature-card">
           <div class="feature-icon qualcomm">📱</div>
-          <h3>高通 EDL 模式</h3>
-          <p>支持 9008 紧急下载模式，自动匹配 Loader，支持小米/一加/OPPO 等品牌验证</p>
+          <h3>{{ t('home.features.qualcomm.title') }}</h3>
+          <p>{{ t('home.features.qualcomm.desc') }}</p>
           <router-link to="/guide/qualcomm" class="feature-link">
-            了解更多 →
+            {{ currentLang === 'zh' ? '了解更多 →' : 'Learn more →' }}
           </router-link>
         </div>
         
         <div class="feature-card">
           <div class="feature-icon mtk">⚡</div>
-          <h3>MTK 联发科</h3>
-          <p>支持 BROM/Preloader 模式，内置多种漏洞利用，支持自动绕过验证</p>
+          <h3>{{ t('home.features.mtk.title') }}</h3>
+          <p>{{ t('home.features.mtk.desc') }}</p>
           <router-link to="/guide/mtk" class="feature-link">
-            了解更多 →
+            {{ currentLang === 'zh' ? '了解更多 →' : 'Learn more →' }}
           </router-link>
         </div>
         
         <div class="feature-card">
           <div class="feature-icon spd">🔧</div>
-          <h3>展锐 Spreadtrum</h3>
-          <p>支持研发模式和下载模式，自动识别芯片型号，支持 FDL 协议</p>
+          <h3>{{ t('home.features.spd.title') }}</h3>
+          <p>{{ t('home.features.spd.desc') }}</p>
           <router-link to="/guide/spd" class="feature-link">
-            了解更多 →
+            {{ currentLang === 'zh' ? '了解更多 →' : 'Learn more →' }}
           </router-link>
         </div>
         
         <div class="feature-card">
           <div class="feature-icon fastboot">🚀</div>
-          <h3>Fastboot 模式</h3>
-          <p>支持线刷包自动解析，Payload.bin 提取，批量刷写分区</p>
+          <h3>{{ t('home.features.fastboot.title') }}</h3>
+          <p>{{ t('home.features.fastboot.desc') }}</p>
           <router-link to="/guide/fastboot" class="feature-link">
-            了解更多 →
+            {{ currentLang === 'zh' ? '了解更多 →' : 'Learn more →' }}
           </router-link>
         </div>
         
         <div class="feature-card">
           <div class="feature-icon cloud">☁️</div>
-          <h3>云端 Loader</h3>
-          <p>自动匹配设备对应的 Loader，无需手动选择，支持 VIP 验证</p>
+          <h3>{{ t('home.features.cloud.title') }}</h3>
+          <p>{{ t('home.features.cloud.desc') }}</p>
           <router-link to="/guide/cloud-loader" class="feature-link">
-            了解更多 →
+            {{ currentLang === 'zh' ? '了解更多 →' : 'Learn more →' }}
           </router-link>
         </div>
         
         <div class="feature-card">
           <div class="feature-icon free">💎</div>
-          <h3>永久免费</h3>
-          <p>开源工具，所有功能完全免费，无订阅无广告，持续更新维护</p>
+          <h3>{{ t('home.features.free.title') }}</h3>
+          <p>{{ t('home.features.free.desc') }}</p>
           <a href="https://github.com/xiriovo/SakuraEDL" target="_blank" class="feature-link">
             GitHub →
           </a>
@@ -142,6 +142,9 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import api from '@/api'
+import { useI18n } from '@/i18n'
+
+const { t, currentLang } = useI18n()
 
 const stats = ref(null)
 const recentDevices = ref([])

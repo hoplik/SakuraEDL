@@ -1,11 +1,16 @@
 <template>
   <footer class="vp-footer">
     <div class="footer-container">
-      <p class="footer-message">永久免费 | 开源工具</p>
-      <p class="footer-copyright">Copyright © 2024-2026 SakuraEDL Team</p>
+      <p class="footer-message">{{ t('footer.license') }}</p>
+      <p class="footer-copyright">{{ t('footer.copyright') }}</p>
     </div>
   </footer>
 </template>
+
+<script setup>
+import { useI18n } from '@/i18n'
+const { t } = useI18n()
+</script>
 
 <style lang="scss" scoped>
 .vp-footer {
