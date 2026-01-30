@@ -192,6 +192,66 @@ adb reboot edl
 
 ## 高级功能
 
+### Preloader Dump（转储）
+
+基于 MTK META UTILITY 逆向分析实现的 Preloader 转储功能：
+
+**功能:**
+- 从设备内存中提取 Preloader
+- 解析 `MTK_BLOADER_INFO` 结构
+- 提取 EMI 配置信息（内存参数）
+- 设备识别和芯片信息
+
+**用途:**
+- 设备识别和分析
+- 提取 EMI 配置用于修复变砖设备
+- 安全研究和漏洞分析
+- 制作通用刷机工具
+
+**使用方法:**
+1. 连接设备（BROM 模式最佳）
+2. 点击 **"Preloader Dump"**
+3. 等待转储完成
+4. 文件保存到桌面
+
+**解析信息:**
+```
+=== Preloader 信息 ===
+平台: MT6877
+EMI: K4UBE3D4AA_MGCL_LPDDR4X
+版本: 2.0.1
+编译: 2023-01-15 10:30:00
+```
+
+### USB 设备检测（增强）
+
+增强的 MTK USB 设备检测，支持多种模式：
+
+| 模式 | PID | 说明 |
+|------|-----|------|
+| BROM | 0x0003 | Boot ROM 模式 |
+| Preloader | 0x2000 / 0x6000 | 预加载模式 |
+| DA | 0x2001 / 0x2003 | Download Agent 模式 |
+| META | 0x0001 / 0x2007 | 工程测试模式 |
+| FACTORY | - | 工厂测试模式 |
+| ADB | 0x200A | Android Debug Bridge |
+| Fastboot | 0x200D | Fastboot 模式 |
+
+### META 模式通信
+
+META 模式是 MTK 设备的工程测试模式，用于：
+- 工厂测试
+- 校准操作
+- NVRAM 读写（需要 DLL）
+- 设备诊断
+
+**连接 META 模式:**
+1. 设备进入 META 模式
+2. 选择 COM 端口
+3. 点击 **"连接 META"**
+
+**注意:** 完整的 META 功能需要 MediaTek 官方 DLL（如 `metacore.dll`），暂未实现。
+
 ### 协议切换
 
 程序支持两种协议，默认自动选择：
@@ -328,6 +388,36 @@ XML 协议使用 XML 格式的命令，兼容性更好。
 2. 在 DA2 阶段执行漏洞
 3. 绕过进一步验证
 ```
+
+### BROM Exploit 框架（k4y0z/bkerler 2021）
+
+基于 MTK META UTILITY 逆向分析，实现完整的 BROM exploit 框架：
+
+**功能:**
+- Watchdog 禁用
+- BROM 保护禁用
+- Exploit Payload 发送
+- Preloader 内存转储
+- 安全配置绕过
+
+**支持的芯片:**
+| 芯片系列 | 型号 | 状态 |
+|----------|------|------|
+| MT626x | MT6261 | ✅ |
+| MT65xx | MT6572, MT6580, MT6582 | ✅ |
+| MT67xx | MT6735-MT6797 | ✅ |
+| Dimensity | MT6833-MT6893 | ✅ |
+| Dimensity 9000+ | MT6983, MT6985, MT6989 | ⚠️ 部分 |
+
+**Exploit ACK 响应:**
+- `0xA1A2A3A4` - Bypass 成功（安全绕过）
+- `0xC1C2C3C4` - Dump 成功（Preloader 转储）
+
+**使用方法:**
+1. 设备进入 BROM 模式（PID=0x0003）
+2. 连接设备
+3. 执行 BROM Exploit
+4. 等待 Exploit ACK
 
 ---
 

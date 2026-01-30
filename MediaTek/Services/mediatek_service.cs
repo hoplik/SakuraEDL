@@ -1750,5 +1750,181 @@ namespace SakuraEDL.MediaTek.Services
         }
 
         #endregion
+
+        #region Preloader Dump 功能 (MTK META UTILITY 逆向)
+
+        /// <summary>
+        /// 转储 Preloader
+        /// 基于 MTK META UTILITY 逆向分析
+        /// </summary>
+        public async Task<PreloaderDumpResult> DumpPreloaderAsync(string outputPath = null, CancellationToken ct = default)
+        {
+            if (!IsConnected || _bromClient.HwCode == 0)
+            {
+                Log("[MTK] 设备未连接", Color.Red);
+                return new PreloaderDumpResult { ErrorMessage = "设备未连接" };
+            }
+
+            var dumpService = new PreloaderDumpService(
+                _bromClient,
+                (msg, color) => Log(msg, color),
+                (cur, max) => OnProgress?.Invoke(cur, max)
+            );
+
+            return await dumpService.DumpPreloaderAsync(outputPath, ct);
+        }
+
+        /// <summary>
+        /// 从文件解析 Preloader 信息
+        /// </summary>
+        public Common.MtkBloaderInfo ParsePreloaderFile(string filePath)
+        {
+            var parser = new Common.PreloaderParser(s => Log(s, Color.Gray));
+            return parser.ParseFromFile(filePath);
+        }
+
+        #endregion
+
+        #region USB 设备检测 (增强)
+
+        /// <summary>
+        /// 检测所有 MTK USB 设备
+        /// </summary>
+        public static List<Common.MtkUsbDeviceInfo> DetectUsbDevices()
+        {
+            return Common.MtkUsbDetector.DetectDevices();
+        }
+
+        /// <summary>
+        /// 等待 MTK 设备连接
+        /// </summary>
+        public static Common.MtkUsbDeviceInfo WaitForUsbDevice(int timeoutMs = 30000, Common.MtkUsbMode? expectedMode = null)
+        {
+            return Common.MtkUsbDetector.WaitForDevice(timeoutMs, expectedMode);
+        }
+
+        /// <summary>
+        /// 获取设备模式描述
+        /// </summary>
+        public static string GetUsbModeDescription(Common.MtkUsbMode mode)
+        {
+            return Common.MtkUsbDetector.GetModeDescription(mode);
+        }
+
+        #endregion
+
+        #region META 模式 (工程测试)
+
+        private Protocol.MetaClient _metaClient;
+
+        /// <summary>
+        /// 连接到 META 模式设备
+        /// </summary>
+        public async Task<bool> ConnectMetaModeAsync(string comPort, bool factoryMode = false, CancellationToken ct = default)
+        {
+            try
+            {
+                Log($"[MTK META] 连接 {(factoryMode ? "FACTORY" : "META")} 模式: {comPort}", Color.Cyan);
+
+                _metaClient = new Protocol.MetaClient(s => Log(s, Color.White));
+                bool connected = await _metaClient.ConnectAsync(comPort, factoryMode, ct);
+
+                if (connected)
+                {
+                    Log($"[MTK META] ✓ {(factoryMode ? "FACTORY" : "META")} 模式连接成功", Color.Green);
+                }
+                else
+                {
+                    Log("[MTK META] 连接失败", Color.Red);
+                }
+
+                return connected;
+            }
+            catch (Exception ex)
+            {
+                Log($"[MTK META] 连接异常: {ex.Message}", Color.Red);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 断开 META 模式连接
+        /// </summary>
+        public async Task DisconnectMetaModeAsync(CancellationToken ct = default)
+        {
+            if (_metaClient != null)
+            {
+                await _metaClient.DisconnectAsync(ct);
+                _metaClient.Dispose();
+                _metaClient = null;
+                Log("[MTK META] 已断开连接", Color.Gray);
+            }
+        }
+
+        /// <summary>
+        /// META 模式是否已连接
+        /// </summary>
+        public bool IsMetaModeConnected => _metaClient?.IsConnected ?? false;
+
+        /// <summary>
+        /// 获取 META 模式基本信息
+        /// </summary>
+        public async Task<string> GetMetaBasicInfoAsync(CancellationToken ct = default)
+        {
+            if (_metaClient == null || !_metaClient.IsConnected)
+            {
+                return null;
+            }
+            return await _metaClient.ReadBasicInfoAsync(ct);
+        }
+
+        #endregion
+
+        #region BROM Exploit 增强 (MTK META UTILITY 框架)
+
+        /// <summary>
+        /// 执行 BROM Exploit (基于 k4y0z/bkerler 2021)
+        /// </summary>
+        public async Task<Exploit.BromExploitResult> ExecuteBromExploitFrameworkAsync(
+            bool dumpPreloader = true, 
+            CancellationToken ct = default)
+        {
+            if (!IsConnected || _bromClient.HwCode == 0)
+            {
+                Log("[MTK] 设备未连接", Color.Red);
+                return new Exploit.BromExploitResult { ErrorMessage = "设备未连接" };
+            }
+
+            if (!_bromClient.IsBromMode)
+            {
+                Log("[MTK] 设备不在 BROM 模式，BROM Exploit 不适用", Color.Orange);
+                return new Exploit.BromExploitResult { ErrorMessage = "需要 BROM 模式" };
+            }
+
+            try
+            {
+                ushort hwCode = _bromClient.HwCode;
+                Log($"[MTK] 执行 BROM Exploit 框架 (HW: 0x{hwCode:X4})...", Color.Yellow);
+
+                var exploit = new Exploit.BromExploitFramework(
+                    _bromClient.GetPort(),
+                    s => Log(s, Color.Yellow),
+                    s => Log(s, Color.Gray),
+                    _bromClient.GetPortLock()
+                );
+
+                // 获取 payload
+                byte[] payload = Exploit.ExploitPayloadManager.GetPayload(hwCode);
+                
+                return await exploit.ExecuteExploitAsync(hwCode, payload, dumpPreloader, ct);
+            }
+            catch (Exception ex)
+            {
+                Log($"[MTK] BROM Exploit 异常: {ex.Message}", Color.Red);
+                return new Exploit.BromExploitResult { ErrorMessage = ex.Message };
+            }
+        }
+
+        #endregion
     }
 }

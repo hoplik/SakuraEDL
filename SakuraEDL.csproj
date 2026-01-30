@@ -236,6 +236,14 @@
     <Compile Include="MediaTek\Exploit\MtkUsbExploit.cs" />
     <Compile Include="MediaTek\Exploit\Kamakiri2Exploit.cs" />
     <Compile Include="MediaTek\Exploit\AllinoneSignatureExploit.cs" />
+    <Compile Include="MediaTek\Exploit\BromPayloadGenerator.cs" />
+    <Compile Include="MediaTek\Exploit\PreloaderCrasher.cs" />
+    <Compile Include="MediaTek\Exploit\brom_exploit_framework.cs" />
+    <Compile Include="MediaTek\Security\KeyExtractor.cs" />
+    <Compile Include="MediaTek\Common\preloader_parser.cs" />
+    <Compile Include="MediaTek\Common\mtk_usb_detector.cs" />
+    <Compile Include="MediaTek\Protocol\meta_client.cs" />
+    <Compile Include="MediaTek\Services\preloader_dump_service.cs" />
     <Compile Include="MediaTek\UI\mediatek_ui_controller.cs" />
     <EmbeddedResource Include="Form1.resx">
       <DependentUpon>Form1.cs</DependentUpon>
