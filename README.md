@@ -8,7 +8,7 @@
 
 支持高通 EDL (9008)、联发科 (MTK)、展讯 (SPD/Unisoc) 和 Fastboot 模式
 
-[![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![.NET](https://img.shields.io/badge/.NET-4.8-blue.svg)](https://dotnet.microsoft.com/)
 [![GitHub Stars](https://img.shields.io/github/stars/xiriovo/SakuraEDL)](https://github.com/xiriovo/SakuraEDL/stargazers)
 [![GitHub Forks](https://img.shields.io/github/forks/xiriovo/SakuraEDL)](https://github.com/xiriovo/SakuraEDL/network/members)

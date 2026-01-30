@@ -1,7 +1,15 @@
 // ============================================================================
-// SakuraEDL - EDL Loader 数据库
-// [已废弃] 本地 PAK 资源已替换为云端自动匹配
-// 保留此文件仅用于离线回退兼容
+// SakuraEDL - EDL Loader Database | EDL Loader 数据库
+// ============================================================================
+// [ZH] Loader 数据库 - 本地 PAK 资源管理 (云端自动匹配的离线回退)
+// [EN] Loader Database - Local PAK resource management (offline fallback)
+// [JA] Loaderデータベース - ローカルPAKリソース管理（オフライン用）
+// [KO] Loader 데이터베이스 - 로컬 PAK 리소스 관리 (오프라인 폴백)
+// [RU] База Loader - Локальное управление PAK (резервный offline режим)
+// [ES] Base de Loader - Gestión de recursos PAK locales (fallback offline)
+// ============================================================================
+// [Deprecated] Replaced by cloud auto-matching, kept for offline fallback
+// Copyright (c) 2025-2026 SakuraEDL | MIT License
 // ============================================================================
 
 using System;

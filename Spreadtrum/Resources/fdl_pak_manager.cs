@@ -1,6 +1,14 @@
 // ============================================================================
-// SakuraEDL - 展讯 FDL 资源包管理器
-// Spreadtrum FDL PAK Resource Manager
+// SakuraEDL - FDL PAK Manager | FDL 资源包管理器
+// ============================================================================
+// [ZH] FDL 资源包管理 - 管理 FDL 二进制文件的打包和加载
+// [EN] FDL PAK Manager - Manage FDL binary file packing and loading
+// [JA] FDL PAK管理 - FDLバイナリファイルのパックとロードを管理
+// [KO] FDL PAK 관리자 - FDL 바이너리 파일 패킹 및 로딩 관리
+// [RU] Менеджер FDL PAK - Управление упаковкой и загрузкой бинарников FDL
+// [ES] Gestor FDL PAK - Gestionar empaquetado y carga de binarios FDL
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | MIT License
 // ============================================================================
 
 using System;

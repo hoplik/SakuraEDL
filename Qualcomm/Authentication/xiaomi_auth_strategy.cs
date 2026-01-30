@@ -1,6 +1,14 @@
 // ============================================================================
-// SakuraEDL - 小米认证策略
-// Xiaomi MiAuth - 支持小米设备免授权绕过
+// SakuraEDL - Xiaomi Auth Strategy | 小米认证策略
+// ============================================================================
+// [ZH] 小米认证 - 支持小米设备免授权绕过
+// [EN] Xiaomi Auth - Support Xiaomi device auth bypass
+// [JA] Xiaomi認証 - Xiaomiデバイスの認証バイパスをサポート
+// [KO] Xiaomi 인증 - Xiaomi 기기 인증 우회 지원
+// [RU] Аутентификация Xiaomi - Обход аутентификации устройств Xiaomi
+// [ES] Autenticación Xiaomi - Soporte para bypass de autenticación Xiaomi
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | MIT License
 // ============================================================================
 
 using System;

@@ -1,6 +1,14 @@
 // ============================================================================
-// SakuraEDL - Sparse Image 处理器
-// Android Sparse Image Handler for Spreadtrum
+// SakuraEDL - Sparse Handler | Sparse 镜像处理器
+// ============================================================================
+// [ZH] Sparse 处理器 - Android Sparse 镜像格式处理
+// [EN] Sparse Handler - Android Sparse image format processing
+// [JA] Sparse処理 - Android Sparse イメージ形式の処理
+// [KO] Sparse 핸들러 - Android Sparse 이미지 형식 처리
+// [RU] Обработчик Sparse - Обработка формата Android Sparse образов
+// [ES] Manejador Sparse - Procesamiento de formato de imagen Sparse
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | MIT License
 // ============================================================================
 
 using System;

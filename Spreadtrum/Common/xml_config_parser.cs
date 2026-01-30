@@ -1,6 +1,14 @@
 // ============================================================================
-// SakuraEDL - 展讯 XML 配置解析器
-// Spreadtrum/Unisoc XML Configuration Parser
+// SakuraEDL - XML Config Parser | XML 配置解析器
+// ============================================================================
+// [ZH] XML 配置解析 - 解析展讯设备 XML 配置文件
+// [EN] XML Config Parser - Parse Spreadtrum device XML configuration files
+// [JA] XML設定解析 - Spreadtrumデバイスの XML 設定ファイル解析
+// [KO] XML 설정 파서 - Spreadtrum 기기 XML 설정 파일 분석
+// [RU] Парсер XML конфигурации - Разбор конфигурационных файлов Spreadtrum
+// [ES] Analizador de config XML - Análisis de archivos de configuración XML
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | MIT License
 // ============================================================================
 
 using System;

@@ -1,6 +1,14 @@
 // ============================================================================
-// SakuraEDL - 统一压缩服务
-// 支持 7z、ZIP、LZMA、LZ4 等多种格式
+// SakuraEDL - Compression Service | 压缩服务
+// ============================================================================
+// [ZH] 压缩服务 - 支持 7z、ZIP、LZMA、LZ4 等多种格式
+// [EN] Compression Service - Support 7z, ZIP, LZMA, LZ4 and more formats
+// [JA] 圧縮サービス - 7z、ZIP、LZMA、LZ4など複数形式をサポート
+// [KO] 압축 서비스 - 7z, ZIP, LZMA, LZ4 등 다양한 형식 지원
+// [RU] Сервис сжатия - Поддержка 7z, ZIP, LZMA, LZ4 и других форматов
+// [ES] Servicio de compresión - Soporte para 7z, ZIP, LZMA, LZ4 y más
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | MIT License
 // ============================================================================
 
 using System;

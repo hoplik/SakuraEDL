@@ -1,10 +1,15 @@
 // ============================================================================
-// SakuraEDL - A/B 槽位检测器
-// Slot Detector - Android A/B Partition Slot Detection
+// SakuraEDL - Slot Detector | A/B 槽位检测器
 // ============================================================================
-// 模块: Qualcomm.Common
-// 功能: 检测设备当前活动的 A/B 槽位
-// 参考: Android bootctrl HAL, gpttool
+// [ZH] 槽位检测 - 检测设备当前活动的 A/B 槽位
+// [EN] Slot Detector - Detect current active A/B partition slot
+// [JA] スロット検出 - 現在アクティブなA/Bパーティションスロットを検出
+// [KO] 슬롯 탐지기 - 현재 활성 A/B 파티션 슬롯 감지
+// [RU] Детектор слотов - Обнаружение активного A/B слота раздела
+// [ES] Detector de slot - Detectar slot de partición A/B activo
+// ============================================================================
+// Reference: Android bootctrl HAL, gpttool
+// Copyright (c) 2025-2026 SakuraEDL | MIT License
 // ============================================================================
 
 using System;

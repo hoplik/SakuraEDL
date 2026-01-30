@@ -1,6 +1,14 @@
 // ============================================================================
-// CloudLoaderIntegration - 云端 Loader 自动匹配集成示例
-// 展示如何在 Form1.cs 中替换 PAK 资源为云端自动匹配
+// SakuraEDL - Cloud Loader Integration | 云端 Loader 集成
+// ============================================================================
+// [ZH] 云端 Loader 集成 - 自动匹配云端 EDL Loader 资源
+// [EN] Cloud Loader Integration - Auto-match cloud EDL Loader resources
+// [JA] クラウドLoader統合 - クラウドEDL Loaderリソースの自動マッチング
+// [KO] 클라우드 Loader 통합 - 클라우드 EDL Loader 리소스 자동 매칭
+// [RU] Интеграция облачного Loader - Автоматический подбор облачных ресурсов
+// [ES] Integración Cloud Loader - Auto-coincidencia de recursos Loader
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | MIT License
 // ============================================================================
 
 using System;

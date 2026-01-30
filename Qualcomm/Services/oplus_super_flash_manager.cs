@@ -1,3 +1,16 @@
+// ============================================================================
+// SakuraEDL - OPlus Super Flash Manager | OPlus Super 刷写管理器
+// ============================================================================
+// [ZH] OPlus Super 刷写 - OPPO/OnePlus/Realme Super 分区智能刷写
+// [EN] OPlus Super Flash - Smart flashing for OPPO/OnePlus/Realme Super partition
+// [JA] OPlus Superフラッシュ - OPPO/OnePlus/Realme Superパーティションの刷写
+// [KO] OPlus Super 플래시 - OPPO/OnePlus/Realme Super 파티션 스마트 플래싱
+// [RU] OPlus Super Flash - Умная прошивка Super разделов OPPO/OnePlus/Realme
+// [ES] OPlus Super Flash - Flasheo inteligente de partición Super OPlus
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | MIT License
+// ============================================================================
+
 using System;
 using System.Collections.Generic;
 using System.IO;

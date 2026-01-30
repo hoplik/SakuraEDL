@@ -1,6 +1,14 @@
 // ============================================================================
-// SakuraEDL - OnePlus 动态认证策略
-// 支持 OnePlus 5/5T/6/6T/7/7Pro/7T/8/8Pro/8T/9/9Pro/Nord/N10/N100
+// SakuraEDL - OnePlus Auth Strategy | OnePlus 认证策略
+// ============================================================================
+// [ZH] OnePlus 认证 - 支持 OnePlus 5-9 系列及 Nord 系列动态认证
+// [EN] OnePlus Auth - Support OnePlus 5-9 series and Nord dynamic auth
+// [JA] OnePlus認証 - OnePlus 5-9シリーズとNordの動的認証をサポート
+// [KO] OnePlus 인증 - OnePlus 5-9 시리즈 및 Nord 동적 인증 지원
+// [RU] Аутентификация OnePlus - Поддержка динамической аутентификации 5-9
+// [ES] Autenticación OnePlus - Soporte para autenticación dinámica 5-9
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | MIT License
 // ============================================================================
 
 using System;

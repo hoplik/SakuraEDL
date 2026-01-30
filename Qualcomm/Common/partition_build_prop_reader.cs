@@ -1,9 +1,14 @@
 // ============================================================================
-// SakuraEDL - 高效分区 Build.prop 读取器
-// 针对 EDL 模式优化的按需读取实现
+// SakuraEDL - Build.prop Reader | Build.prop 读取器
 // ============================================================================
-// 模块: Qualcomm.Common
-// 功能: 从设备分区高效读取和解析 build.prop
+// [ZH] Build.prop 读取 - EDL 模式下高效读取和解析 build.prop
+// [EN] Build.prop Reader - Efficient reading and parsing in EDL mode
+// [JA] Build.prop読取 - EDLモードでの効率的な読み取りと解析
+// [KO] Build.prop 리더 - EDL 모드에서 효율적인 읽기 및 분석
+// [RU] Чтение Build.prop - Эффективное чтение и разбор в режиме EDL
+// [ES] Lector Build.prop - Lectura y análisis eficiente en modo EDL
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | MIT License
 // ============================================================================
 
 using System;

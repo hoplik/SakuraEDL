@@ -1,7 +1,14 @@
 // ============================================================================
-// SakuraEDL - 展讯资源包读取器
-// 从外部资源包 (sprd_resources.pak) 加载 Exploit/FDL 等资源
-// 支持 SPAK v1 格式
+// SakuraEDL - SPRD Resource PAK | 展讯资源包
+// ============================================================================
+// [ZH] 资源包读取 - 从 sprd_resources.pak 加载 Exploit/FDL 等资源
+// [EN] Resource PAK Reader - Load Exploit/FDL resources from pak file
+// [JA] リソースPAK読み取り - pakファイルからExploit/FDLリソースをロード
+// [KO] 리소스 PAK 리더 - pak 파일에서 Exploit/FDL 리소스 로드
+// [RU] Чтение PAK ресурсов - Загрузка Exploit/FDL из файла pak
+// [ES] Lector de PAK - Cargar recursos Exploit/FDL desde archivo pak
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | MIT License
 // ============================================================================
 
 using System;

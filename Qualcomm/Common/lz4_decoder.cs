@@ -1,6 +1,14 @@
 // ============================================================================
-// SakuraEDL - LZ4 解码器
-// 纯 C# 实现，高效解压 EROFS 压缩数据
+// SakuraEDL - LZ4 Decoder | LZ4 解码器
+// ============================================================================
+// [ZH] LZ4 解码器 - 纯 C# 实现，高效解压 EROFS 压缩数据
+// [EN] LZ4 Decoder - Pure C# implementation for EROFS decompression
+// [JA] LZ4デコーダー - 純粋なC#実装、EROFSデータの効率的な解凍
+// [KO] LZ4 디코더 - 순수 C# 구현, EROFS 압축 데이터 효율적 해제
+// [RU] Декодер LZ4 - Чистая C# реализация для распаковки EROFS
+// [ES] Decodificador LZ4 - Implementación C# pura para descompresión EROFS
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | MIT License
 // ============================================================================
 
 using System;

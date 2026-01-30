@@ -1,5 +1,15 @@
-// Spreadtrum ISP eMMC 分区管理器
-// 提供 eMMC 分区的读写和管理功能
+// ============================================================================
+// SakuraEDL - eMMC Partition Manager | eMMC 分区管理器
+// ============================================================================
+// [ZH] eMMC 分区管理 - 提供 eMMC 分区的读写和管理功能
+// [EN] eMMC Partition Manager - Provide read/write and management of eMMC
+// [JA] eMMCパーティション管理 - eMMCパーティションの読み書きと管理
+// [KO] eMMC 파티션 관리자 - eMMC 파티션 읽기/쓰기 및 관리
+// [RU] Менеджер разделов eMMC - Чтение/запись и управление разделами eMMC
+// [ES] Gestor de particiones eMMC - Lectura/escritura y gestión de eMMC
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | MIT License
+// ============================================================================
 
 using System;
 using System.Collections.Generic;

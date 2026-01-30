@@ -1,5 +1,15 @@
-// Spreadtrum ISP eMMC GPT 解析
-// 解析 eMMC 设备的 GPT 分区表
+// ============================================================================
+// SakuraEDL - eMMC GPT Parser | eMMC GPT 解析器
+// ============================================================================
+// [ZH] eMMC GPT 解析 - 解析 eMMC 设备的 GPT 分区表
+// [EN] eMMC GPT Parser - Parse GPT partition table of eMMC devices
+// [JA] eMMC GPT解析 - eMMCデバイスのGPTパーティションテーブル解析
+// [KO] eMMC GPT 파서 - eMMC 기기의 GPT 파티션 테이블 분석
+// [RU] Парсер GPT eMMC - Разбор таблицы разделов GPT устройств eMMC
+// [ES] Analizador GPT eMMC - Análisis de tabla de particiones GPT eMMC
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | MIT License
+// ============================================================================
 
 using System;
 using System.Collections.Generic;

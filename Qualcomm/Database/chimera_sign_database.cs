@@ -1,7 +1,15 @@
 // ============================================================================
-// SakuraEDL - 奇美拉签名数据库
-// Loader/Digest/Signature 全部从资源包 (firehose.pak) 加载
-// 仅支持 CPAK v2 格式 (Loader + Digest + Signature)
+// SakuraEDL - Chimera Sign Database | 奇美拉签名数据库
+// ============================================================================
+// [ZH] 签名数据库 - 从 firehose.pak 加载 Loader/Digest/Signature
+// [EN] Sign Database - Load Loader/Digest/Signature from firehose.pak
+// [JA] 署名DB - firehose.pakからLoader/Digest/Signatureをロード
+// [KO] 서명 DB - firehose.pak에서 Loader/Digest/Signature 로드
+// [RU] База подписей - Загрузка Loader/Digest/Signature из firehose.pak
+// [ES] Base de firmas - Cargar Loader/Digest/Signature desde firehose.pak
+// ============================================================================
+// CPAK v2 Format Only (Loader + Digest + Signature)
+// Copyright (c) 2025-2026 SakuraEDL | MIT License
 // ============================================================================
 
 using System;

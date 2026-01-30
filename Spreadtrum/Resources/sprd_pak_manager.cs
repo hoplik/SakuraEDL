@@ -1,7 +1,14 @@
 // ============================================================================
-// SakuraEDL - 展讯统一资源包管理器
-// 整合 Exploit、FDL、配置等资源的打包/加载
-// 支持 SPAK v2 格式
+// SakuraEDL - SPRD PAK Manager | 展讯资源包管理器
+// ============================================================================
+// [ZH] 资源包管理 - 整合 Exploit、FDL、配置等资源的打包/加载
+// [EN] PAK Manager - Integrate Exploit, FDL, config resources packing/loading
+// [JA] PAK管理 - Exploit、FDL、設定リソースのパック/ロード統合
+// [KO] PAK 관리자 - Exploit, FDL, 설정 리소스 패킹/로딩 통합
+// [RU] Менеджер PAK - Интеграция упаковки/загрузки Exploit, FDL, конфигов
+// [ES] Gestor PAK - Integrar empaquetado/carga de Exploit, FDL, config
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | MIT License
 // ============================================================================
 
 using System;

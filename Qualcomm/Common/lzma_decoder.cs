@@ -1,6 +1,14 @@
 // ============================================================================
-// SakuraEDL - LZMA 解码器
-// 纯 C# 实现，基于 7-Zip LZMA SDK
+// SakuraEDL - LZMA Decoder | LZMA 解码器
+// ============================================================================
+// [ZH] LZMA 解码器 - 纯 C# 实现，基于 7-Zip LZMA SDK
+// [EN] LZMA Decoder - Pure C# implementation based on 7-Zip LZMA SDK
+// [JA] LZMAデコーダー - 7-Zip LZMA SDKベースの純粋なC#実装
+// [KO] LZMA 디코더 - 7-Zip LZMA SDK 기반 순수 C# 구현
+// [RU] Декодер LZMA - Чистая C# реализация на базе 7-Zip LZMA SDK
+// [ES] Decodificador LZMA - Implementación C# pura basada en 7-Zip SDK
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | MIT License
 // ============================================================================
 
 using System;

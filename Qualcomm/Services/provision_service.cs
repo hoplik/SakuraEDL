@@ -1,8 +1,15 @@
 // ============================================================================
-// SakuraEDL - UFS/eMMC Provisioning Service
-// 高通设备存储配置服务 - 解析和生成 provision.xml
+// SakuraEDL - Provision Service | 存储配置服务
 // ============================================================================
-// 警告: Provisioning 操作不可逆，会永久改变设备存储布局！
+// [ZH] 存储配置 - 解析和生成 UFS/eMMC provision.xml 配置
+// [EN] Provision Service - Parse and generate UFS/eMMC provision.xml
+// [JA] プロビジョニング - UFS/eMMC provision.xmlの解析と生成
+// [KO] 프로비저닝 서비스 - UFS/eMMC provision.xml 분석 및 생성
+// [RU] Сервис Provision - Разбор и генерация provision.xml для UFS/eMMC
+// [ES] Servicio Provision - Análisis y generación de provision.xml UFS/eMMC
+// ============================================================================
+// ⚠️ Warning: Provisioning is irreversible! | 警告: 操作不可逆!
+// Copyright (c) 2025-2026 SakuraEDL | MIT License
 // ============================================================================
 
 using System;
