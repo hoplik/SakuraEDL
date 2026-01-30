@@ -1,3 +1,17 @@
+// ============================================================================
+// SakuraEDL - Fastboot Protocol | Fastboot 协议
+// ============================================================================
+// [ZH] Fastboot 协议定义 - Android Fastboot 通信协议实现
+// [EN] Fastboot Protocol - Android Fastboot communication protocol
+// [JA] Fastbootプロトコル - Android Fastboot通信プロトコル
+// [KO] Fastboot 프로토콜 - Android Fastboot 통신 프로토콜
+// [RU] Протокол Fastboot - Протокол связи Android Fastboot
+// [ES] Protocolo Fastboot - Protocolo de comunicación Android Fastboot
+// ============================================================================
+// Reference: Google AOSP platform/system/core/fastboot
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
+// ============================================================================
+
 using System;
 using System.Text;
 

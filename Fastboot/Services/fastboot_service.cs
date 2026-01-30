@@ -1,3 +1,16 @@
+// ============================================================================
+// SakuraEDL - Fastboot Service | Fastboot 服务
+// ============================================================================
+// [ZH] Fastboot 刷机服务 - 提供 Android Fastboot 模式的完整功能
+// [EN] Fastboot Flash Service - Complete functionality for Android Fastboot mode
+// [JA] Fastbootフラッシュサービス - Android Fastbootモードの完全な機能
+// [KO] Fastboot 플래싱 서비스 - Android Fastboot 모드의 완전한 기능
+// [RU] Сервис Fastboot - Полная функциональность для режима Android Fastboot
+// [ES] Servicio Fastboot - Funcionalidad completa para modo Android Fastboot
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
+// ============================================================================
+
 using System;
 using System.Collections.Generic;
 using System.IO;

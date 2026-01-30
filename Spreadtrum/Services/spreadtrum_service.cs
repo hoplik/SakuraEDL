@@ -1,6 +1,14 @@
 // ============================================================================
-// SakuraEDL - 展讯刷机服务
-// Spreadtrum/Unisoc Flashing Service
+// SakuraEDL - Spreadtrum Service | 展讯服务
+// ============================================================================
+// [ZH] 展讯刷机服务 - 提供 SPD/Unisoc 设备的完整刷机功能
+// [EN] Spreadtrum Flash Service - Complete flashing for SPD/Unisoc devices
+// [JA] Spreadtrumフラッシュサービス - SPD/Unisocデバイスの完全なフラッシュ
+// [KO] Spreadtrum 플래싱 서비스 - SPD/Unisoc 기기의 완전한 플래싱
+// [RU] Сервис прошивки Spreadtrum - Полная функциональность для SPD/Unisoc
+// [ES] Servicio de flasheo Spreadtrum - Funcionalidad completa para SPD/Unisoc
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 
 using System;

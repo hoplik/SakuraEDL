@@ -1,3 +1,16 @@
+// ============================================================================
+// SakuraEDL - Main Form | 主窗体
+// ============================================================================
+// [ZH] SakuraEDL 主窗体 - 多平台 Android 刷机工具界面
+// [EN] SakuraEDL Main Form - Multi-platform Android flashing tool UI
+// [JA] SakuraEDLメインフォーム - マルチプラットフォームAndroidフラッシュツール
+// [KO] SakuraEDL 메인 폼 - 멀티 플랫폼 Android 플래싱 도구
+// [RU] Главная форма SakuraEDL - Многоплатформенный инструмент прошивки
+// [ES] Formulario principal SakuraEDL - Herramienta de flasheo multiplataforma
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
+// ============================================================================
+
 using OPFlashTool.Services;
 using Sunny.UI;
 using System;

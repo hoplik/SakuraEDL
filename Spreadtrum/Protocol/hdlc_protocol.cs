@@ -1,6 +1,14 @@
 // ============================================================================
-// SakuraEDL - 展讯 HDLC 协议实现
-// Spreadtrum/Unisoc HDLC Frame Protocol
+// SakuraEDL - Spreadtrum HDLC Protocol | 展讯 HDLC 协议
+// ============================================================================
+// [ZH] HDLC 帧协议 - 展讯/紫光展锐通信帧编码实现
+// [EN] HDLC Frame Protocol - Spreadtrum/Unisoc communication frame encoding
+// [JA] HDLCフレームプロトコル - Spreadtrum/Unisoc通信フレームエンコーディング
+// [KO] HDLC 프레임 프로토콜 - Spreadtrum/Unisoc 통신 프레임 인코딩
+// [RU] Протокол HDLC - Кодирование кадров связи Spreadtrum/Unisoc
+// [ES] Protocolo HDLC - Codificación de tramas Spreadtrum/Unisoc
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 
 using System;

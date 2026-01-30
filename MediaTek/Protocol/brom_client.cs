@@ -1,8 +1,15 @@
 // ============================================================================
-// SakuraEDL - MediaTek BROM 协议客户端
-// MediaTek Boot ROM Protocol Client
+// SakuraEDL - MediaTek BROM Client | 联发科 BROM 客户端
 // ============================================================================
-// 参考: mtkclient 项目 mtk_preloader.py
+// [ZH] BROM 协议客户端 - 与 MediaTek Boot ROM 通信的底层协议实现
+// [EN] BROM Protocol Client - Low-level protocol for MediaTek Boot ROM communication
+// [JA] BROMプロトコルクライアント - MediaTek Boot ROMとの低レベル通信
+// [KO] BROM 프로토콜 클라이언트 - MediaTek Boot ROM과의 저수준 통신
+// [RU] Клиент протокола BROM - Низкоуровневый протокол для Boot ROM MediaTek
+// [ES] Cliente de protocolo BROM - Protocolo de bajo nivel para Boot ROM MediaTek
+// ============================================================================
+// Reference: mtkclient project (mtk_preloader.py)
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 
 using System;

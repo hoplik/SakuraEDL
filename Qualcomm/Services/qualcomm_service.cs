@@ -1,9 +1,15 @@
 // ============================================================================
-// SakuraEDL - 高通刷写服务
-// Qualcomm Flash Service - 整合 Sahara 和 Firehose 的高层 API
+// SakuraEDL - Qualcomm Service | 高通服务
 // ============================================================================
-// 模块: Qualcomm.Services
-// 功能: 设备连接、分区读写、刷写流程管理
+// [ZH] 高通刷写服务 - 整合 Sahara 和 Firehose 协议的高层 API
+// [EN] Qualcomm Flash Service - High-level API integrating Sahara and Firehose
+// [JA] Qualcommフラッシュサービス - SaharaとFirehoseを統合した高レベルAPI
+// [KO] Qualcomm 플래싱 서비스 - Sahara와 Firehose를 통합한 고수준 API
+// [RU] Сервис прошивки Qualcomm - Высокоуровневый API для Sahara и Firehose
+// [ES] Servicio de flasheo Qualcomm - API de alto nivel para Sahara y Firehose
+// ============================================================================
+// Features: Device connection, partition R/W, flash workflow management
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 
 using System;

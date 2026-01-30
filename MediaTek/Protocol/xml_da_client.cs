@@ -1,8 +1,15 @@
 // ============================================================================
-// SakuraEDL - MediaTek XML DA 协议客户端
-// MediaTek XML Download Agent Protocol Client (V6)
+// SakuraEDL - MediaTek XML DA Client | 联发科 XML DA 客户端
 // ============================================================================
-// 参考: mtkclient 项目 xml_cmd.py, xml_lib.py
+// [ZH] XML DA 协议客户端 - MediaTek V6 XML 下载代理协议实现
+// [EN] XML DA Protocol Client - MediaTek V6 XML Download Agent implementation
+// [JA] XML DAプロトコルクライアント - MediaTek V6 XMLダウンロードエージェント
+// [KO] XML DA 프로토콜 클라이언트 - MediaTek V6 XML 다운로드 에이전트
+// [RU] Клиент протокола XML DA - Реализация MediaTek V6 XML Download Agent
+// [ES] Cliente de protocolo XML DA - Implementación de MediaTek V6 XML
+// ============================================================================
+// Reference: mtkclient project (xml_cmd.py, xml_lib.py)
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 
 using System;

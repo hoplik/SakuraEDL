@@ -1,6 +1,15 @@
 // ============================================================================
-// SakuraEDL - 展讯 FDL 刷机客户端
-// Spreadtrum/Unisoc FDL (Flash Download) Client - 纯 C# 实现
+// SakuraEDL - Spreadtrum FDL Client | 展讯 FDL 客户端
+// ============================================================================
+// [ZH] FDL 刷机客户端 - 展讯/紫光展锐 Flash Download 协议实现
+// [EN] FDL Flash Client - Spreadtrum/Unisoc Flash Download protocol
+// [JA] FDLフラッシュクライアント - Spreadtrum/Unisocダウンロードプロトコル
+// [KO] FDL 플래시 클라이언트 - Spreadtrum/Unisoc 다운로드 프로토콜
+// [RU] FDL клиент прошивки - Протокол Spreadtrum/Unisoc Flash Download
+// [ES] Cliente FDL - Protocolo Flash Download de Spreadtrum/Unisoc
+// ============================================================================
+// Pure C# implementation
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 
 using System;

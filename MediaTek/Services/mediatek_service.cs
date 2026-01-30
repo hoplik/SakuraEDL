@@ -1,6 +1,14 @@
 // ============================================================================
-// SakuraEDL - MediaTek 刷机服务
-// MediaTek Flashing Service
+// SakuraEDL - MediaTek Service | 联发科服务
+// ============================================================================
+// [ZH] 联发科刷机服务 - 提供 MTK 设备的完整刷机功能
+// [EN] MediaTek Flashing Service - Complete flashing functionality for MTK devices
+// [JA] MediaTekフラッシュサービス - MTKデバイスの完全なフラッシュ機能
+// [KO] MediaTek 플래싱 서비스 - MTK 기기의 완전한 플래싱 기능
+// [RU] Сервис прошивки MediaTek - Полная функциональность для устройств MTK
+// [ES] Servicio de flasheo MediaTek - Funcionalidad completa para dispositivos MTK
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 
 using System;

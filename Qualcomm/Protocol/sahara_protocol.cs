@@ -1,10 +1,15 @@
 // ============================================================================
-// SakuraEDL - Sahara 协议完整实现
-// Sahara Protocol - 高通 EDL 模式第一阶段引导协议
+// SakuraEDL - Qualcomm Sahara Protocol | 高通 Sahara 协议
 // ============================================================================
-// 模块: Qualcomm.Protocol
-// 功能: 处理 Sahara 握手、芯片信息读取、Programmer 上传
-// 支持: V1/V2/V3 协议版本
+// [ZH] Sahara 协议 - 高通 EDL 模式第一阶段引导协议 (V1/V2/V3)
+// [EN] Sahara Protocol - Qualcomm EDL first-stage boot protocol (V1/V2/V3)
+// [JA] Saharaプロトコル - Qualcomm EDL第一段階ブートプロトコル
+// [KO] Sahara 프로토콜 - Qualcomm EDL 1단계 부트 프로토콜
+// [RU] Протокол Sahara - Первый этап загрузки Qualcomm EDL
+// [ES] Protocolo Sahara - Protocolo de arranque de primera etapa Qualcomm EDL
+// ============================================================================
+// Features: Handshake, chip info reading, Programmer upload
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 
 using System;

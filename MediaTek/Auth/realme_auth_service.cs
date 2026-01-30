@@ -1,9 +1,15 @@
 // ============================================================================
-// SakuraEDL - Realme/OPPO/OnePlus 云端签名认证服务
-// Realme Cloud Authentication Service
+// SakuraEDL - Realme Auth Service | Realme 认证服务
 // ============================================================================
-// 支持 Realme、OPPO、OnePlus 设备的云端签名认证
-// API 响应格式: {"code":"000000","msg":"Success","data":{"signedDataStr":"BASE64","isAllowDegraded":true}}
+// [ZH] Realme 云端签名服务 - 支持 Realme/OPPO/OnePlus 设备认证
+// [EN] Realme Cloud Auth Service - Authentication for Realme/OPPO/OnePlus
+// [JA] Realmeクラウド認証サービス - Realme/OPPO/OnePlus認証
+// [KO] Realme 클라우드 인증 서비스 - Realme/OPPO/OnePlus 인증
+// [RU] Сервис авторизации Realme - Аутентификация Realme/OPPO/OnePlus
+// [ES] Servicio de autenticación Realme - Para dispositivos Realme/OPPO/OnePlus
+// ============================================================================
+// API Response: {"code":"000000","msg":"Success","data":{"signedDataStr":"..."}}
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 
 using System;

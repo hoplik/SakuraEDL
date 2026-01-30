@@ -1,6 +1,15 @@
 // ============================================================================
-// SakuraEDL - MediaTek XFlash 二进制协议客户端
-// 参考: mtkclient/Library/DA/xflash/xflash_lib.py
+// SakuraEDL - MediaTek XFlash Client | 联发科 XFlash 客户端
+// ============================================================================
+// [ZH] XFlash 二进制协议客户端 - MediaTek XFlash 协议实现
+// [EN] XFlash Binary Protocol Client - MediaTek XFlash protocol implementation
+// [JA] XFlashバイナリプロトコルクライアント - MediaTek XFlash実装
+// [KO] XFlash 바이너리 프로토콜 클라이언트 - MediaTek XFlash 구현
+// [RU] Клиент протокола XFlash - Реализация протокола MediaTek XFlash
+// [ES] Cliente de protocolo XFlash - Implementación de MediaTek XFlash
+// ============================================================================
+// Reference: mtkclient/Library/DA/xflash/xflash_lib.py
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 
 using System;

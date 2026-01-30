@@ -1,10 +1,15 @@
 // ============================================================================
-// SakuraEDL - Firehose 协议完整实现
-// Firehose Protocol - 高通 EDL 模式 XML 刷写协议
+// SakuraEDL - Qualcomm Firehose Client | 高通 Firehose 客户端
 // ============================================================================
-// 模块: Qualcomm.Protocol
-// 功能: 读写分区、VIP 认证、GPT 操作、设备控制
-// 支持: UFS/eMMC 存储、Sparse 格式、动态伪装
+// [ZH] Firehose 协议 - 高通 EDL 模式 XML 刷写协议
+// [EN] Firehose Protocol - Qualcomm EDL XML flashing protocol
+// [JA] Firehoseプロトコル - Qualcomm EDL XMLフラッシュプロトコル
+// [KO] Firehose 프로토콜 - Qualcomm EDL XML 플래싱 프로토콜
+// [RU] Протокол Firehose - XML протокол прошивки Qualcomm EDL
+// [ES] Protocolo Firehose - Protocolo de flasheo XML para Qualcomm EDL
+// ============================================================================
+// Features: Partition R/W, VIP auth, GPT operations, UFS/eMMC, Sparse format
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 
 using System;

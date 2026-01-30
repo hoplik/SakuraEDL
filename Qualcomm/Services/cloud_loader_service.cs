@@ -1,6 +1,14 @@
 // ============================================================================
-// CloudLoaderService - 云端 Loader 自动匹配服务
-// 替代本地 PAK 资源，支持自动下载和缓存
+// SakuraEDL - Cloud Loader Service | 云端 Loader 服务
+// ============================================================================
+// [ZH] 云端 Loader 服务 - 自动匹配和下载高通 Loader
+// [EN] Cloud Loader Service - Auto-match and download Qualcomm Loaders
+// [JA] クラウドLoaderサービス - Qualcomm Loaderの自動マッチング
+// [KO] 클라우드 Loader 서비스 - Qualcomm Loader 자동 매칭
+// [RU] Облачный сервис Loader - Автоматический поиск Qualcomm Loader
+// [ES] Servicio Cloud Loader - Coincidencia automática de Qualcomm Loader
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 
 using System;
