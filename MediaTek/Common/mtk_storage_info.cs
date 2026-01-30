@@ -1,6 +1,15 @@
 // ============================================================================
-// SakuraEDL - MediaTek 存储信息解析
-// 基于 UnlockTool 日志格式分析
+// SakuraEDL - Storage Info | 存储信息解析
+// ============================================================================
+// [ZH] 存储信息 - UFS/EMMC 存储设备识别和信息解析
+// [EN] Storage Info - UFS/EMMC storage device identification and parsing
+// [JA] ストレージ情報 - UFS/EMMCストレージデバイスの識別と解析
+// [KO] 저장소 정보 - UFS/EMMC 저장 장치 식별 및 분석
+// [RU] Информация о хранилище - Идентификация и разбор UFS/EMMC
+// [ES] Info de almacenamiento - Identificación y análisis de UFS/EMMC
+// ============================================================================
+// Based on UnlockTool log format analysis
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 // 功能:
 // - UFS/EMMC 存储信息解析

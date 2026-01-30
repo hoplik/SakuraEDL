@@ -1,9 +1,15 @@
 // ============================================================================
-// SakuraEDL - MediaTek SLA 认证
-// MediaTek Secure Boot Authentication (SLA)
+// SakuraEDL - MTK SLA Auth | 联发科 SLA 认证
 // ============================================================================
-// 参考: mtkclient 项目 sla.py
-// SLA (Secure Level Authentication) 用于设备安全认证
+// [ZH] SLA 认证 - Secure Level Authentication 安全级别认证
+// [EN] SLA Auth - Secure Level Authentication for device security
+// [JA] SLA認証 - Secure Level Authenticationによるデバイスセキュリティ
+// [KO] SLA 인증 - Secure Level Authentication 기기 보안 인증
+// [RU] Аутентификация SLA - Secure Level Authentication для безопасности
+// [ES] Autenticación SLA - Secure Level Authentication para seguridad
+// ============================================================================
+// Reference: mtkclient sla.py
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 
 using System;

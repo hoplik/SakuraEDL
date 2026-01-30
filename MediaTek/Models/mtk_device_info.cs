@@ -1,6 +1,14 @@
 // ============================================================================
-// SakuraEDL - MediaTek 设备信息模型
-// MediaTek Device Information Models
+// SakuraEDL - MTK Device Info | 联发科设备信息模型
+// ============================================================================
+// [ZH] 设备信息模型 - MediaTek 设备属性和状态定义
+// [EN] Device Info Model - MediaTek device properties and status definitions
+// [JA] デバイス情報モデル - MediaTekデバイスのプロパティと状態定義
+// [KO] 기기 정보 모델 - MediaTek 기기 속성 및 상태 정의
+// [RU] Модель информации устройства - Свойства и состояния устройств MTK
+// [ES] Modelo de info del dispositivo - Propiedades y estados de MTK
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 
 using System;

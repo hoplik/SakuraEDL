@@ -1,3 +1,16 @@
+// ============================================================================
+// SakuraEDL - Fastboot Transport Interface | Fastboot 传输接口
+// ============================================================================
+// [ZH] 传输层接口 - 定义 Fastboot 通信抽象接口
+// [EN] Transport Interface - Define abstract interface for Fastboot communication
+// [JA] トランスポートインターフェース - Fastboot通信の抽象インターフェース
+// [KO] 전송 인터페이스 - Fastboot 통신 추상 인터페이스 정의
+// [RU] Интерфейс транспорта - Абстрактный интерфейс связи Fastboot
+// [ES] Interfaz de transporte - Definir interfaz abstracta de comunicación
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
+// ============================================================================
+
 using System;
 using System.Threading;
 using System.Threading.Tasks;

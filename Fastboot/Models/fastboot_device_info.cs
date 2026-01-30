@@ -1,3 +1,16 @@
+// ============================================================================
+// SakuraEDL - Fastboot Device Info | Fastboot 设备信息
+// ============================================================================
+// [ZH] 设备信息模型 - Fastboot 设备属性和状态
+// [EN] Device Info Model - Fastboot device properties and status
+// [JA] デバイス情報モデル - Fastbootデバイスのプロパティと状態
+// [KO] 기기 정보 모델 - Fastboot 기기 속성 및 상태
+// [RU] Модель информации устройства - Свойства и состояние Fastboot
+// [ES] Modelo de info del dispositivo - Propiedades y estado Fastboot
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
+// ============================================================================
+
 using System;
 using System.Collections.Generic;
 using System.Linq;

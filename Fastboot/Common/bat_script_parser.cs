@@ -1,3 +1,16 @@
+// ============================================================================
+// SakuraEDL - BAT Script Parser | BAT 脚本解析器
+// ============================================================================
+// [ZH] BAT 脚本解析 - 解析 Fastboot 刷机脚本 (flash_all.bat)
+// [EN] BAT Script Parser - Parse Fastboot flash scripts (flash_all.bat)
+// [JA] BATスクリプト解析 - Fastbootフラッシュスクリプト解析
+// [KO] BAT 스크립트 파서 - Fastboot 플래시 스크립트 분석
+// [RU] Парсер BAT скриптов - Разбор скриптов прошивки Fastboot
+// [ES] Analizador de scripts BAT - Análisis de scripts flash Fastboot
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
+// ============================================================================
+
 using System;
 using System.Collections.Generic;
 using System.IO;

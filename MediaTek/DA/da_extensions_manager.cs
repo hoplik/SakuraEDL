@@ -1,8 +1,15 @@
 // ============================================================================
-// SakuraEDL - MediaTek DA Extensions 管理器实现
-// MediaTek Download Agent Extensions Manager Implementation
+// SakuraEDL - DA Extensions Manager | DA 扩展管理器
 // ============================================================================
-// 实现IDaExtensionsManager接口，提供完整的Extensions功能
+// [ZH] DA 扩展管理器 - 管理 DA Extensions 生命周期和功能
+// [EN] DA Extensions Manager - Manage DA Extensions lifecycle and features
+// [JA] DA拡張マネージャー - DA Extensionsのライフサイクルと機能を管理
+// [KO] DA 확장 관리자 - DA Extensions 생명주기 및 기능 관리
+// [RU] Менеджер расширений DA - Управление жизненным циклом DA Extensions
+// [ES] Gestor de extensiones DA - Gestionar ciclo de vida y funciones
+// ============================================================================
+// Implements IDaExtensionsManager interface
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 
 using System;

@@ -1,3 +1,16 @@
+// ============================================================================
+// SakuraEDL - Fastboot Native Service | Fastboot 原生服务
+// ============================================================================
+// [ZH] Fastboot 原生服务 - 使用原生 USB 协议的 Fastboot 实现
+// [EN] Fastboot Native Service - Fastboot implementation using native USB
+// [JA] Fastbootネイティブサービス - ネイティブUSBプロトコル実装
+// [KO] Fastboot 네이티브 서비스 - 네이티브 USB 프로토콜 구현
+// [RU] Нативный сервис Fastboot - Реализация с нативным USB протоколом
+// [ES] Servicio nativo Fastboot - Implementación con protocolo USB nativo
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
+// ============================================================================
+
 using System;
 using System.Collections.Generic;
 using System.IO;

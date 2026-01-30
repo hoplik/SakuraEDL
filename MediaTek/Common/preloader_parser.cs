@@ -1,6 +1,15 @@
 // ============================================================================
-// SakuraEDL - MediaTek Preloader 解析器
-// 基于 MTK META UTILITY 逆向分析
+// SakuraEDL - Preloader Parser | Preloader 解析器
+// ============================================================================
+// [ZH] Preloader 解析 - 解析 MTK Preloader 结构和 EMI 配置
+// [EN] Preloader Parser - Parse MTK Preloader structure and EMI config
+// [JA] Preloader解析 - MTK Preloader構造とEMI設定の解析
+// [KO] Preloader 파서 - MTK Preloader 구조 및 EMI 설정 분석
+// [RU] Парсер Preloader - Разбор структуры MTK Preloader и конфигурации EMI
+// [ES] Analizador Preloader - Análisis de estructura y configuración EMI
+// ============================================================================
+// Based on MTK META UTILITY reverse engineering
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 // 功能:
 // - 从内存中转储 Preloader

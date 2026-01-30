@@ -1,9 +1,15 @@
 // ============================================================================
-// SakuraEDL - MediaTek 错误码解析与格式化
-// MediaTek Error Code Parser and Formatter
+// SakuraEDL - MTK Error Codes | 联发科错误码
 // ============================================================================
-// 参考: Penumbra 项目 https://shomy.is-a.dev/penumbra/
-// XFlash (V5) 和 XML (V6) 协议错误码结构化解析
+// [ZH] 错误码解析 - XFlash (V5) 和 XML (V6) 协议错误码解析
+// [EN] Error Code Parser - XFlash (V5) and XML (V6) protocol error parsing
+// [JA] エラーコード解析 - XFlash (V5)/XML (V6) プロトコルエラー解析
+// [KO] 오류 코드 파서 - XFlash (V5) 및 XML (V6) 프로토콜 오류 분석
+// [RU] Парсер кодов ошибок - Разбор ошибок протоколов XFlash/XML
+// [ES] Analizador de códigos de error - Análisis de errores XFlash/XML
+// ============================================================================
+// Reference: Penumbra project https://shomy.is-a.dev/penumbra/
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 
 using System.Collections.Generic;

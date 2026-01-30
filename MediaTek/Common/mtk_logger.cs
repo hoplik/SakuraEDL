@@ -1,8 +1,14 @@
 // ============================================================================
-// SakuraEDL - MediaTek 日志管理系统
-// MediaTek Logging System with Formatting
+// SakuraEDL - MTK Logger | 联发科日志系统
 // ============================================================================
-// 统一的日志格式化输出，支持多种日志级别和样式
+// [ZH] 日志系统 - 统一的日志格式化输出，支持多种级别和样式
+// [EN] Logger System - Unified log formatting with multiple levels and styles
+// [JA] ログシステム - 統一されたログ形式、複数レベルとスタイル対応
+// [KO] 로그 시스템 - 통합 로그 형식, 다양한 레벨 및 스타일 지원
+// [RU] Система логирования - Единый формат с разными уровнями и стилями
+// [ES] Sistema de registro - Formato unificado con niveles y estilos
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 
 using System;

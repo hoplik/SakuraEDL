@@ -1,9 +1,15 @@
 // ============================================================================
-// SakuraEDL - MediaTek DA Extensions 支持框架
-// MediaTek Download Agent Extensions Support Framework
+// SakuraEDL - DA Extensions | DA 扩展框架
 // ============================================================================
-// 参考: Penumbra 文档 https://shomy.is-a.dev/penumbra/Mediatek/Common/DA/DA-Extensions
-// DA Extensions由bkerler开发，用于移除厂商DA的限制，恢复RPMB/寄存器访问等功能
+// [ZH] DA 扩展 - 移除厂商 DA 限制，恢复 RPMB/寄存器访问
+// [EN] DA Extensions - Remove vendor DA restrictions, restore RPMB/register access
+// [JA] DA拡張 - ベンダーDA制限を解除、RPMB/レジスタアクセスを復元
+// [KO] DA 확장 - 벤더 DA 제한 제거, RPMB/레지스터 액세스 복원
+// [RU] Расширения DA - Снятие ограничений DA, восстановление RPMB/регистров
+// [ES] Extensiones DA - Eliminar restricciones DA, restaurar acceso RPMB
+// ============================================================================
+// Reference: Penumbra docs, mtk-payloads by bkerler
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 
 using System;

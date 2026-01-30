@@ -1,6 +1,15 @@
 // ============================================================================
-// SakuraEDL - MediaTek 串口配置
-// 基于 MTK META UTILITY V48 逆向分析优化
+// SakuraEDL - Serial Port Config | 串口配置
+// ============================================================================
+// [ZH] 串口配置 - MediaTek 设备串口通信参数
+// [EN] Serial Port Config - MediaTek device serial communication parameters
+// [JA] シリアルポート設定 - MediaTekデバイスのシリアル通信パラメータ
+// [KO] 시리얼 포트 설정 - MediaTek 기기 시리얼 통신 매개변수
+// [RU] Настройки COM-порта - Параметры связи последовательного порта
+// [ES] Config de puerto serie - Parámetros de comunicación serial
+// ============================================================================
+// Based on MTK META UTILITY V48 reverse engineering
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 // 串口参数配置:
 // - 波特率: 115200 / 921600

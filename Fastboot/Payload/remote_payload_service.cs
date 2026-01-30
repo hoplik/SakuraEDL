@@ -1,3 +1,16 @@
+// ============================================================================
+// SakuraEDL - Remote Payload Service | 远程 Payload 服务
+// ============================================================================
+// [ZH] 远程 Payload 服务 - 从云端获取和处理 OTA payload.bin
+// [EN] Remote Payload Service - Fetch and process OTA payload.bin from cloud
+// [JA] リモートPayloadサービス - クラウドからOTA payload.binを取得
+// [KO] 원격 Payload 서비스 - 클라우드에서 OTA payload.bin 가져오기
+// [RU] Удаленный сервис Payload - Получение OTA payload.bin из облака
+// [ES] Servicio Payload remoto - Obtener payload.bin OTA de la nube
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
+// ============================================================================
+
 using System;
 using System.Collections.Generic;
 using System.IO;

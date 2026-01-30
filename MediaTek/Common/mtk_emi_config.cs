@@ -1,8 +1,15 @@
 // ============================================================================
-// SakuraEDL - MediaTek EMI (External Memory Interface) 配置
-// MediaTek DRAM Initialization Configuration
+// SakuraEDL - MTK EMI Config | 联发科 EMI 配置
 // ============================================================================
-// 参考: mtkclient 项目 emi_config.py
+// [ZH] EMI 配置 - External Memory Interface DRAM 初始化配置
+// [EN] EMI Config - External Memory Interface DRAM initialization
+// [JA] EMI設定 - External Memory Interface DRAM初期化設定
+// [KO] EMI 설정 - External Memory Interface DRAM 초기화 설정
+// [RU] Конфигурация EMI - Инициализация External Memory Interface DRAM
+// [ES] Configuración EMI - Inicialización DRAM External Memory Interface
+// ============================================================================
+// Reference: mtkclient emi_config.py
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 
 using System;

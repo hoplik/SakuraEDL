@@ -1,3 +1,16 @@
+// ============================================================================
+// SakuraEDL - Fastboot Command | Fastboot 命令工具
+// ============================================================================
+// [ZH] Fastboot 命令 - 调用原生 fastboot.exe 执行命令
+// [EN] Fastboot Command - Execute commands via native fastboot.exe
+// [JA] Fastbootコマンド - ネイティブfastboot.exeでコマンド実行
+// [KO] Fastboot 명령 - 네이티브 fastboot.exe로 명령 실행
+// [RU] Команда Fastboot - Выполнение команд через fastboot.exe
+// [ES] Comando Fastboot - Ejecutar comandos vía fastboot.exe nativo
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
+// ============================================================================
+
 using System;
 using System.Diagnostics;
 using System.IO;

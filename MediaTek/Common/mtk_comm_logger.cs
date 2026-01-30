@@ -1,6 +1,15 @@
 // ============================================================================
-// SakuraEDL - MediaTek 通讯日志管理器
-// 基于 UnlockTool 通讯逻辑风格 (中文版)
+// SakuraEDL - Communication Logger | 通讯日志管理器
+// ============================================================================
+// [ZH] 通讯日志 - 统一的通讯日志格式和状态显示
+// [EN] Comm Logger - Unified communication log format and status display
+// [JA] 通信ログ - 統一された通信ログ形式と状態表示
+// [KO] 통신 로거 - 통합 통신 로그 형식 및 상태 표시
+// [RU] Логгер связи - Единый формат журнала связи и отображение статуса
+// [ES] Logger de comunicación - Formato de registro unificado y estado
+// ============================================================================
+// Based on UnlockTool communication style
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 // 功能:
 // - 统一的通讯日志格式

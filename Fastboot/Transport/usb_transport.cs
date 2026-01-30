@@ -1,3 +1,16 @@
+// ============================================================================
+// SakuraEDL - USB Transport | USB 传输层
+// ============================================================================
+// [ZH] USB 传输层 - 通过 WinUSB 与 Fastboot 设备通信
+// [EN] USB Transport - Communicate with Fastboot devices via WinUSB
+// [JA] USBトランスポート - WinUSB経由でFastbootデバイスと通信
+// [KO] USB 전송 계층 - WinUSB를 통해 Fastboot 기기와 통신
+// [RU] Транспорт USB - Связь с устройствами Fastboot через WinUSB
+// [ES] Transporte USB - Comunicación con dispositivos Fastboot vía WinUSB
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
+// ============================================================================
+
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;

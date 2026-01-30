@@ -1,8 +1,15 @@
 // ============================================================================
-// SakuraEDL - MediaTek Key Extractor
-// 提取设备密钥信息 (seccfg, efuse, rpmb keys)
+// SakuraEDL - Key Extractor | 密钥提取器
 // ============================================================================
-// 参考: mtkclient keys.py, seccfg parser
+// [ZH] 密钥提取 - 提取设备密钥信息 (seccfg, efuse, rpmb keys)
+// [EN] Key Extractor - Extract device keys (seccfg, efuse, rpmb keys)
+// [JA] キー抽出 - デバイスキー情報の抽出 (seccfg, efuse, rpmb keys)
+// [KO] 키 추출기 - 기기 키 정보 추출 (seccfg, efuse, rpmb keys)
+// [RU] Извлечение ключей - Извлечение ключей устройства (seccfg, efuse, rpmb)
+// [ES] Extractor de claves - Extraer claves del dispositivo (seccfg, efuse)
+// ============================================================================
+// Reference: mtkclient keys.py, seccfg parser
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 
 using System;

@@ -1,8 +1,14 @@
 // ============================================================================
-// SakuraEDL - MediaTek DA 数据库
-// MediaTek Download Agent Database
+// SakuraEDL - MTK DA Database | 联发科 DA 数据库
 // ============================================================================
-// DA 加载器数据库管理
+// [ZH] DA 数据库 - Download Agent 加载器数据库管理
+// [EN] DA Database - Download Agent loader database management
+// [JA] DAデータベース - Download Agentローダーデータベース管理
+// [KO] DA 데이터베이스 - Download Agent 로더 데이터베이스 관리
+// [RU] База данных DA - Управление базой данных загрузчиков DA
+// [ES] Base de datos DA - Gestión de base de datos de cargadores DA
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 
 using System;

@@ -1,9 +1,15 @@
 // ============================================================================
-// SakuraEDL - MediaTek DA Extensions 加载器
-// MediaTek Download Agent Extensions Loader
+// SakuraEDL - DA Extensions Loader | DA 扩展加载器
 // ============================================================================
-// 从mtk-payloads项目加载和上传DA Extensions到设备
-// 参考: https://github.com/shomykohai/mtk-payloads
+// [ZH] DA 扩展加载器 - 加载和上传 DA Extensions 到设备
+// [EN] DA Extensions Loader - Load and upload DA Extensions to device
+// [JA] DA拡張ローダー - DA Extensionsをデバイスにロード・アップロード
+// [KO] DA 확장 로더 - DA Extensions를 기기에 로드 및 업로드
+// [RU] Загрузчик расширений DA - Загрузка DA Extensions на устройство
+// [ES] Cargador de extensiones DA - Cargar y subir DA Extensions
+// ============================================================================
+// Reference: https://github.com/shomykohai/mtk-payloads
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 
 using System;
