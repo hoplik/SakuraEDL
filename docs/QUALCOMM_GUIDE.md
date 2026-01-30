@@ -23,6 +23,9 @@ SakuraEDL 支持高通 (Qualcomm) 设备的 EDL (Emergency Download) 模式刷�
 - **Firehose 协议**: XML 命令刷写
 - **云端 Loader**: 自动匹配 Programmer
 - **固件解密**: OFP/OZIP/OPS 格式支持
+- **Diag 诊断协议**: 原生实现，支持 IMEI/MEID/QCN 读写
+- **Loader 特性检测**: 自动分析 Loader 支持的功能
+- **Motorola 固件支持**: 解析 SINGLE_N_LONELY 格式固件包
 
 ### 工作流程
 
@@ -401,11 +404,144 @@ Firehose 是主要的刷写协议，使用 XML 命令：
 
 ---
 
+## 🆕 高级功能
+
+### Diag 诊断协议
+
+原生 C# 实现的高通诊断协议，无需外部 DLL：
+
+```csharp
+// 连接 Diag 端口
+await service.DiagConnectAsync(portName);
+
+// SPC 解锁 (默认 000000)
+await service.DiagUnlockSpcAsync("000000");
+
+// 读取 IMEI
+var imeiInfo = await service.DiagReadImeiAsync();
+Console.WriteLine($"IMEI: {imeiInfo.Imei1}");
+
+// 写入 IMEI
+await service.DiagWriteImeiAsync("123456789012345");
+
+// 读取 MEID
+string meid = await service.DiagReadMeidAsync();
+
+// 写入 MEID
+await service.DiagWriteMeidAsync("A0000012345678");
+
+// 读取 QCN 文件
+await service.DiagReadQcnAsync(outputPath);
+
+// 写入 QCN 文件
+await service.DiagWriteQcnAsync(qcnPath);
+
+// 读取 NV 项
+byte[] nvData = await service.DiagReadNvItemAsync(nvItemId);
+
+// 写入 NV 项
+await service.DiagWriteNvItemAsync(nvItemId, nvData);
+
+// 断开连接
+service.DiagDisconnect();
+```
+
+**支持的 Diag 操作:**
+| 功能 | 说明 |
+|------|------|
+| SPC 解锁 | 服务编程代码解锁 |
+| IMEI 读写 | 支持多 SIM 卡 |
+| MEID 读写 | CDMA 设备标识 |
+| QCN 备份/恢复 | 完整 NV 数据 |
+| NV 项读写 | 单项 NV 操作 |
+| AT 命令 | 调制解调器命令 |
+| 模式切换 | Offline/Online/Reset |
+
+### Loader 特性检测
+
+自动分析 Firehose Loader 支持的功能：
+
+```csharp
+// 检测 Loader 特性
+var features = service.DetectLoaderFeatures(loaderPath);
+
+// 显示支持的功能
+Console.WriteLine($"芯片: {features.ChipName}");
+Console.WriteLine($"存储类型: {features.MemoryType}"); // eMMC/UFS
+Console.WriteLine($"支持 Peek: {features.SupportsPeek}");
+Console.WriteLine($"支持 Poke: {features.SupportsPoke}");
+Console.WriteLine($"支持读取 IMEI: {features.SupportsReadImei}");
+
+// 小米设备检测
+if (features.IsXiaomiLoader)
+{
+    Console.WriteLine($"需要 EDL 验证: {features.RequiresEdlAuth}");
+    Console.WriteLine($"可利用漏洞: {features.IsExploitable}");
+}
+
+// Motorola 设备检测
+if (features.IsMotorolaLoader)
+{
+    Console.WriteLine("检测到 Motorola Loader");
+}
+```
+
+**检测的特性:**
+| 特性 | 说明 |
+|------|------|
+| ChipName | 芯片名称 (如 SDM845) |
+| MemoryType | 存储类型 (eMMC/UFS/NAND) |
+| BuildDate | Loader 构建日期 |
+| SupportsPeek | 支持内存读取 |
+| SupportsPoke | 支持内存写入 |
+| SupportsReadImei | 支持读取 IMEI |
+| SupportsSerialNum | 支持序列号操作 |
+| IsXiaomiLoader | 小米 Loader |
+| RequiresEdlAuth | 需要 EDL 认证 |
+| IsExploitable | 存在可利用漏洞 |
+| IsMotorolaLoader | Motorola Loader |
+
+### Motorola 固件包支持
+
+解析 Motorola SINGLE_N_LONELY 格式固件：
+
+```csharp
+// 解析 Motorola 固件包
+var packageInfo = service.ParseMotorolaPackage(packagePath);
+
+// 显示固件信息
+Console.WriteLine($"设备: {packageInfo.DeviceName}");
+Console.WriteLine($"版本: {packageInfo.Version}");
+Console.WriteLine($"A/B 系统: {packageInfo.IsAbSystem}");
+
+// 获取分区列表
+foreach (var partition in packageInfo.Partitions)
+{
+    Console.WriteLine($"  {partition.Name}: {partition.FilePath}");
+}
+
+// 生成 rawprogram.xml
+var rawprogram = service.GenerateMotorolaRawprogram(packageInfo);
+
+// 提取文件
+service.ExtractMotorolaFiles(packagePath, outputDir);
+```
+
+**支持的 Motorola 格式:**
+- `SINGLE_N_LONELY` 格式固件包
+- `index.xml` / `pkg.xml` / `recipe.xml` 解析
+- GPT 数据清理
+- A/B 槽位检测
+- 自动生成 rawprogram.xml
+
+---
+
 ## 参考资料
 
 - [edl](https://github.com/bkerler/edl) - Qualcomm EDL 参考实现
 - [QPST](https://qpsttool.com/) - 高通官方工具
 - [Qualcomm 文档](https://www.qualcomm.com/) - 官方技术资源
+- [iReverse](https://github.com/ArtRichards/iReverse) - 高级功能参考
 
 ---
 

@@ -23,6 +23,13 @@ SakuraEDL 支持展讯 (Spreadtrum) / 紫光展锐 (Unisoc) 设备的刷机操�
 - **HDLC 帧编码**: 数据链路层编码
 - **PAC 固件解析**: 自动解析 PAC 固件包
 - **签名绕过**: T760/T770 等新芯片的签名绕过
+- **ISP eMMC 直接访问**: 通过 USB 存储模式直接读写 eMMC
+- **Bootloader 管理**: 解锁/锁定 Bootloader
+- **A/B 槽位切换**: 支持 A/B 分区设备的槽位切换
+- **DM-Verity 控制**: 启用/禁用 DM-Verity 验证
+- **Boot.img 解析**: 提取设备信息和修改 ramdisk
+- **固件加解密**: 支持 iReverse 格式的固件加解密
+- **Diag 协议**: 原生诊断协议支持 (IMEI/NV 读写)
 
 ### 工作流程
 
@@ -402,9 +409,148 @@ FDL2 及后续操作
 
 ---
 
+## 🆕 高级功能
+
+### ISP eMMC 直接访问
+
+当设备进入 ISP 模式 (USB 存储模式) 时，可直接访问 eMMC：
+
+```csharp
+// 检测 ISP 设备
+var devices = service.DetectIspDevices();
+
+// 打开设备
+service.OpenIspDevice(devicePath);
+
+// 读取分区
+await service.IspReadPartitionAsync("boot", outputPath);
+
+// 写入分区
+await service.IspWritePartitionAsync("boot", inputPath);
+```
+
+**支持的操作:**
+- 分区读取/写入/擦除
+- GPT 分区表备份/恢复
+- 原始扇区读写
+
+### Bootloader 解锁/锁定
+
+```csharp
+// 解锁 Bootloader
+await service.UnlockBootloaderAsync();
+
+// 锁定 Bootloader
+await service.LockBootloaderAsync();
+```
+
+**注意:** 解锁 Bootloader 会清除用户数据
+
+### A/B 槽位切换
+
+对于支持 A/B 分区的设备：
+
+```csharp
+// 检查是否为 A/B 系统
+bool isAB = await service.IsAbSystemAsync();
+
+// 切换到槽位 A
+await service.SetActiveSlotAsync(ActiveSlot.SlotA);
+
+// 切换到槽位 B
+await service.SetActiveSlotAsync(ActiveSlot.SlotB);
+```
+
+### DM-Verity 控制
+
+```csharp
+// 禁用 DM-Verity (允许修改 system 分区)
+await service.SetDmVerityAsync(false);
+
+// 启用 DM-Verity
+await service.SetDmVerityAsync(true);
+```
+
+### 重启模式控制
+
+```csharp
+// 重启到 Recovery
+await service.ResetToModeAsync(ResetToMode.Recovery);
+
+// 重启到 Fastboot
+await service.ResetToModeAsync(ResetToMode.Fastboot);
+
+// 恢复出厂设置
+await service.ResetToModeAsync(ResetToMode.FactoryReset);
+
+// 擦除 FRP (工厂重置保护)
+await service.EraseFrpAsync();
+```
+
+### Boot.img 解析
+
+从 Boot 镜像提取设备信息：
+
+```csharp
+// 解析 Boot.img
+var bootInfo = BootParser.Parse(bootData);
+
+// 提取设备信息
+var deviceDetails = service.ExtractDeviceInfoFromBoot(bootData);
+Console.WriteLine($"设备: {deviceDetails.Manufacturer} {deviceDetails.Model}");
+Console.WriteLine($"Android: {deviceDetails.AndroidVersion}");
+```
+
+**支持的压缩格式:**
+- GZip
+- LZ4 (Legacy 和 Frame)
+- BZip2
+- XZ/LZMA
+
+### 固件加解密
+
+```csharp
+// 解密固件
+service.DecryptFirmware(inputPath, outputPath);
+
+// 加密固件
+service.EncryptFirmware(inputPath, outputPath);
+
+// 检查是否加密
+bool encrypted = SprdCryptograph.IsEncrypted(data);
+```
+
+### Diag 诊断协议
+
+```csharp
+// 连接 Diag
+await service.DiagConnectAsync(portName);
+
+// 读取 IMEI
+string imei = await service.DiagReadImeiAsync(1);
+
+// 写入 IMEI
+await service.DiagWriteImeiAsync(1, "123456789012345");
+
+// 读取 NV 项
+byte[] nvData = await service.DiagReadNvItemAsync(itemId);
+
+// 写入 NV 项
+await service.DiagWriteNvItemAsync(itemId, nvData);
+
+// 发送 AT 命令
+string response = await service.DiagSendAtCommandAsync("ATI");
+
+// 切换诊断模式
+await service.DiagSwitchModeAsync(DiagMode.Offline);
+```
+
+---
+
 ## 参考资料
 
 - [spd_dump](https://github.com/ArtRichards/spd_dump) - SPD 协议参考
+- [iReverseSPRDClient](https://github.com/ArtRichards/iReverseSPRDClient) - 高级功能参考
 - [Unisoc 官网](https://www.unisoc.com/) - 官方技术资源
 - [Research Download Tool](https://spdflashtool.com/) - 官方刷机工具
 

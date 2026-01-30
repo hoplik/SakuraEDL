@@ -96,6 +96,9 @@
 - 自动存储类型检测 (eMMC/UFS/NAND)
 - OFP/OZIP/OPS 固件解密
 - 智能密钥爆破 (50+ 组密钥)
+- 🆕 原生 Diag 协议 (IMEI/MEID/QCN 读写)
+- 🆕 Loader 特性检测 (自动分析支持的功能)
+- 🆕 Motorola 固件包支持 (SINGLE_N_LONELY 格式)
 
 #### ⚡ Fastboot 增强
 - 分区读写操作
@@ -113,6 +116,13 @@
 - FDL1/FDL2 下载
 - PAC 固件解析
 - T760/T770 签名绕过
+- 🆕 ISP eMMC 直接访问
+- 🆕 Bootloader 解锁/锁定
+- 🆕 A/B 槽位切换
+- 🆕 DM-Verity 控制
+- 🆕 Boot.img 解析和设备信息提取
+- 🆕 固件加解密
+- 🆕 原生 Diag 协议 (IMEI/NV 读写)
 
 #### 📦 固件工具
 - Payload.bin 提取
@@ -196,7 +206,7 @@
 
 ```
 SakuraEDL/
-├── MediaTek/                   # 🆕 联发科模块
+├── MediaTek/                   # 联发科模块
 │   ├── Protocol/
 │   │   ├── brom_client.cs      # BROM 客户端
 │   │   ├── xml_da_client.cs    # XML V6 协议
@@ -212,24 +222,40 @@ SakuraEDL/
 │   │   └── AllinoneSignatureExploit.cs
 │   └── Database/
 │       └── mtk_chip_database.cs
-├── Spreadtrum/                 # 🆕 展讯模块
+├── Spreadtrum/                 # 展讯模块
 │   ├── Protocol/
 │   │   ├── fdl_client.cs       # FDL 客户端
 │   │   ├── hdlc_protocol.cs    # HDLC 编码
-│   │   └── bsl_commands.cs     # BSL 命令
+│   │   ├── bsl_commands.cs     # BSL 命令
+│   │   └── diag_client.cs      # 🆕 Diag 诊断协议
+│   ├── Common/
+│   │   ├── boot_parser.cs      # 🆕 Boot.img 解析
+│   │   ├── cpio_parser.cs      # 🆕 CPIO 解析
+│   │   ├── lz4_decompressor.cs # 🆕 LZ4 解压
+│   │   ├── sprd_cryptograph.cs # 🆕 固件加解密
+│   │   └── sprd_advanced_features.cs # 🆕 高级功能
+│   ├── ISP/                    # 🆕 ISP eMMC 直接访问
+│   │   ├── emmc_device.cs      # eMMC 设备操作
+│   │   ├── emmc_gpt.cs         # GPT 分区解析
+│   │   └── emmc_partition_manager.cs # 分区管理器
 │   ├── Services/
 │   │   └── spreadtrum_service.cs
 │   └── Database/
 │       └── sprd_fdl_database.cs
 ├── Qualcomm/                   # 高通模块
-│   ├── SaharaProtocol.cs
-│   ├── FirehoseProtocol.cs
+│   ├── Protocol/
+│   │   ├── sahara_protocol.cs  # Sahara 协议
+│   │   ├── firehose_client.cs  # Firehose 协议
+│   │   └── diag_client.cs      # 🆕 Diag 诊断协议
+│   ├── Common/
+│   │   ├── loader_feature_detector.cs # 🆕 Loader 特性检测
+│   │   └── motorola_support.cs # 🆕 Motorola 固件支持
 │   └── Services/
+│       ├── qualcomm_service.cs
 │       └── cloud_loader_integration.cs  # 云端匹配
 ├── Fastboot/                   # Fastboot 模块
-├── Authentication/             # 认证策略
-├── Services/                   # 通用服务
-└── Localization/               # 多语言
+├── Common/                     # 通用模块
+└── docs/                       # 文档
 ```
 
 ---
