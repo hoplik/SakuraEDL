@@ -1,8 +1,15 @@
 // ============================================================================
-// SakuraEDL - MediaTek 校验和计算
-// MediaTek Checksum Utilities
+// SakuraEDL - MediaTek Checksum | 联发科校验和
 // ============================================================================
-// 参考: mtkclient 项目校验和算法
+// [ZH] 校验和工具 - MediaTek 数据传输校验和计算
+// [EN] Checksum Utilities - MediaTek data transfer checksum calculation
+// [JA] チェックサムユーティリティ - MediaTekデータ転送チェックサム計算
+// [KO] 체크섬 유틸리티 - MediaTek 데이터 전송 체크섬 계산
+// [RU] Утилиты контрольной суммы - Вычисление для передачи данных MediaTek
+// [ES] Utilidades de checksum - Cálculo de checksum de transferencia MediaTek
+// ============================================================================
+// Reference: mtkclient checksum algorithms
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 
 using System;

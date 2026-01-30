@@ -1,9 +1,14 @@
 // ============================================================================
-// SakuraEDL - MediaTek 端口检测器
-// MediaTek Port Detector
+// SakuraEDL - MediaTek Port Detector | 联发科端口检测器
 // ============================================================================
-// 自动检测 MTK 设备 USB 端口
-// 支持 BROM 模式和 Preloader 模式
+// [ZH] MTK 端口检测 - 自动检测 BROM/Preloader 模式设备
+// [EN] MTK Port Detector - Auto-detect BROM/Preloader mode devices
+// [JA] MTKポート検出 - BROM/Preloaderモードデバイスの自動検出
+// [KO] MTK 포트 탐지 - BROM/Preloader 모드 기기 자동 감지
+// [RU] Детектор портов MTK - Автообнаружение устройств BROM/Preloader
+// [ES] Detector de puertos MTK - Detección automática de dispositivos
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 
 using System;

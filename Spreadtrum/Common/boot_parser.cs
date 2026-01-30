@@ -1,6 +1,14 @@
 // ============================================================================
-// SakuraEDL - Android Boot 镜像解析器
-// Spreadtrum/Unisoc Boot Image Parser
+// SakuraEDL - Boot Image Parser | Boot 镜像解析器
+// ============================================================================
+// [ZH] Boot 镜像解析 - 解析 Android boot.img 结构
+// [EN] Boot Image Parser - Parse Android boot.img structure
+// [JA] Bootイメージ解析 - Android boot.img構造の解析
+// [KO] Boot 이미지 파서 - Android boot.img 구조 분석
+// [RU] Парсер Boot образа - Разбор структуры Android boot.img
+// [ES] Analizador de imagen Boot - Análisis de estructura boot.img
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 
 using System;

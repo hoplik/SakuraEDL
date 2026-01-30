@@ -1,6 +1,14 @@
 // ============================================================================
-// SakuraEDL - 展讯设备端口检测
-// Spreadtrum/Unisoc USB Port Detector
+// SakuraEDL - Spreadtrum Port Detector | 展讯端口检测器
+// ============================================================================
+// [ZH] 展讯端口检测 - 自动检测 SPD/Unisoc 设备端口
+// [EN] Spreadtrum Port Detector - Auto-detect SPD/Unisoc device ports
+// [JA] Spreadtrumポート検出 - SPD/Unisocデバイスポートの自動検出
+// [KO] Spreadtrum 포트 탐지 - SPD/Unisoc 기기 포트 자동 감지
+// [RU] Детектор портов Spreadtrum - Автообнаружение портов устройств
+// [ES] Detector de puertos Spreadtrum - Detección automática de puertos
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 
 using System;

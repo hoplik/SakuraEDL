@@ -1,6 +1,14 @@
 // ============================================================================
-// SakuraEDL - 设备信息提取器
-// Spreadtrum/Unisoc Device Information Extractor from Boot Image
+// SakuraEDL - Device Info Extractor | 设备信息提取器
+// ============================================================================
+// [ZH] 设备信息提取 - 从 Boot 镜像提取展讯设备信息
+// [EN] Device Info Extractor - Extract Spreadtrum device info from Boot image
+// [JA] デバイス情報抽出 - BootイメージからSpreadtrumデバイス情報を抽出
+// [KO] 기기 정보 추출 - Boot 이미지에서 Spreadtrum 기기 정보 추출
+// [RU] Извлечение информации - Извлечение данных Spreadtrum из Boot образа
+// [ES] Extractor de info - Extraer información de dispositivo de Boot
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 
 using System;

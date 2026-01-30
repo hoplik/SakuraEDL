@@ -1,9 +1,15 @@
 // ============================================================================
-// SakuraEDL - EROFS 文件系统解析器
-// 基于 erofs_extract 项目移植 - 纯 C# 实现
+// SakuraEDL - EROFS Parser | EROFS 文件系统解析器
 // ============================================================================
-// 模块: Qualcomm.Common
-// 功能: 解析 EROFS (Enhanced Read-Only File System) 结构
+// [ZH] EROFS 解析器 - 解析 Enhanced Read-Only File System
+// [EN] EROFS Parser - Parse Enhanced Read-Only File System
+// [JA] EROFS解析器 - Enhanced Read-Only File Systemの解析
+// [KO] EROFS 파서 - Enhanced Read-Only File System 분석
+// [RU] Парсер EROFS - Разбор Enhanced Read-Only File System
+// [ES] Analizador EROFS - Análisis de Enhanced Read-Only File System
+// ============================================================================
+// Based on erofs_extract project - Pure C# implementation
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 
 using System;

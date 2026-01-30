@@ -1,9 +1,15 @@
 // ============================================================================
-// SakuraEDL - EXT4 文件系统解析器
-// 基于 SharpExt4 项目移植 - 纯 C# 实现
+// SakuraEDL - EXT4 Parser | EXT4 文件系统解析器
 // ============================================================================
-// 模块: Qualcomm.Common
-// 功能: 解析 EXT2/3/4 文件系统结构，提取文件 (如 build.prop)
+// [ZH] EXT4 解析器 - 解析 EXT2/3/4 文件系统，提取文件
+// [EN] EXT4 Parser - Parse EXT2/3/4 file system, extract files
+// [JA] EXT4解析器 - EXT2/3/4ファイルシステム解析、ファイル抽出
+// [KO] EXT4 파서 - EXT2/3/4 파일 시스템 분석, 파일 추출
+// [RU] Парсер EXT4 - Разбор файловой системы EXT2/3/4, извлечение файлов
+// [ES] Analizador EXT4 - Análisis de sistema de archivos EXT2/3/4
+// ============================================================================
+// Based on SharpExt4 project - Pure C# implementation
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 
 using System;

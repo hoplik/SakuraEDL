@@ -1,6 +1,14 @@
 // ============================================================================
-// SakuraEDL - LZ4 解压器
-// Spreadtrum/Unisoc LZ4 Decompressor for Boot Image
+// SakuraEDL - LZ4 Decompressor | LZ4 解压器
+// ============================================================================
+// [ZH] LZ4 解压器 - 解压 Boot 镜像中的 LZ4 压缩数据
+// [EN] LZ4 Decompressor - Decompress LZ4 compressed data in Boot image
+// [JA] LZ4解凍器 - Bootイメージ内のLZ4圧縮データを解凍
+// [KO] LZ4 압축 해제기 - Boot 이미지의 LZ4 압축 데이터 해제
+// [RU] Декомпрессор LZ4 - Распаковка сжатых данных LZ4 в Boot образе
+// [ES] Descompresor LZ4 - Descomprimir datos LZ4 en imagen Boot
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 
 using System;

@@ -1,6 +1,15 @@
 // ============================================================================
-// SakuraEDL - MediaTek USB 设备检测器
-// 基于 MTK META UTILITY 逆向分析增强
+// SakuraEDL - MediaTek USB Detector | 联发科 USB 检测器
+// ============================================================================
+// [ZH] MTK USB 检测器 - 检测 BROM/Preloader/DA 模式设备
+// [EN] MTK USB Detector - Detect BROM/Preloader/DA mode devices
+// [JA] MTK USB検出器 - BROM/Preloader/DAモードデバイスの検出
+// [KO] MTK USB 탐지기 - BROM/Preloader/DA 모드 기기 감지
+// [RU] Детектор USB MTK - Обнаружение устройств BROM/Preloader/DA
+// [ES] Detector USB MTK - Detectar dispositivos BROM/Preloader/DA
+// ============================================================================
+// Based on MTK META UTILITY reverse engineering
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 // 支持检测模式:
 // - BROM 模式 (Boot ROM)

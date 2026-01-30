@@ -1,7 +1,15 @@
 // ============================================================================
-// SakuraEDL - 展讯高级功能
-// Spreadtrum/Unisoc Advanced Features
-// 参考: iReverseSPRDClient
+// SakuraEDL - Spreadtrum Advanced Features | 展讯高级功能
+// ============================================================================
+// [ZH] 展讯高级功能 - A/B 槽位、DM-Verity、Bootloader 解锁等
+// [EN] Spreadtrum Advanced - A/B slot, DM-Verity, Bootloader unlock, etc.
+// [JA] Spreadtrum高度な機能 - A/Bスロット、DM-Verity、ブートローダー解除
+// [KO] Spreadtrum 고급 기능 - A/B 슬롯, DM-Verity, 부트로더 잠금 해제
+// [RU] Расширенные функции Spreadtrum - A/B слот, DM-Verity, разблокировка
+// [ES] Funciones avanzadas Spreadtrum - A/B slot, DM-Verity, desbloqueo
+// ============================================================================
+// Reference: iReverseSPRDClient
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 
 using System;

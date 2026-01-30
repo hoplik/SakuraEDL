@@ -1,3 +1,16 @@
+// ============================================================================
+// SakuraEDL - Payload Parser | Payload 解析器
+// ============================================================================
+// [ZH] Payload 解析器 - 解析 Android OTA payload.bin 结构
+// [EN] Payload Parser - Parse Android OTA payload.bin structure
+// [JA] Payload解析器 - Android OTA payload.bin構造を解析
+// [KO] Payload 파서 - Android OTA payload.bin 구조 분석
+// [RU] Парсер Payload - Разбор структуры Android OTA payload.bin
+// [ES] Analizador Payload - Análisis de estructura payload.bin OTA
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
+// ============================================================================
+
 using System;
 using System.Collections.Generic;
 using System.IO;

@@ -1,3 +1,16 @@
+// ============================================================================
+// SakuraEDL - ADB Helper | ADB 辅助工具
+// ============================================================================
+// [ZH] ADB 辅助工具 - 调用 ADB 命令实现设备操作
+// [EN] ADB Helper - Call ADB commands for device operations
+// [JA] ADBヘルパー - ADBコマンドでデバイス操作を実行
+// [KO] ADB 헬퍼 - ADB 명령으로 기기 작업 수행
+// [RU] Помощник ADB - Вызов команд ADB для операций с устройством
+// [ES] Ayudante ADB - Llamar comandos ADB para operaciones del dispositivo
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
+// ============================================================================
+
 using System;
 using System.Diagnostics;
 using System.IO;

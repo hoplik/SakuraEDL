@@ -1,6 +1,14 @@
 // ============================================================================
-// SakuraEDL - 高通端口自动检测
-// PortDetector - 自动识别 9008/9006 EDL 端口
+// SakuraEDL - Qualcomm Port Detector | 高通端口检测器
+// ============================================================================
+// [ZH] 高通端口检测 - 自动识别 9008/9006 EDL 端口
+// [EN] Qualcomm Port Detector - Auto-detect 9008/9006 EDL ports
+// [JA] Qualcommポート検出 - 9008/9006 EDLポートの自動識別
+// [KO] Qualcomm 포트 탐지 - 9008/9006 EDL 포트 자동 식별
+// [RU] Детектор портов Qualcomm - Автообнаружение портов 9008/9006 EDL
+// [ES] Detector de puertos Qualcomm - Detección automática de puertos EDL
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 
 using System;

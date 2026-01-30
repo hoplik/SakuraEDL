@@ -1,3 +1,16 @@
+// ============================================================================
+// SakuraEDL - LP Metadata Parser | LP 元数据解析器
+// ============================================================================
+// [ZH] LP 元数据解析 - 解析 Android Super 分区动态分区元数据
+// [EN] LP Metadata Parser - Parse Android Super partition dynamic metadata
+// [JA] LPメタデータ解析 - Android Superパーティション動的メタデータ
+// [KO] LP 메타데이터 파서 - Android Super 파티션 동적 메타데이터
+// [RU] Парсер метаданных LP - Разбор динамических метаданных Super раздела
+// [ES] Analizador de metadatos LP - Análisis de metadatos dinámicos Super
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
+// ============================================================================
+
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;

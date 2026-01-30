@@ -1,6 +1,14 @@
 // ============================================================================
-// SakuraEDL - CPIO 解析器
-// Spreadtrum/Unisoc CPIO Archive Parser for Ramdisk
+// SakuraEDL - CPIO Parser | CPIO 解析器
+// ============================================================================
+// [ZH] CPIO 解析器 - 解析 Ramdisk 中的 CPIO 归档格式
+// [EN] CPIO Parser - Parse CPIO archive format in Ramdisk
+// [JA] CPIO解析器 - RamdiskのCPIOアーカイブ形式を解析
+// [KO] CPIO 파서 - Ramdisk의 CPIO 아카이브 형식 분석
+// [RU] Парсер CPIO - Разбор формата архива CPIO в Ramdisk
+// [ES] Analizador CPIO - Análisis de formato de archivo CPIO en Ramdisk
+// ============================================================================
+// Copyright (c) 2025-2026 SakuraEDL | Licensed under CC BY-NC-SA 4.0
 // ============================================================================
 
 using System;
