@@ -9,66 +9,47 @@
       
       <!-- 导航菜单 -->
       <nav class="nav-menu" :class="{ open: menuOpen }">
-        <router-link to="/" class="nav-link" @click="menuOpen = false">{{ t('nav.home') }}</router-link>
-        <router-link to="/guide/getting-started" class="nav-link" @click="menuOpen = false">{{ t('nav.quickStart') }}</router-link>
+        <router-link to="/" class="nav-link" @click="menuOpen = false">首页</router-link>
+        <router-link to="/guide/getting-started" class="nav-link" @click="menuOpen = false">快速开始</router-link>
         
         <div class="nav-dropdown">
           <span class="nav-link dropdown-trigger">
-            {{ t('nav.tutorials') }}
+            使用教程
             <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
               <path d="M7 10l5 5 5-5z"/>
             </svg>
           </span>
           <div class="dropdown-menu">
-            <router-link to="/guide/qualcomm" @click="menuOpen = false">{{ t('nav.qualcomm') }}</router-link>
-            <router-link to="/guide/mtk" @click="menuOpen = false">{{ t('nav.mtk') }}</router-link>
-            <router-link to="/guide/spd" @click="menuOpen = false">{{ t('nav.spd') }}</router-link>
-            <router-link to="/guide/fastboot" @click="menuOpen = false">{{ t('nav.fastboot') }}</router-link>
+            <router-link to="/guide/qualcomm" @click="menuOpen = false">高通 EDL</router-link>
+            <router-link to="/guide/mtk" @click="menuOpen = false">MTK 联发科</router-link>
+            <router-link to="/guide/spd" @click="menuOpen = false">展锐 Spreadtrum</router-link>
+            <router-link to="/guide/fastboot" @click="menuOpen = false">Fastboot</router-link>
           </div>
         </div>
         
-        <router-link to="/download" class="nav-link" @click="menuOpen = false">{{ t('nav.download') }}</router-link>
+        <router-link to="/download" class="nav-link" @click="menuOpen = false">下载</router-link>
         
         <div class="nav-dropdown">
           <span class="nav-link dropdown-trigger">
-            {{ t('nav.chipDatabase') }}
+            芯片数据库
             <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
               <path d="M7 10l5 5 5-5z"/>
             </svg>
           </span>
           <div class="dropdown-menu">
-            <router-link to="/chips" @click="menuOpen = false">{{ t('nav.qualcommChips') }}</router-link>
-            <router-link to="/mtk" @click="menuOpen = false">{{ t('nav.mtkChips') }}</router-link>
-            <router-link to="/spd" @click="menuOpen = false">{{ t('nav.spdChips') }}</router-link>
+            <router-link to="/chips" @click="menuOpen = false">📱 高通 Qualcomm</router-link>
+            <router-link to="/mtk" @click="menuOpen = false">⚡ MTK 联发科</router-link>
+            <router-link to="/spd" @click="menuOpen = false">🔧 展锐 Spreadtrum</router-link>
           </div>
         </div>
         
-        <router-link to="/api" class="nav-link" @click="menuOpen = false">{{ t('nav.api') }}</router-link>
-        <router-link to="/stats" class="nav-link" @click="menuOpen = false">{{ t('nav.stats') }}</router-link>
-        <a href="https://qm.qq.com/q/z3iVnkm22c" target="_blank" class="nav-link">{{ t('nav.qqGroup') }}</a>
+        <router-link to="/api" class="nav-link" @click="menuOpen = false">API</router-link>
+        <router-link to="/stats" class="nav-link" @click="menuOpen = false">统计</router-link>
+        <a href="https://qm.qq.com/q/z3iVnkm22c" target="_blank" class="nav-link">QQ群</a>
       </nav>
       
       <!-- 右侧操作 -->
       <div class="nav-actions">
-        <!-- 语言切换 -->
-        <div class="lang-dropdown">
-          <button class="lang-toggle" :title="currentLangName">
-            <span class="lang-flag">{{ currentLangFlag }}</span>
-          </button>
-          <div class="lang-menu">
-            <button 
-              v-for="lang in languages" 
-              :key="lang.code"
-              class="lang-item"
-              :class="{ active: currentLang === lang.code }"
-              @click="changeLang(lang.code)"
-            >
-              <span class="lang-flag">{{ lang.flag }}</span>
-              <span class="lang-name">{{ lang.name }}</span>
-            </button>
-          </div>
-        </div>
-        
         <button class="theme-toggle" @click="toggleTheme" title="切换主题">
           <svg v-if="isDark" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
             <path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58c-.39-.39-1.03-.39-1.41 0-.39.39-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41L5.99 4.58zm12.37 12.37c-.39-.39-1.03-.39-1.41 0-.39.39-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0 .39-.39.39-1.03 0-1.41l-1.06-1.06zm1.06-10.96c.39-.39.39-1.03 0-1.41-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06zM7.05 18.36c.39-.39.39-1.03 0-1.41-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06z"/>
@@ -98,32 +79,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useI18n, setLanguage, languages } from '@/i18n'
-
-const { t, currentLang } = useI18n()
+import { ref, onMounted, onUnmounted } from 'vue'
 
 const isScrolled = ref(false)
 const menuOpen = ref(false)
 const isDark = ref(false)
-
-// 当前语言信息
-const currentLangFlag = computed(() => {
-  const lang = languages.find(l => l.code === currentLang.value)
-  return lang?.flag || '🌐'
-})
-
-const currentLangName = computed(() => {
-  const lang = languages.find(l => l.code === currentLang.value)
-  return lang?.name || 'Language'
-})
-
-// 切换语言
-const changeLang = (code) => {
-  setLanguage(code)
-  // 强制刷新页面以应用新语言
-  location.reload()
-}
 
 const handleScroll = () => {
   isScrolled.value = window.scrollY > 0
@@ -336,85 +296,6 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-// 语言切换下拉
-.lang-dropdown {
-  position: relative;
-  
-  .lang-toggle {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    border-radius: 8px;
-    background: none;
-    border: none;
-    cursor: pointer;
-    transition: all 0.2s;
-    
-    .lang-flag {
-      font-size: 20px;
-      line-height: 1;
-    }
-    
-    &:hover {
-      background: var(--vp-c-bg-soft);
-    }
-  }
-  
-  .lang-menu {
-    display: none;
-    position: absolute;
-    top: 100%;
-    right: 0;
-    min-width: 140px;
-    background: var(--vp-c-bg);
-    border: 1px solid var(--vp-c-divider);
-    border-radius: 12px;
-    padding: 6px;
-    box-shadow: var(--vp-shadow-3);
-    z-index: 100;
-  }
-  
-  &:hover .lang-menu {
-    display: block;
-  }
-  
-  .lang-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    width: 100%;
-    padding: 8px 12px;
-    background: none;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    color: var(--vp-c-text-2);
-    font-size: 14px;
-    transition: all 0.2s;
-    
-    .lang-flag {
-      font-size: 16px;
-    }
-    
-    .lang-name {
-      flex: 1;
-      text-align: left;
-    }
-    
-    &:hover {
-      background: var(--vp-c-bg-soft);
-      color: var(--vp-c-brand);
-    }
-    
-    &.active {
-      background: rgba(236, 72, 153, 0.1);
-      color: var(--vp-c-brand);
-    }
-  }
 }
 
 .theme-toggle, .github-link {
